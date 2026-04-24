@@ -262,6 +262,39 @@
 <script>
 const API_URL='https://script.google.com/macros/s/AKfycbyIXEjT6KOFtBKsJ7hS8EhPo3ddjnY2Mx0gW1G95K9WY3ZttJ0u8izPHiU7VhJUsSD1PA/exec';
 const ADMIN_PWD='akadmin321';
+
+let searchDebounceTimer = null;
+function debounceSearch(val) {
+  if (searchDebounceTimer) clearTimeout(searchDebounceTimer);
+  searchDebounceTimer = setTimeout(() => {
+    searchQuery = val;
+    renderTableOnly();
+  }, 300);
+}
+
+function renderTableOnly() {
+  const main = document.getElementById('main-content');
+  if (currentView === 'dashboard' || currentView === 'parts') return;
+  const data = getViewRecords();
+  const isRO = !['workshop','today'].includes(currentView);
+  const tbody = document.querySelector('#main-content tbody');
+  const subtitle = document.querySelector('#main-content .view-subtitle');
+  if (tbody) {
+    tbody.innerHTML = data.map(r => renderRow(r, isRO)).join('');
+    if (subtitle) subtitle.textContent = data.length + ' record' + (data.length !== 1 ? 's' : '');
+    updateBadges();
+    // Keep focus on search
+    const si = document.getElementById('search-input');
+    if (si) {
+      const val = si.value;
+      si.focus();
+      si.setSelectionRange(val.length, val.length);
+    }
+  } else {
+    render();
+  }
+}
+
 let records=[],currentView='workshop',editingId=null,pwdCallback=null;
 let sortCol='dateRequested',sortDir=-1,searchQuery='',filterStatus='';
 let autoRefreshTimer=null;
@@ -370,7 +403,7 @@ function renderTable(main){
       <div class="view-controls">${roNote}${!isRO?`<button class="btn btn-primary" onclick="openAddModal()">+ New Request</button>`:''}</div>
     </div>
     <div class="search-bar">
-      <input class="search-input" placeholder="Search records..." value="${searchQuery}" oninput="searchQuery=this.value;render()">
+      <input class="search-input" placeholder="Search records..." value="${searchQuery}" id="search-input" oninput="debounceSearch(this.value)">
       ${sfHTML}
     </div>
     <div class="table-container">
@@ -425,7 +458,7 @@ function renderPartsSheet(main){
   main.innerHTML=`
     <div class="view-header"><div><div class="view-title">Parts Purchased & Fitted</div><div class="view-subtitle">${data.length} received items</div></div></div>
     <div class="parts-header"><div><div class="parts-title">✅ All Received Parts</div><div class="parts-sub">Auto-synced — RECEIVED status only</div></div><button class="btn btn-success" onclick="exportPartsCSV()">⬇ Export</button></div>
-    <div class="search-bar"><input class="search-input" placeholder="Search parts..." value="${searchQuery}" oninput="searchQuery=this.value;render()"></div>
+    <div class="search-bar"><input class="search-input" placeholder="Search parts..." value="${searchQuery}" id="search-input" oninput="debounceSearch(this.value)"></div>
     <div class="table-container">
       ${data.length===0?`<div class="empty-state"><div class="empty-icon">🔧</div><div class="empty-title">No parts received yet</div><div class="empty-desc">Parts appear here when status is set to RECEIVED</div></div>`:`
       <table>
