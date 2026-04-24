@@ -269,7 +269,11 @@ let renderPage = 0;
 const PAGE_SIZE = 100;
 
 function instantSearch(val) {
-  searchQuery = val.trim();
+  // Get fresh value from input if available
+  const inputEl = document.getElementById('search-input');
+  if(inputEl && val !== inputEl.value) val = inputEl.value;
+  
+  searchQuery = (val||'').trim();
   renderPage = 0;
 
   // Filter directly here - fast in-memory search
@@ -445,6 +449,11 @@ function switchView(v){
   document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
   const el=document.getElementById('nav-'+v);if(el)el.classList.add('active');
   render();
+  // Clear search input visually
+  requestAnimationFrame(()=>{
+    const si=document.getElementById('search-input');
+    if(si) si.value='';
+  });
 }
 
 function render(){
@@ -478,7 +487,7 @@ function renderTable(main){
   const data=filteredCache;
   const isRO=!['workshop','today'].includes(currentView);
   const titles={workshop:'Workshop',today:"Today's Requests",'RECEIVED':'Received','RECEIVED NOT PAID':'Received Not Paid','ON HOLD':'On Hold','PAID NOT RECEIVED':'Paid Not Received','NOT RECEIVED':'Not Received'};
-  const sfHTML=currentView==='workshop'?`<select class="filter-select" onchange="filterStatus=this.value;render()"><option value="">All Status</option><option>RECEIVED</option><option>RECEIVED NOT PAID</option><option>ON HOLD</option><option>PAID NOT RECEIVED</option><option>NOT RECEIVED</option></select>`:'';
+  const sfHTML=currentView==='workshop'?`<select class="filter-select" onchange="filterStatus=this.value;searchQuery=document.getElementById('search-input')?document.getElementById('search-input').value:'';instantSearch(searchQuery)"><option value="">All Status</option><option>RECEIVED</option><option>RECEIVED NOT PAID</option><option>ON HOLD</option><option>PAID NOT RECEIVED</option><option>NOT RECEIVED</option></select>`:'';
   const roNote=isRO?`<span style="font-size:11px;color:var(--text3);background:var(--surface2);padding:4px 10px;border-radius:6px;border:1px solid var(--border)">🔒 View Only</span>`:'';
   main.innerHTML=`
     <div class="view-header">
@@ -486,7 +495,7 @@ function renderTable(main){
       <div class="view-controls">${roNote}${!isRO?`<button class="btn btn-primary" onclick="openAddModal()">+ New Request</button>`:''}</div>
     </div>
     <div class="search-bar">
-      <input class="search-input" placeholder="Search records..." value="${searchQuery}" id="search-input" oninput="instantSearch(this.value)" autocomplete="off" spellcheck="false">
+      <input class="search-input" placeholder="Search records..." id="search-input" oninput="instantSearch(this.value)" autocomplete="off" spellcheck="false">
       ${sfHTML}
     </div>
     <div class="table-container">
@@ -547,7 +556,7 @@ function renderPartsSheet(main){
   main.innerHTML=`
     <div class="view-header"><div><div class="view-title">Parts Purchased & Fitted</div><div class="view-subtitle">${data.length} received items</div></div></div>
     <div class="parts-header"><div><div class="parts-title">✅ All Received Parts</div><div class="parts-sub">Auto-synced — RECEIVED status only</div></div><button class="btn btn-success" onclick="exportPartsCSV()">⬇ Export</button></div>
-    <div class="search-bar"><input class="search-input" placeholder="Search parts..." value="${searchQuery}" id="search-input" oninput="instantSearch(this.value)" autocomplete="off" spellcheck="false"></div>
+    <div class="search-bar"><input class="search-input" placeholder="Search parts..." id="search-input" oninput="instantSearch(this.value)" autocomplete="off" spellcheck="false"></div>
     <div class="table-container">
       ${data.length===0?`<div class="empty-state"><div class="empty-icon">🔧</div><div class="empty-title">No parts received yet</div><div class="empty-desc">Parts appear here when status is set to RECEIVED</div></div>`:`
       <table>
