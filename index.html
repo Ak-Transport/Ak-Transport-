@@ -269,13 +269,70 @@ let renderPage = 0;
 const PAGE_SIZE = 100;
 
 function instantSearch(val) {
-  searchQuery = val;
+  searchQuery = val.trim();
   renderPage = 0;
-  fastRenderTable();
-  // Keep focus
+
+  // Filter directly here - fast in-memory search
+  let data = [...records];
+
+  if (currentView === 'today') {
+    data = data.filter(r => r.priority === "TODAY'S REQUEST" && r.status === 'NOT RECEIVED');
+  } else if (currentView === 'parts') {
+    data = data.filter(r => r.status === 'RECEIVED');
+  } else if (currentView !== 'workshop') {
+    data = data.filter(r => r.status === currentView);
+  }
+
+  if (searchQuery) {
+    const q = searchQuery.toLowerCase();
+    data = data.filter(r =>
+      (r.reqNo||'').toLowerCase().includes(q) ||
+      (r.truck||'').toLowerCase().includes(q) ||
+      (r.driverName||'').toLowerCase().includes(q) ||
+      (r.description||'').toLowerCase().includes(q) ||
+      (r.supplier||'').toLowerCase().includes(q) ||
+      (r.status||'').toLowerCase().includes(q) ||
+      (r.jobCardNo||'').toLowerCase().includes(q) ||
+      (r.priority||'').toLowerCase().includes(q) ||
+      (r.paymentMode||'').toLowerCase().includes(q) ||
+      (r.category||'').toLowerCase().includes(q)
+    );
+  }
+
+  if (filterStatus) data = data.filter(r => r.status === filterStatus);
+
+  filteredCache = data;
+
+  const isRO = !['workshop','today'].includes(currentView);
+  const tbody = document.getElementById('fast-tbody');
+  const subtitle = document.querySelector('#main-content .view-subtitle');
+  const loadMore = document.getElementById('load-more-btn');
+
+  if (!tbody) return;
+
+  tbody.innerHTML = filteredCache.slice(0, PAGE_SIZE).map(r => renderRow(r, isRO)).join('');
+
+  if (subtitle) subtitle.textContent = filteredCache.length + ' record' + (filteredCache.length !== 1 ? 's' : '');
+
+  if (loadMore) {
+    if (filteredCache.length > PAGE_SIZE) {
+      loadMore.style.display = 'block';
+      loadMore.textContent = 'Load more (' + (filteredCache.length - PAGE_SIZE) + ' remaining)';
+    } else {
+      loadMore.style.display = 'none';
+    }
+  }
+
+  updateBadges();
+
+  // Keep focus and cursor position
   requestAnimationFrame(() => {
     const si = document.getElementById('search-input');
-    if (si) { si.focus(); si.setSelectionRange(val.length, val.length); }
+    if (si) {
+      const pos = si.selectionStart;
+      si.focus();
+      try { si.setSelectionRange(pos, pos); } catch(e) {}
+    }
   });
 }
 
@@ -285,14 +342,9 @@ function fastRenderTable() {
   const tbody = document.getElementById('fast-tbody');
   const subtitle = document.querySelector('#main-content .view-subtitle');
   const loadMore = document.getElementById('load-more-btn');
-
   if (!tbody) { render(); return; }
-
-  const slice = filteredCache.slice(0, PAGE_SIZE);
-  tbody.innerHTML = slice.map(r => renderRow(r, isRO)).join('');
-
+  tbody.innerHTML = filteredCache.slice(0, PAGE_SIZE).map(r => renderRow(r, isRO)).join('');
   if (subtitle) subtitle.textContent = filteredCache.length + ' record' + (filteredCache.length !== 1 ? 's' : '');
-
   if (loadMore) {
     if (filteredCache.length > PAGE_SIZE) {
       loadMore.style.display = 'block';
@@ -310,12 +362,12 @@ function loadMoreRows() {
   const tbody = document.getElementById('fast-tbody');
   const loadMore = document.getElementById('load-more-btn');
   if (!tbody) return;
-  const start = (renderPage) * PAGE_SIZE;
+  const start = renderPage * PAGE_SIZE;
   const end = start + PAGE_SIZE;
   const slice = filteredCache.slice(start, end);
   tbody.innerHTML += slice.map(r => renderRow(r, isRO)).join('');
   if (loadMore) {
-    const remaining = filteredCache.length - (end);
+    const remaining = filteredCache.length - end;
     if (remaining > 0) {
       loadMore.textContent = 'Load more (' + remaining + ' remaining)';
     } else {
