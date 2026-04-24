@@ -1,0 +1,637 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AK TRANSPORT REQUISITION SYSTEM</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:#0f1117;--surface:#1a1d27;--surface2:#222536;--border:#2e3248;
+    --accent:#4f8ef7;--accent2:#7c5cfc;--text:#e8eaf6;--text2:#8b90b0;--text3:#555a7a;
+    --received:#1a3a2a;--received-text:#4ade80;--received-border:#166534;
+    --rnp:#3a2a0a;--rnp-text:#fbbf24;--rnp-border:#92400e;
+    --hold:#3a1a1a;--hold-text:#f87171;--hold-border:#991b1b;
+    --pnr:#1a2a3a;--pnr-text:#60a5fa;--pnr-border:#1e40af;
+    --nr:#252530;--nr-text:#a0a0c0;--nr-border:#3a3a5a;
+    --radius:12px;--shadow:0 4px 24px rgba(0,0,0,0.4);
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;overflow-x:hidden}
+  .topbar{display:flex;align-items:center;justify-content:space-between;padding:0 24px;height:60px;background:var(--surface);border-bottom:1px solid var(--border);position:sticky;top:0;z-index:100}
+  .logo{font-family:'Syne',sans-serif;font-weight:800;font-size:16px;letter-spacing:.05em;color:var(--accent)}
+  .logo span{color:var(--text2);font-weight:400}
+  .topbar-actions{display:flex;gap:10px;align-items:center}
+  .sync-status{font-size:11px;color:var(--text3);display:flex;align-items:center;gap:6px}
+  .sync-dot{width:7px;height:7px;border-radius:50%;background:var(--text3);transition:background .3s}
+  .sync-dot.online{background:#4ade80;box-shadow:0 0 6px #4ade80}
+  .sync-dot.syncing{background:#fbbf24;animation:pulse .8s infinite}
+  .sync-dot.error{background:#f87171}
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+  .btn{padding:8px 16px;border-radius:8px;border:none;cursor:pointer;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:500;transition:all .15s}
+  .btn-primary{background:var(--accent);color:#fff}.btn-primary:hover{background:#3a7de8}
+  .btn-ghost{background:transparent;color:var(--text2);border:1px solid var(--border)}.btn-ghost:hover{background:var(--surface2);color:var(--text)}
+  .btn-success{background:#1a3a2a;color:#4ade80;border:1px solid #166534}
+  .btn:disabled{opacity:.5;cursor:not-allowed}
+  .layout{display:flex;height:calc(100vh - 60px)}
+  .sidebar{width:220px;background:var(--surface);border-right:1px solid var(--border);padding:16px 0;flex-shrink:0;overflow-y:auto}
+  .sidebar-label{font-size:10px;font-weight:600;letter-spacing:.1em;color:var(--text3);text-transform:uppercase;padding:8px 24px 4px}
+  .nav-item{display:flex;align-items:center;gap:10px;padding:9px 12px 9px 24px;cursor:pointer;font-size:13px;color:var(--text2);transition:all .15s;margin:1px 8px;border-radius:8px}
+  .nav-item:hover{background:var(--surface2);color:var(--text)}
+  .nav-item.active{background:rgba(79,142,247,.15);color:var(--accent)}
+  .nav-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+  .nav-badge{margin-left:auto;background:var(--surface2);color:var(--text3);font-size:10px;padding:2px 6px;border-radius:10px;font-family:'DM Mono',monospace}
+  .divider{height:1px;background:var(--border);margin:8px 16px}
+  .main{flex:1;display:flex;flex-direction:column;overflow:hidden}
+  .view-header{padding:20px 24px 0;display:flex;align-items:flex-start;justify-content:space-between;gap:16px}
+  .view-title{font-family:'Syne',sans-serif;font-size:22px;font-weight:700}
+  .view-subtitle{font-size:13px;color:var(--text2);margin-top:2px}
+  .view-controls{display:flex;gap:10px;align-items:center;flex-shrink:0}
+  .search-bar{padding:12px 24px;display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+  .search-input{flex:1;min-width:200px;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:9px 14px;color:var(--text);font-family:'DM Sans',sans-serif;font-size:13px;outline:none;transition:border-color .15s}
+  .search-input:focus{border-color:var(--accent)}.search-input::placeholder{color:var(--text3)}
+  .filter-select{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:9px 14px;color:var(--text);font-family:'DM Sans',sans-serif;font-size:13px;outline:none;cursor:pointer}
+  .filter-select option{background:var(--surface2)}
+  .table-container{flex:1;overflow:auto;padding:0 24px 24px}
+  table{width:100%;border-collapse:collapse;font-size:12px}
+  thead tr{background:var(--surface);position:sticky;top:0;z-index:10}
+  th{padding:10px 12px;text-align:left;font-weight:600;font-size:11px;letter-spacing:.05em;color:var(--text2);text-transform:uppercase;border-bottom:1px solid var(--border);white-space:nowrap;cursor:pointer;user-select:none}
+  th:hover{color:var(--text)}
+  td{padding:9px 12px;border-bottom:1px solid rgba(46,50,72,.5);color:var(--text);vertical-align:middle;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  tr:hover td{background:rgba(255,255,255,.02)}
+  .status-badge{display:inline-flex;align-items:center;padding:3px 8px;border-radius:6px;font-size:10px;font-weight:600;letter-spacing:.03em;white-space:nowrap}
+  .status-RECEIVED{background:var(--received);color:var(--received-text);border:1px solid var(--received-border)}
+  .status-RECEIVED-NOT-PAID{background:var(--rnp);color:var(--rnp-text);border:1px solid var(--rnp-border)}
+  .status-ON-HOLD{background:var(--hold);color:var(--hold-text);border:1px solid var(--hold-border)}
+  .status-PAID-NOT-RECEIVED{background:var(--pnr);color:var(--pnr-text);border:1px solid var(--pnr-border)}
+  .status-NOT-RECEIVED{background:var(--nr);color:var(--nr-text);border:1px solid var(--nr-border)}
+  .req-badge{font-family:'DM Mono',monospace;font-size:11px;color:var(--accent);background:rgba(79,142,247,.1);padding:2px 6px;border-radius:4px}
+  .priority-today{background:rgba(252,92,164,.15);color:#fc5ca4;border:1px solid rgba(252,92,164,.3);padding:2px 6px;border-radius:4px;font-size:10px;font-weight:600}
+  .action-btn{background:none;border:1px solid var(--border);color:var(--text2);border-radius:6px;padding:4px 8px;cursor:pointer;font-size:11px;transition:all .15s;margin-right:4px}
+  .action-btn:hover{background:var(--surface2);color:var(--text)}
+  .action-btn.edit:hover{border-color:var(--accent);color:var(--accent)}
+  .action-btn.delete:hover{border-color:#f87171;color:#f87171}
+  .loading-overlay{position:fixed;inset:0;background:rgba(15,17,23,.85);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:9999;backdrop-filter:blur(4px)}
+  .spinner{width:40px;height:40px;border:3px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin .8s linear infinite;margin-bottom:12px}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  .loading-text{color:var(--text2);font-size:14px}
+  .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.7);display:flex;align-items:center;justify-content:center;z-index:1000;padding:20px;backdrop-filter:blur(4px)}
+  .modal{background:var(--surface);border:1px solid var(--border);border-radius:16px;width:100%;max-width:720px;max-height:90vh;overflow-y:auto;box-shadow:var(--shadow)}
+  .modal-header{padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;background:var(--surface);z-index:5}
+  .modal-title{font-family:'Syne',sans-serif;font-size:18px;font-weight:700}
+  .modal-close{background:none;border:none;color:var(--text2);cursor:pointer;font-size:20px;padding:4px 8px;border-radius:6px;transition:all .15s}
+  .modal-close:hover{background:var(--surface2);color:var(--text)}
+  .modal-body{padding:20px 24px}
+  .form-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+  .form-group{display:flex;flex-direction:column;gap:6px}
+  .form-group.full{grid-column:1/-1}
+  label{font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.05em}
+  input,select,textarea{background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:10px 12px;color:var(--text);font-family:'DM Sans',sans-serif;font-size:13px;outline:none;transition:border-color .15s;width:100%}
+  input:focus,select:focus,textarea:focus{border-color:var(--accent)}
+  input::placeholder,textarea::placeholder{color:var(--text3)}
+  select option{background:var(--surface2)}
+  textarea{resize:vertical;min-height:60px}
+  input[readonly]{opacity:.6;cursor:not-allowed}
+  .modal-footer{padding:16px 24px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;gap:10px;position:sticky;bottom:0;background:var(--surface)}
+  .dashboard-scroll{flex:1;overflow-y:auto;padding-bottom:24px}
+  .dashboard-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:16px;padding:0 24px 20px}
+  .stat-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:20px;transition:border-color .15s;cursor:pointer}
+  .stat-card:hover{border-color:var(--accent)}
+  .stat-label{font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px}
+  .stat-value{font-family:'Syne',sans-serif;font-size:32px;font-weight:800;line-height:1}
+  .stat-sub{font-size:12px;color:var(--text3);margin-top:4px}
+  .chart-container{padding:0 24px 24px;display:grid;grid-template-columns:1fr 1fr;gap:16px}
+  .chart-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:20px}
+  .chart-title{font-family:'Syne',sans-serif;font-size:14px;font-weight:700;margin-bottom:16px}
+  .bar-chart{display:flex;flex-direction:column;gap:10px}
+  .bar-row{display:flex;align-items:center;gap:10px}
+  .bar-label{font-size:11px;color:var(--text2);width:140px;flex-shrink:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .bar-track{flex:1;background:var(--surface2);border-radius:4px;height:20px;overflow:hidden}
+  .bar-fill{height:100%;border-radius:4px;transition:width .6s cubic-bezier(.4,0,.2,1);display:flex;align-items:center;justify-content:flex-end;padding-right:6px}
+  .bar-val{font-size:10px;font-weight:600;font-family:'DM Mono',monospace;color:rgba(255,255,255,.8)}
+  .pie-legend{display:flex;flex-direction:column;gap:8px;margin-top:12px}
+  .legend-item{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--text2)}
+  .legend-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
+  .legend-val{margin-left:auto;font-family:'DM Mono',monospace;font-size:11px;color:var(--text)}
+  .parts-header{background:linear-gradient(135deg,#1a3a2a,#1e4a32);border:1px solid var(--received-border);border-radius:var(--radius);padding:16px 20px;margin:0 24px 16px;display:flex;align-items:center;justify-content:space-between}
+  .parts-title{font-family:'Syne',sans-serif;font-size:16px;font-weight:700;color:var(--received-text)}
+  .parts-sub{font-size:12px;color:#86efac;margin-top:2px}
+  .empty-state{text-align:center;padding:60px 20px;color:var(--text3)}
+  .empty-icon{font-size:48px;margin-bottom:12px}
+  .empty-title{font-size:16px;font-weight:600;color:var(--text2);margin-bottom:6px}
+  .empty-desc{font-size:13px}
+  .toast-container{position:fixed;bottom:24px;right:24px;display:flex;flex-direction:column;gap:8px;z-index:2000}
+  .toast{background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:12px 16px;font-size:13px;display:flex;align-items:center;gap:10px;animation:slideIn .3s ease;min-width:280px;box-shadow:var(--shadow)}
+  .toast.success{border-color:var(--received-border)}.toast.error{border-color:var(--hold-border)}.toast.info{border-color:var(--pnr-border)}
+  @keyframes slideIn{from{transform:translateX(100%);opacity:0}to{transform:translateX(0);opacity:1}}
+  ::-webkit-scrollbar{width:6px;height:6px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
+  .hidden{display:none!important}
+  @media(max-width:768px){.sidebar{display:none}.form-grid{grid-template-columns:1fr}.chart-container{grid-template-columns:1fr}.dashboard-grid{grid-template-columns:1fr 1fr}.view-header{flex-direction:column}.view-controls{width:100%;justify-content:flex-end}}
+</style>
+</head>
+<body>
+
+<div class="loading-overlay" id="loading-overlay">
+  <div class="spinner"></div>
+  <div class="loading-text" id="loading-text">Connecting to database...</div>
+</div>
+
+<div class="topbar">
+  <div class="logo">AK <span>TRANSPORT</span></div>
+  <div class="topbar-actions">
+    <div class="sync-status">
+      <div class="sync-dot" id="sync-dot"></div>
+      <span id="sync-label">Connecting...</span>
+    </div>
+    <button class="btn btn-ghost" onclick="refreshData()">↻ Refresh</button>
+    <button class="btn btn-ghost" onclick="exportCSV()">⬇ Export</button>
+    <button class="btn btn-primary" onclick="openAddModal()">+ New Request</button>
+  </div>
+</div>
+
+<div class="layout">
+  <div class="sidebar">
+    <div class="sidebar-label">Navigation</div>
+    <div class="nav-item active" onclick="switchView('workshop')" id="nav-workshop">
+      <div class="nav-dot" style="background:#4f8ef7"></div>Workshop
+      <span class="nav-badge" id="badge-workshop">0</span>
+    </div>
+    <div class="nav-item" onclick="switchView('today')" id="nav-today">
+      <div class="nav-dot" style="background:#fc5ca4"></div>Today's Request
+      <span class="nav-badge" id="badge-today">0</span>
+    </div>
+    <div class="divider"></div>
+    <div class="sidebar-label">Status Sheets</div>
+    <div class="nav-item" onclick="switchView('RECEIVED')" id="nav-RECEIVED">
+      <div class="nav-dot" style="background:#4ade80"></div>Received
+      <span class="nav-badge" id="badge-RECEIVED">0</span>
+    </div>
+    <div class="nav-item" onclick="switchView('RECEIVED NOT PAID')" id="nav-RECEIVED NOT PAID">
+      <div class="nav-dot" style="background:#fbbf24"></div>Received Not Paid
+      <span class="nav-badge" id="badge-RECEIVED NOT PAID">0</span>
+    </div>
+    <div class="nav-item" onclick="switchView('ON HOLD')" id="nav-ON HOLD">
+      <div class="nav-dot" style="background:#f87171"></div>On Hold
+      <span class="nav-badge" id="badge-ON HOLD">0</span>
+    </div>
+    <div class="nav-item" onclick="switchView('PAID NOT RECEIVED')" id="nav-PAID NOT RECEIVED">
+      <div class="nav-dot" style="background:#60a5fa"></div>Paid Not Received
+      <span class="nav-badge" id="badge-PAID NOT RECEIVED">0</span>
+    </div>
+    <div class="nav-item" onclick="switchView('NOT RECEIVED')" id="nav-NOT RECEIVED">
+      <div class="nav-dot" style="background:#a0a0c0"></div>Not Received
+      <span class="nav-badge" id="badge-NOT RECEIVED">0</span>
+    </div>
+    <div class="divider"></div>
+    <div class="sidebar-label">Reports</div>
+    <div class="nav-item" onclick="switchView('parts')" id="nav-parts">
+      <div class="nav-dot" style="background:#4ade80"></div>Parts Purchased
+      <span class="nav-badge" id="badge-parts">0</span>
+    </div>
+    <div class="nav-item" onclick="switchView('dashboard')" id="nav-dashboard">
+      <div class="nav-dot" style="background:#7c5cfc"></div>Dashboard
+    </div>
+  </div>
+  <div class="main" id="main-content"></div>
+</div>
+
+<!-- RECORD MODAL -->
+<div class="modal-overlay hidden" id="record-modal">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title" id="modal-title">New Requisition</div>
+      <button class="modal-close" onclick="closeModal('record-modal')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-grid">
+        <div class="form-group"><label>Req No.</label><input type="text" id="f-req" readonly></div>
+        <div class="form-group"><label>Date Requested</label><input type="date" id="f-date"></div>
+        <div class="form-group"><label>Truck</label><input type="text" id="f-truck" placeholder="e.g. T751EEF"></div>
+        <div class="form-group"><label>Vehicle Type</label>
+          <select id="f-vtype"><option value="">Select...</option><option>TRUCK</option><option>TRAILER</option><option>WORKSHOP</option><option>OTHER</option></select>
+        </div>
+        <div class="form-group"><label>Driver Name</label><input type="text" id="f-driver"></div>
+        <div class="form-group"><label>Priority</label>
+          <select id="f-priority"><option value="">Select...</option><option>TODAY'S REQUEST</option><option>NORMAL</option></select>
+        </div>
+        <div class="form-group"><label>Job Card No</label><input type="text" id="f-jobcard"></div>
+        <div class="form-group"><label>LPO No</label><input type="text" id="f-lpo"></div>
+        <div class="form-group full"><label>Description</label><textarea id="f-desc" placeholder="Item description"></textarea></div>
+        <div class="form-group"><label>Qty</label><input type="number" id="f-qty" min="0"></div>
+        <div class="form-group"><label>Cost</label><input type="number" id="f-cost" min="0"></div>
+        <div class="form-group"><label>Supplier</label><input type="text" id="f-supplier"></div>
+        <div class="form-group"><label>Date Received</label><input type="date" id="f-datereceived"></div>
+        <div class="form-group"><label>Status</label>
+          <select id="f-status"><option value="">Select...</option><option>RECEIVED</option><option>RECEIVED NOT PAID</option><option>ON HOLD</option><option>PAID NOT RECEIVED</option><option>NOT RECEIVED</option></select>
+        </div>
+        <div class="form-group"><label>Payment Mode</label>
+          <select id="f-payment"><option value="">Select...</option><option>CASH</option><option>CREDIT</option><option>STORE</option></select>
+        </div>
+        <div class="form-group"><label>Category</label><input type="text" id="f-category"></div>
+        <div class="form-group"><label>Requested By</label><input type="text" id="f-reqby"></div>
+        <div class="form-group"><label>Date Issued</label><input type="date" id="f-dateissued"></div>
+        <div class="form-group full"><label>Remarks</label><textarea id="f-remarks"></textarea></div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('record-modal')">Cancel</button>
+      <button class="btn btn-primary" id="save-btn" onclick="saveRecord()">Save Record</button>
+    </div>
+  </div>
+</div>
+
+<!-- PASSWORD MODAL -->
+<div class="modal-overlay hidden" id="pwd-modal">
+  <div class="modal" style="max-width:400px">
+    <div class="modal-body" style="text-align:center;padding:32px 24px">
+      <div style="font-size:40px;margin-bottom:12px">🔒</div>
+      <div class="modal-title" style="margin-bottom:8px">Protected Record</div>
+      <p style="color:var(--text2);font-size:13px;margin-bottom:16px;line-height:1.5">This record has <strong>RECEIVED</strong> status and is protected.<br>Enter admin password to proceed.</p>
+      <input type="password" id="pwd-input" placeholder="Enter password..." style="text-align:center;margin-bottom:8px" onkeydown="if(event.key==='Enter')verifyPassword()">
+      <div id="pwd-error" style="color:#f87171;font-size:12px;min-height:16px;margin-top:4px"></div>
+    </div>
+    <div class="modal-footer" style="justify-content:center">
+      <button class="btn btn-ghost" onclick="closeModal('pwd-modal');pwdCallback=null">Cancel</button>
+      <button class="btn btn-primary" onclick="verifyPassword()">Confirm</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast-container" id="toast-container"></div>
+
+<script>
+const API_URL='https://script.google.com/macros/s/AKfycbyIXEjT6KOFtBKsJ7hS8EhPo3ddjnY2Mx0gW1G95K9WY3ZttJ0u8izPHiU7VhJUsSD1PA/exec';
+const ADMIN_PWD='akadmin321';
+let records=[],currentView='workshop',editingId=null,pwdCallback=null;
+let sortCol='dateRequested',sortDir=-1,searchQuery='',filterStatus='';
+let autoRefreshTimer=null;
+
+// API
+async function apiCall(action,data={}){
+  setSyncStatus('syncing');
+  try{
+    const res=await fetch(API_URL,{method:'POST',body:JSON.stringify({action,...data})});
+    const json=await res.json();
+    if(json.error)throw new Error(json.error);
+    setSyncStatus('online');
+    return json;
+  }catch(e){setSyncStatus('error');throw e;}
+}
+
+async function loadAllRecords(){
+  try{
+    const res=await apiCall('getAll');
+    records=res.records||[];
+    setSyncStatus('online');
+    return true;
+  }catch(e){setSyncStatus('error');toast('Failed to load data. Check connection.','error');return false;}
+}
+
+async function refreshData(){
+  showLoading('Refreshing...');
+  await loadAllRecords();
+  hideLoading();render();
+  toast('Data refreshed','success');
+}
+
+function startAutoRefresh(){
+  if(autoRefreshTimer)clearInterval(autoRefreshTimer);
+  autoRefreshTimer=setInterval(async()=>{const ok=await loadAllRecords();if(ok)render();},30000);
+}
+
+function setSyncStatus(s){
+  document.getElementById('sync-dot').className='sync-dot '+s;
+  document.getElementById('sync-label').textContent={online:'Live',syncing:'Syncing...',error:'Offline'}[s]||s;
+}
+
+function showLoading(t='Loading...'){
+  document.getElementById('loading-text').textContent=t;
+  document.getElementById('loading-overlay').classList.remove('hidden');
+}
+function hideLoading(){document.getElementById('loading-overlay').classList.add('hidden');}
+
+function generateReqNo(){
+  let max=0;
+  records.forEach(r=>{const n=parseInt((r.reqNo||'').replace('REQ-',''),10);if(!isNaN(n)&&n>max)max=n;});
+  return 'REQ-'+String(max+1).padStart(6,'0');
+}
+
+function fmtDate(v){
+  if(!v)return'';
+  const m=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const d=new Date(v);if(isNaN(d.getTime()))return v;
+  return`${String(d.getDate()).padStart(2,'0')}-${m[d.getMonth()]}-${String(d.getFullYear()).slice(-2)}`;
+}
+
+function todayISO(){return new Date().toISOString().split('T')[0];}
+
+function switchView(v){
+  currentView=v;searchQuery='';filterStatus='';
+  document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
+  const el=document.getElementById('nav-'+v);if(el)el.classList.add('active');
+  render();
+}
+
+function render(){
+  updateBadges();
+  const m=document.getElementById('main-content');
+  if(currentView==='dashboard')renderDashboard(m);
+  else if(currentView==='parts')renderPartsSheet(m);
+  else renderTable(m);
+}
+
+function getViewRecords(){
+  let data=[...records];
+  if(currentView==='today')data=data.filter(r=>r.priority==="TODAY'S REQUEST"&&r.status==='NOT RECEIVED');
+  else if(currentView==='parts')data=data.filter(r=>r.status==='RECEIVED');
+  else if(currentView!=='workshop')data=data.filter(r=>r.status===currentView);
+  if(searchQuery){
+    const q=searchQuery.toLowerCase();
+    data=data.filter(r=>(r.reqNo||'').toLowerCase().includes(q)||(r.truck||'').toLowerCase().includes(q)||(r.driverName||'').toLowerCase().includes(q)||(r.description||'').toLowerCase().includes(q)||(r.supplier||'').toLowerCase().includes(q)||(r.status||'').toLowerCase().includes(q)||(r.jobCardNo||'').toLowerCase().includes(q));
+  }
+  if(filterStatus)data=data.filter(r=>r.status===filterStatus);
+  data.sort((a,b)=>{
+    let va=a[sortCol]||'',vb=b[sortCol]||'';
+    if(sortCol==='qty'||sortCol==='cost'){va=parseFloat(va)||0;vb=parseFloat(vb)||0;}
+    return va<vb?-sortDir:va>vb?sortDir:0;
+  });
+  return data;
+}
+
+function renderTable(main){
+  const data=getViewRecords();
+  const isRO=!['workshop','today'].includes(currentView);
+  const titles={workshop:'Workshop',today:"Today's Requests",'RECEIVED':'Received','RECEIVED NOT PAID':'Received Not Paid','ON HOLD':'On Hold','PAID NOT RECEIVED':'Paid Not Received','NOT RECEIVED':'Not Received'};
+  const sfHTML=currentView==='workshop'?`<select class="filter-select" onchange="filterStatus=this.value;render()"><option value="">All Status</option><option>RECEIVED</option><option>RECEIVED NOT PAID</option><option>ON HOLD</option><option>PAID NOT RECEIVED</option><option>NOT RECEIVED</option></select>`:'';
+  const roNote=isRO?`<span style="font-size:11px;color:var(--text3);background:var(--surface2);padding:4px 10px;border-radius:6px;border:1px solid var(--border)">🔒 View Only</span>`:'';
+  main.innerHTML=`
+    <div class="view-header">
+      <div><div class="view-title">${titles[currentView]||currentView}</div><div class="view-subtitle">${data.length} record${data.length!==1?'s':''}</div></div>
+      <div class="view-controls">${roNote}${!isRO?`<button class="btn btn-primary" onclick="openAddModal()">+ New Request</button>`:''}</div>
+    </div>
+    <div class="search-bar">
+      <input class="search-input" placeholder="Search records..." value="${searchQuery}" oninput="searchQuery=this.value;render()">
+      ${sfHTML}
+    </div>
+    <div class="table-container">
+      ${data.length===0?`<div class="empty-state"><div class="empty-icon">📋</div><div class="empty-title">No records found</div><div class="empty-desc">${searchQuery?'Try a different search':'No records in this view'}</div></div>`:`
+      <table>
+        <thead><tr>
+          <th onclick="setSort('reqNo')">Req No ${si('reqNo')}</th>
+          <th onclick="setSort('dateRequested')">Date ${si('dateRequested')}</th>
+          <th onclick="setSort('truck')">Truck ${si('truck')}</th>
+          <th onclick="setSort('vehicleType')">Type ${si('vehicleType')}</th>
+          <th onclick="setSort('driverName')">Driver ${si('driverName')}</th>
+          <th onclick="setSort('priority')">Priority ${si('priority')}</th>
+          <th onclick="setSort('description')">Description ${si('description')}</th>
+          <th onclick="setSort('qty')">Qty ${si('qty')}</th>
+          <th onclick="setSort('cost')">Cost ${si('cost')}</th>
+          <th onclick="setSort('supplier')">Supplier ${si('supplier')}</th>
+          <th onclick="setSort('dateReceived')">Rcvd ${si('dateReceived')}</th>
+          <th onclick="setSort('status')">Status ${si('status')}</th>
+          <th onclick="setSort('paymentMode')">Payment ${si('paymentMode')}</th>
+          ${!isRO?'<th>Actions</th>':''}
+        </tr></thead>
+        <tbody>${data.map(r=>renderRow(r,isRO)).join('')}</tbody>
+      </table>`}
+    </div>`;
+}
+
+function renderRow(r,isRO){
+  const sk=(r.status||'').replace(/ /g,'-');
+  const isRec=r.status==='RECEIVED';
+  const pb=r.priority==="TODAY'S REQUEST"?`<span class="priority-today">TODAY</span>`:`<span style="color:var(--text3);font-size:11px">${r.priority||''}</span>`;
+  const ac=isRO?'':`<td><button class="action-btn edit" onclick="editRecord('${r.id}')">✏</button><button class="action-btn delete" onclick="deleteRecord('${r.id}')">🗑</button>${isRec?'<span style="font-size:10px;opacity:.5">🔒</span>':''}</td>`;
+  return`<tr>
+    <td><span class="req-badge">${r.reqNo||''}</span></td>
+    <td>${fmtDate(r.dateRequested)}</td><td>${r.truck||''}</td>
+    <td style="color:var(--text2);font-size:11px">${r.vehicleType||''}</td>
+    <td>${r.driverName||''}</td><td>${pb}</td>
+    <td title="${r.description||''}">${(r.description||'').substring(0,30)}${(r.description||'').length>30?'...':''}</td>
+    <td style="font-family:'DM Mono',monospace">${r.qty||''}</td>
+    <td style="font-family:'DM Mono',monospace">${r.cost?Number(r.cost).toLocaleString():''}</td>
+    <td>${r.supplier||''}</td><td>${fmtDate(r.dateReceived)}</td>
+    <td><span class="status-badge status-${sk}">${r.status||''}</span></td>
+    <td style="color:var(--text2);font-size:11px">${r.paymentMode||''}</td>
+    ${ac}</tr>`;
+}
+
+function si(col){if(sortCol!==col)return'<span style="opacity:.3">⇅</span>';return sortDir===1?'↑':'↓';}
+function setSort(col){if(sortCol===col)sortDir*=-1;else{sortCol=col;sortDir=1;}render();}
+
+function renderPartsSheet(main){
+  let data=records.filter(r=>r.status==='RECEIVED');
+  if(searchQuery){const q=searchQuery.toLowerCase();data=data.filter(r=>(r.reqNo||'').toLowerCase().includes(q)||(r.description||'').toLowerCase().includes(q)||(r.truck||'').toLowerCase().includes(q)||(r.supplier||'').toLowerCase().includes(q));}
+  main.innerHTML=`
+    <div class="view-header"><div><div class="view-title">Parts Purchased & Fitted</div><div class="view-subtitle">${data.length} received items</div></div></div>
+    <div class="parts-header"><div><div class="parts-title">✅ All Received Parts</div><div class="parts-sub">Auto-synced — RECEIVED status only</div></div><button class="btn btn-success" onclick="exportPartsCSV()">⬇ Export</button></div>
+    <div class="search-bar"><input class="search-input" placeholder="Search parts..." value="${searchQuery}" oninput="searchQuery=this.value;render()"></div>
+    <div class="table-container">
+      ${data.length===0?`<div class="empty-state"><div class="empty-icon">🔧</div><div class="empty-title">No parts received yet</div><div class="empty-desc">Parts appear here when status is set to RECEIVED</div></div>`:`
+      <table>
+        <thead><tr><th>Req No</th><th>Date</th><th>Truck</th><th>Driver</th><th>Description</th><th>Qty</th><th>Cost</th><th>Supplier</th><th>Date Received</th><th>Payment</th><th>Job Card</th></tr></thead>
+        <tbody>${data.map(r=>`<tr>
+          <td><span class="req-badge">${r.reqNo||''}</span></td>
+          <td>${fmtDate(r.dateRequested)}</td><td>${r.truck||''}</td><td>${r.driverName||''}</td>
+          <td title="${r.description||''}">${(r.description||'').substring(0,40)}${(r.description||'').length>40?'...':''}</td>
+          <td style="font-family:'DM Mono',monospace">${r.qty||''}</td>
+          <td style="font-family:'DM Mono',monospace">${r.cost?Number(r.cost).toLocaleString():''}</td>
+          <td>${r.supplier||''}</td><td>${fmtDate(r.dateReceived)}</td>
+          <td style="color:var(--text2)">${r.paymentMode||''}</td>
+          <td style="color:var(--text2);font-size:11px">${r.jobCardNo||''}</td>
+        </tr>`).join('')}</tbody>
+      </table>`}
+    </div>`;
+}
+
+function renderDashboard(main){
+  const c={'RECEIVED':0,'RECEIVED NOT PAID':0,'ON HOLD':0,'PAID NOT RECEIVED':0,'NOT RECEIVED':0};
+  let today=0,total=0,received=0;
+  records.forEach(r=>{
+    if(c.hasOwnProperty(r.status))c[r.status]++;
+    if(r.priority==="TODAY'S REQUEST"&&r.status==='NOT RECEIVED')today++;
+    if(r.cost)total+=parseFloat(r.cost)||0;
+    if(r.status==='RECEIVED'&&r.cost)received+=parseFloat(r.cost)||0;
+  });
+  const n=records.length,mx=Math.max(...Object.values(c),1);
+  const col={'RECEIVED':'#4ade80','RECEIVED NOT PAID':'#fbbf24','ON HOLD':'#f87171','PAID NOT RECEIVED':'#60a5fa','NOT RECEIVED':'#a0a0c0'};
+  const bg={'RECEIVED':'linear-gradient(90deg,#166534,#4ade80)','RECEIVED NOT PAID':'linear-gradient(90deg,#92400e,#fbbf24)','ON HOLD':'linear-gradient(90deg,#991b1b,#f87171)','PAID NOT RECEIVED':'linear-gradient(90deg,#1e40af,#60a5fa)','NOT RECEIVED':'linear-gradient(90deg,#3a3a5a,#a0a0c0)'};
+  main.innerHTML=`
+    <div class="view-header" style="margin-bottom:16px"><div><div class="view-title">Dashboard</div><div class="view-subtitle">Live overview — ${n.toLocaleString()} total records</div></div></div>
+    <div class="dashboard-scroll">
+      <div class="dashboard-grid">
+        <div class="stat-card" onclick="switchView('workshop')"><div class="stat-label">Total Records</div><div class="stat-value" style="color:var(--accent)">${n.toLocaleString()}</div><div class="stat-sub">All requisitions</div></div>
+        <div class="stat-card" onclick="switchView('today')"><div class="stat-label">Today's Requests</div><div class="stat-value" style="color:#fc5ca4">${today}</div><div class="stat-sub">Pending today</div></div>
+        <div class="stat-card" onclick="switchView('RECEIVED')"><div class="stat-label">Received</div><div class="stat-value" style="color:#4ade80">${c['RECEIVED'].toLocaleString()}</div><div class="stat-sub">Parts fitted</div></div>
+        <div class="stat-card" onclick="switchView('ON HOLD')"><div class="stat-label">On Hold</div><div class="stat-value" style="color:#f87171">${c['ON HOLD'].toLocaleString()}</div><div class="stat-sub">Needs attention</div></div>
+        <div class="stat-card"><div class="stat-label">Total Cost</div><div class="stat-value" style="color:var(--accent2);font-size:22px">${total.toLocaleString()}</div><div class="stat-sub">All items</div></div>
+        <div class="stat-card" onclick="switchView('parts')"><div class="stat-label">Received Cost</div><div class="stat-value" style="color:#4ade80;font-size:22px">${received.toLocaleString()}</div><div class="stat-sub">Parts purchased</div></div>
+      </div>
+      <div class="chart-container">
+        <div class="chart-card"><div class="chart-title">Status Breakdown</div><div class="bar-chart">
+          ${Object.entries(c).map(([s,v])=>`<div class="bar-row"><div class="bar-label" title="${s}">${s}</div><div class="bar-track"><div class="bar-fill" style="width:${Math.round(v/mx*100)}%;background:${bg[s]}">${v>0?`<span class="bar-val">${v}</span>`:''}</div></div></div>`).join('')}
+        </div></div>
+        <div class="chart-card"><div class="chart-title">Distribution</div>
+          <svg viewBox="0 0 200 200" width="100%" style="max-width:200px;display:block;margin:0 auto">${renderPie(c,col,n)}</svg>
+          <div class="pie-legend">${Object.entries(c).map(([s,v])=>`<div class="legend-item"><div class="legend-dot" style="background:${col[s]}"></div>${s}<span class="legend-val">${v}</span></div>`).join('')}</div>
+        </div>
+      </div>
+    </div>`;
+}
+
+function renderPie(c,col,n){
+  if(n===0)return'<circle cx="100" cy="100" r="80" fill="var(--surface2)"/>';
+  let a=-Math.PI/2,p='';
+  Object.entries(c).forEach(([k,v])=>{
+    if(v===0)return;
+    const s=(v/n)*2*Math.PI,e=a+s;
+    const x1=100+80*Math.cos(a),y1=100+80*Math.sin(a),x2=100+80*Math.cos(e),y2=100+80*Math.sin(e);
+    p+=`<path d="M100,100 L${x1},${y1} A80,80 0 ${s>Math.PI?1:0},1 ${x2},${y2} Z" fill="${col[k]}" opacity=".85"/>`;
+    a=e;
+  });
+  p+=`<circle cx="100" cy="100" r="45" fill="var(--surface)"/>`;
+  p+=`<text x="100" y="96" text-anchor="middle" fill="var(--text)" font-size="18" font-weight="700" font-family="Syne">${n}</text>`;
+  p+=`<text x="100" y="112" text-anchor="middle" fill="var(--text2)" font-size="9" font-family="DM Sans">TOTAL</text>`;
+  return p;
+}
+
+function updateBadges(){
+  const c={};let t=0,p=0;
+  records.forEach(r=>{c[r.status]=(c[r.status]||0)+1;if(r.priority==="TODAY'S REQUEST"&&r.status==='NOT RECEIVED')t++;if(r.status==='RECEIVED')p++;});
+  document.getElementById('badge-workshop').textContent=records.length;
+  document.getElementById('badge-today').textContent=t;
+  document.getElementById('badge-parts').textContent=p;
+  ['RECEIVED','RECEIVED NOT PAID','ON HOLD','PAID NOT RECEIVED','NOT RECEIVED'].forEach(s=>{const el=document.getElementById('badge-'+s);if(el)el.textContent=c[s]||0;});
+}
+
+function openAddModal(){
+  editingId=null;
+  document.getElementById('modal-title').textContent='New Requisition';
+  clearForm();
+  document.getElementById('f-req').value=generateReqNo();
+  document.getElementById('f-date').value=todayISO();
+  document.getElementById('record-modal').classList.remove('hidden');
+}
+
+function editRecord(id){
+  const r=records.find(x=>x.id===id);if(!r)return;
+  if(r.status==='RECEIVED')requirePassword(()=>openEditForm(r));
+  else openEditForm(r);
+}
+
+function openEditForm(r){
+  editingId=r.id;
+  document.getElementById('modal-title').textContent='Edit Requisition';
+  const fields={req:'reqNo',date:'dateRequested',truck:'truck',vtype:'vehicleType',driver:'driverName',priority:'priority',jobcard:'jobCardNo',lpo:'lpoNo',desc:'description',qty:'qty',cost:'cost',supplier:'supplier',datereceived:'dateReceived',status:'status',payment:'paymentMode',category:'category',reqby:'requestedBy',dateissued:'dateIssued',remarks:'remarks'};
+  Object.entries(fields).forEach(([fid,key])=>{document.getElementById('f-'+fid).value=r[key]||'';});
+  document.getElementById('record-modal').classList.remove('hidden');
+}
+
+function clearForm(){
+  ['req','date','truck','vtype','driver','priority','jobcard','lpo','desc','qty','cost','supplier','datereceived','status','payment','category','reqby','dateissued','remarks'].forEach(f=>document.getElementById('f-'+f).value='');
+}
+
+async function saveRecord(){
+  const btn=document.getElementById('save-btn');
+  btn.disabled=true;btn.textContent='Saving...';
+  const fields={req:'reqNo',date:'dateRequested',truck:'truck',vtype:'vehicleType',driver:'driverName',priority:'priority',jobcard:'jobCardNo',lpo:'lpoNo',desc:'description',qty:'qty',cost:'cost',supplier:'supplier',datereceived:'dateReceived',status:'status',payment:'paymentMode',category:'category',reqby:'requestedBy',dateissued:'dateIssued',remarks:'remarks'};
+  const data={};
+  Object.entries(fields).forEach(([fid,key])=>{
+    let v=document.getElementById('f-'+fid).value;
+    if(!['date','datereceived','dateissued','qty','cost','vtype','priority','status','payment'].includes(fid))v=v.toUpperCase();
+    data[key]=v;
+  });
+  try{
+    if(editingId){
+      data.id=editingId;
+      await apiCall('update',{record:data});
+      const idx=records.findIndex(r=>r.id===editingId);
+      if(idx!==-1)records[idx]={...records[idx],...data};
+      toast('Record updated','success');
+    }else{
+      data.id=Date.now().toString(36)+Math.random().toString(36).slice(2);
+      await apiCall('add',{record:data});
+      records.push(data);
+      toast('Record added','success');
+    }
+    closeModal('record-modal');render();
+  }catch(e){toast('Failed to save. Try again.','error');}
+  finally{btn.disabled=false;btn.textContent='Save Record';}
+}
+
+function deleteRecord(id){
+  const r=records.find(x=>x.id===id);if(!r)return;
+  if(r.status==='RECEIVED')requirePassword(()=>confirmDelete(id));
+  else confirmDelete(id);
+}
+
+async function confirmDelete(id){
+  if(!confirm('Delete this record? This cannot be undone.'))return;
+  try{
+    await apiCall('delete',{id});
+    records=records.filter(r=>r.id!==id);
+    render();toast('Record deleted','info');
+  }catch(e){toast('Failed to delete.','error');}
+}
+
+function requirePassword(cb){
+  pwdCallback=cb;
+  document.getElementById('pwd-input').value='';
+  document.getElementById('pwd-error').textContent='';
+  document.getElementById('pwd-modal').classList.remove('hidden');
+  setTimeout(()=>document.getElementById('pwd-input').focus(),100);
+}
+
+function verifyPassword(){
+  const p=document.getElementById('pwd-input').value;
+  if(p===ADMIN_PWD){closeModal('pwd-modal');if(pwdCallback){pwdCallback();pwdCallback=null;}}
+  else{document.getElementById('pwd-error').textContent='❌ Incorrect password.';document.getElementById('pwd-input').value='';document.getElementById('pwd-input').focus();}
+}
+
+function closeModal(id){document.getElementById(id).classList.add('hidden');}
+
+document.querySelectorAll('.modal-overlay').forEach(o=>o.addEventListener('click',e=>{if(e.target===o){o.classList.add('hidden');pwdCallback=null;}}));
+
+function toast(msg,type='info'){
+  const icons={success:'✅',error:'❌',info:'ℹ️'};
+  const el=document.createElement('div');
+  el.className=`toast ${type}`;
+  el.innerHTML=`<span>${icons[type]}</span><span>${msg}</span>`;
+  document.getElementById('toast-container').appendChild(el);
+  setTimeout(()=>el.remove(),3500);
+}
+
+function exportCSV(){
+  const data=getViewRecords();
+  const headers=['Req No','Date Requested','Truck','Vehicle Type','Driver Name','Priority','Job Card No','LPO No','Description','Qty','Cost','Supplier','Date Received','Status','Payment Mode','Category','Requested By','Remarks','Date Issued'];
+  const keys=['reqNo','dateRequested','truck','vehicleType','driverName','priority','jobCardNo','lpoNo','description','qty','cost','supplier','dateReceived','status','paymentMode','category','requestedBy','remarks','dateIssued'];
+  const rows=[headers,...data.map(r=>keys.map(k=>r[k]||''))];
+  const csv=rows.map(r=>r.map(v=>`"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n');
+  const a=document.createElement('a');a.href='data:text/csv;charset=utf-8,'+encodeURIComponent(csv);a.download=`requisitions_${todayISO()}.csv`;a.click();
+  toast('Export downloaded','success');
+}
+
+function exportPartsCSV(){
+  const data=records.filter(r=>r.status==='RECEIVED');
+  const headers=['Req No','Date Requested','Truck','Driver Name','Description','Qty','Cost','Supplier','Date Received','Payment Mode','Job Card No'];
+  const keys=['reqNo','dateRequested','truck','driverName','description','qty','cost','supplier','dateReceived','paymentMode','jobCardNo'];
+  const rows=[headers,...data.map(r=>keys.map(k=>r[k]||''))];
+  const csv=rows.map(r=>r.map(v=>`"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n');
+  const a=document.createElement('a');a.href='data:text/csv;charset=utf-8,'+encodeURIComponent(csv);a.download=`parts_purchased_${todayISO()}.csv`;a.click();
+  toast('Parts exported','success');
+}
+
+async function init(){
+  showLoading('Connecting to database...');
+  const ok=await loadAllRecords();
+  hideLoading();
+  if(ok){render();startAutoRefresh();toast('Connected to live database','success');}
+  else{
+    document.getElementById('main-content').innerHTML=`<div class="empty-state" style="margin-top:60px"><div class="empty-icon">⚠️</div><div class="empty-title">Cannot connect to database</div><div class="empty-desc">Check your internet connection</div><button class="btn btn-primary" style="margin-top:16px" onclick="init()">Try Again</button></div>`;
+  }
+}
+
+init();
+</script>
+</body>
+</html>
