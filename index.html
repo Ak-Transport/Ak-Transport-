@@ -263,37 +263,67 @@
 const API_URL='https://script.google.com/macros/s/AKfycbyIXEjT6KOFtBKsJ7hS8EhPo3ddjnY2Mx0gW1G95K9WY3ZttJ0u8izPHiU7VhJUsSD1PA/exec';
 const ADMIN_PWD='akadmin321';
 
-let searchDebounceTimer = null;
-function debounceSearch(val) {
-  if (searchDebounceTimer) clearTimeout(searchDebounceTimer);
-  searchDebounceTimer = setTimeout(() => {
-    searchQuery = val;
-    renderTableOnly();
-  }, 300);
+
+let filteredCache = [];
+let renderPage = 0;
+const PAGE_SIZE = 100;
+
+function instantSearch(val) {
+  searchQuery = val;
+  renderPage = 0;
+  fastRenderTable();
+  // Keep focus
+  requestAnimationFrame(() => {
+    const si = document.getElementById('search-input');
+    if (si) { si.focus(); si.setSelectionRange(val.length, val.length); }
+  });
 }
 
-function renderTableOnly() {
-  const main = document.getElementById('main-content');
-  if (currentView === 'dashboard' || currentView === 'parts') return;
-  const data = getViewRecords();
+function fastRenderTable() {
+  filteredCache = getViewRecords();
   const isRO = !['workshop','today'].includes(currentView);
-  const tbody = document.querySelector('#main-content tbody');
+  const tbody = document.getElementById('fast-tbody');
   const subtitle = document.querySelector('#main-content .view-subtitle');
-  if (tbody) {
-    tbody.innerHTML = data.map(r => renderRow(r, isRO)).join('');
-    if (subtitle) subtitle.textContent = data.length + ' record' + (data.length !== 1 ? 's' : '');
-    updateBadges();
-    // Keep focus on search
-    const si = document.getElementById('search-input');
-    if (si) {
-      const val = si.value;
-      si.focus();
-      si.setSelectionRange(val.length, val.length);
+  const loadMore = document.getElementById('load-more-btn');
+
+  if (!tbody) { render(); return; }
+
+  const slice = filteredCache.slice(0, PAGE_SIZE);
+  tbody.innerHTML = slice.map(r => renderRow(r, isRO)).join('');
+
+  if (subtitle) subtitle.textContent = filteredCache.length + ' record' + (filteredCache.length !== 1 ? 's' : '');
+
+  if (loadMore) {
+    if (filteredCache.length > PAGE_SIZE) {
+      loadMore.style.display = 'block';
+      loadMore.textContent = 'Load more (' + (filteredCache.length - PAGE_SIZE) + ' remaining)';
+    } else {
+      loadMore.style.display = 'none';
     }
-  } else {
-    render();
+  }
+  updateBadges();
+}
+
+function loadMoreRows() {
+  renderPage++;
+  const isRO = !['workshop','today'].includes(currentView);
+  const tbody = document.getElementById('fast-tbody');
+  const loadMore = document.getElementById('load-more-btn');
+  if (!tbody) return;
+  const start = (renderPage) * PAGE_SIZE;
+  const end = start + PAGE_SIZE;
+  const slice = filteredCache.slice(start, end);
+  tbody.innerHTML += slice.map(r => renderRow(r, isRO)).join('');
+  if (loadMore) {
+    const remaining = filteredCache.length - (end);
+    if (remaining > 0) {
+      loadMore.textContent = 'Load more (' + remaining + ' remaining)';
+    } else {
+      loadMore.style.display = 'none';
+    }
   }
 }
+
 
 let records=[],currentView='workshop',editingId=null,pwdCallback=null;
 let sortCol='dateRequested',sortDir=-1,searchQuery='',filterStatus='';
@@ -392,7 +422,8 @@ function getViewRecords(){
 }
 
 function renderTable(main){
-  const data=getViewRecords();
+  filteredCache=getViewRecords();
+  const data=filteredCache;
   const isRO=!['workshop','today'].includes(currentView);
   const titles={workshop:'Workshop',today:"Today's Requests",'RECEIVED':'Received','RECEIVED NOT PAID':'Received Not Paid','ON HOLD':'On Hold','PAID NOT RECEIVED':'Paid Not Received','NOT RECEIVED':'Not Received'};
   const sfHTML=currentView==='workshop'?`<select class="filter-select" onchange="filterStatus=this.value;render()"><option value="">All Status</option><option>RECEIVED</option><option>RECEIVED NOT PAID</option><option>ON HOLD</option><option>PAID NOT RECEIVED</option><option>NOT RECEIVED</option></select>`:'';
@@ -403,7 +434,7 @@ function renderTable(main){
       <div class="view-controls">${roNote}${!isRO?`<button class="btn btn-primary" onclick="openAddModal()">+ New Request</button>`:''}</div>
     </div>
     <div class="search-bar">
-      <input class="search-input" placeholder="Search records..." value="${searchQuery}" id="search-input" oninput="debounceSearch(this.value)">
+      <input class="search-input" placeholder="Search records..." value="${searchQuery}" id="search-input" oninput="instantSearch(this.value)" autocomplete="off" spellcheck="false">
       ${sfHTML}
     </div>
     <div class="table-container">
@@ -425,8 +456,14 @@ function renderTable(main){
           <th onclick="setSort('paymentMode')">Payment ${si('paymentMode')}</th>
           ${!isRO?'<th>Actions</th>':''}
         </tr></thead>
-        <tbody>${data.map(r=>renderRow(r,isRO)).join('')}</tbody>
-      </table>`}
+        <tbody id="fast-tbody">${filteredCache.slice(0,PAGE_SIZE).map(r=>renderRow(r,isRO)).join('')}</tbody>
+      </table>
+      <div style="text-align:center;padding:16px">
+        <button id="load-more-btn" class="btn btn-ghost" onclick="loadMoreRows()" style="display:${filteredCache.length>PAGE_SIZE?'inline-flex':'none'}">
+          Load more (${filteredCache.length-PAGE_SIZE} remaining)
+        </button>
+      </div>
+      `}
     </div>`;
 }
 
@@ -458,7 +495,7 @@ function renderPartsSheet(main){
   main.innerHTML=`
     <div class="view-header"><div><div class="view-title">Parts Purchased & Fitted</div><div class="view-subtitle">${data.length} received items</div></div></div>
     <div class="parts-header"><div><div class="parts-title">✅ All Received Parts</div><div class="parts-sub">Auto-synced — RECEIVED status only</div></div><button class="btn btn-success" onclick="exportPartsCSV()">⬇ Export</button></div>
-    <div class="search-bar"><input class="search-input" placeholder="Search parts..." value="${searchQuery}" id="search-input" oninput="debounceSearch(this.value)"></div>
+    <div class="search-bar"><input class="search-input" placeholder="Search parts..." value="${searchQuery}" id="search-input" oninput="instantSearch(this.value)" autocomplete="off" spellcheck="false"></div>
     <div class="table-container">
       ${data.length===0?`<div class="empty-state"><div class="empty-icon">🔧</div><div class="empty-title">No parts received yet</div><div class="empty-desc">Parts appear here when status is set to RECEIVED</div></div>`:`
       <table>
