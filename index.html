@@ -737,21 +737,29 @@ function exportParts(){
 
 
 // ── ATTACH SEARCH EVENTS ──
+// Use event delegation on permanent #mn - never replaced
 function attachSearchEvents(){
-  const si = document.getElementById('SI');
-  const sf = document.getElementById('SF');
-  if(si){
-    // Remove old listener if any
-    si.removeEventListener('input', doSearch);
-    si.addEventListener('input', doSearch);
-    si.addEventListener('keydown', function(e){
-      if(e.key === 'Escape'){ si.value=''; doSearch(); }
-    });
-  }
-  if(sf){
-    sf.removeEventListener('change', doSearch);
-    sf.addEventListener('change', doSearch);
-  }
+  // Already set up via delegation in init - no need to re-attach
+}
+
+function setupDelegation(){
+  const mn = document.getElementById('mn');
+  mn.addEventListener('input', function(e){
+    if(e.target && e.target.id === 'SI'){
+      doSearch();
+    }
+  });
+  mn.addEventListener('change', function(e){
+    if(e.target && e.target.id === 'SF'){
+      doSearch();
+    }
+  });
+  mn.addEventListener('keydown', function(e){
+    if(e.target && e.target.id === 'SI' && e.key === 'Escape'){
+      e.target.value='';
+      doSearch();
+    }
+  });
 }
 
 // ── INIT ──
@@ -759,7 +767,7 @@ async function init(){
   showL('Connecting to database...');
   const ok=await loadAll();
   hideL();
-  if(ok){renderView();startAR();toast('Connected — '+ALL.length+' records loaded','ok');}
+  if(ok){setupDelegation();renderView();startAR();toast('Connected — '+ALL.length+' records loaded','ok');}
   else{
     document.getElementById('mn').innerHTML=`<div class="es"><div class="ei">⚠️</div><div class="et">Cannot connect</div><p style="font-size:13px">Check your internet connection</p><button class="btn bp" style="margin-top:14px" onclick="init()">Try Again</button></div>`;
   }
