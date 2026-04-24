@@ -173,26 +173,54 @@ input[readonly]{opacity:.55;cursor:not-allowed}
     </div>
 
     <!-- SEARCH ROW - permanent, always in DOM -->
-    <div id="searchrow" style="padding:10px 20px;display:flex;gap:8px;flex-shrink:0;flex-wrap:wrap">
-      <select id="SEARCHFIELD" style="background:var(--s1);border:1.5px solid var(--ac);border-radius:8px;padding:9px 12px;color:var(--ac);font-size:13px;font-weight:600;outline:none;cursor:pointer;min-width:160px">
-        <option value="truck">🚛 Truck No</option>
-        <option value="reqNo">🔢 REQ No</option>
-        <option value="description">🔧 Spare Part</option>
-        <option value="supplier">🏪 Supplier</option>
-        <option value="driverName">👤 Driver</option>
-        <option value="jobCardNo">📋 Job Card</option>
-        <option value="lpoNo">📄 LPO No</option>
-      </select>
-      <input type="text" id="SEARCH" placeholder="Type to search..." autocomplete="off" spellcheck="false" style="flex:1;min-width:200px">
-      <select id="STATUSFILTER" style="min-width:160px">
-        <option value="">All Status</option>
-        <option>RECEIVED</option>
-        <option>RECEIVED NOT PAID</option>
-        <option>ON HOLD</option>
-        <option>PAID NOT RECEIVED</option>
-        <option>NOT RECEIVED</option>
-      </select>
-      <button class="btn bg" onclick="clearSearch()" style="padding:9px 14px">✕ Clear</button>
+    <div id="searchrow" style="padding:10px 20px;display:flex;flex-direction:column;gap:8px;flex-shrink:0">
+      <!-- ROW 1: Search criteria 1 + 2 -->
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <select id="SEARCHFIELD1" style="background:var(--s1);border:1.5px solid var(--ac);border-radius:8px;padding:9px 12px;color:var(--ac);font-size:13px;font-weight:600;outline:none;cursor:pointer;min-width:150px">
+          <option value="truck">🚛 Truck No</option>
+          <option value="reqNo">🔢 REQ No</option>
+          <option value="description">🔧 Spare Part</option>
+          <option value="supplier">🏪 Supplier</option>
+          <option value="driverName">👤 Driver</option>
+          <option value="jobCardNo">📋 Job Card</option>
+          <option value="lpoNo">📄 LPO No</option>
+        </select>
+        <input type="text" id="SEARCH1" placeholder="e.g. T843DEE" autocomplete="off" spellcheck="false" style="flex:1;min-width:180px">
+        <select id="SEARCHFIELD2" style="background:var(--s1);border:1.5px solid var(--ac);border-radius:8px;padding:9px 12px;color:var(--ac);font-size:13px;font-weight:600;outline:none;cursor:pointer;min-width:150px">
+          <option value="">— Filter 2 —</option>
+          <option value="truck">🚛 Truck No</option>
+          <option value="reqNo">🔢 REQ No</option>
+          <option value="description">🔧 Spare Part</option>
+          <option value="supplier">🏪 Supplier</option>
+          <option value="driverName">👤 Driver</option>
+          <option value="jobCardNo">📋 Job Card</option>
+          <option value="lpoNo">📄 LPO No</option>
+        </select>
+        <input type="text" id="SEARCH2" placeholder="Optional..." autocomplete="off" spellcheck="false" style="flex:1;min-width:180px">
+      </div>
+      <!-- ROW 2: Search criteria 3 + Status filter + Clear -->
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <select id="SEARCHFIELD3" style="background:var(--s1);border:1.5px solid var(--ac);border-radius:8px;padding:9px 12px;color:var(--ac);font-size:13px;font-weight:600;outline:none;cursor:pointer;min-width:150px">
+          <option value="">— Filter 3 —</option>
+          <option value="truck">🚛 Truck No</option>
+          <option value="reqNo">🔢 REQ No</option>
+          <option value="description">🔧 Spare Part</option>
+          <option value="supplier">🏪 Supplier</option>
+          <option value="driverName">👤 Driver</option>
+          <option value="jobCardNo">📋 Job Card</option>
+          <option value="lpoNo">📄 LPO No</option>
+        </select>
+        <input type="text" id="SEARCH3" placeholder="Optional..." autocomplete="off" spellcheck="false" style="flex:1;min-width:180px">
+        <select id="STATUSFILTER" style="min-width:160px;background:var(--s1);border:1.5px solid var(--br);border-radius:8px;padding:9px 12px;color:var(--tx);font-size:13px;outline:none;cursor:pointer">
+          <option value="">All Status</option>
+          <option>RECEIVED</option>
+          <option>RECEIVED NOT PAID</option>
+          <option>ON HOLD</option>
+          <option>PAID NOT RECEIVED</option>
+          <option>NOT RECEIVED</option>
+        </select>
+        <button class="btn bg" onclick="clearSearch()" style="padding:9px 14px">✕ Clear All</button>
+      </div>
     </div>
 
     <!-- PARTS BANNER - hidden by default -->
@@ -297,39 +325,41 @@ let sortDir = -1;
 // SEARCH INPUT - wire up ONCE on page load
 // This is the key fix: permanent elements, wired once
 // ════════════════════════════════════════════════
-document.getElementById('SEARCH').addEventListener('input', function() {
-  applyFilters();
+// Wire all search inputs and field selectors - wired ONCE on page load
+const PH = {
+  truck:'e.g. T843DEE', reqNo:'e.g. REQ-001234',
+  description:'e.g. BRAKE PAD', supplier:'e.g. GUPTA',
+  driverName:'e.g. RAMADHAN', jobCardNo:'e.g. TN/AKT/WO-001',
+  lpoNo:'e.g. LPO-001'
+};
+
+['SEARCH1','SEARCH2','SEARCH3'].forEach(id => {
+  document.getElementById(id).addEventListener('input', applyFilters);
+  document.getElementById(id).addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') { this.value = ''; applyFilters(); }
+  });
 });
 
-document.getElementById('STATUSFILTER').addEventListener('change', function() {
-  applyFilters();
-});
+document.getElementById('STATUSFILTER').addEventListener('change', applyFilters);
 
-document.getElementById('SEARCHFIELD').addEventListener('change', function() {
-  // Update placeholder based on selected field
-  const placeholders = {
-    truck: 'e.g. T843DEE',
-    reqNo: 'e.g. REQ-001234',
-    description: 'e.g. BRAKE PAD',
-    supplier: 'e.g. GUPTA',
-    driverName: 'e.g. RAMADHAN',
-    jobCardNo: 'e.g. TN/AKT/WO-001',
-    lpoNo: 'e.g. LPO-001'
-  };
-  document.getElementById('SEARCH').placeholder = placeholders[this.value] || 'Type to search...';
-  document.getElementById('SEARCH').value = '';
-  applyFilters();
-});
-
-document.getElementById('SEARCH').addEventListener('keydown', function(e) {
-  if (e.key === 'Escape') { this.value = ''; applyFilters(); }
+['SEARCHFIELD1','SEARCHFIELD2','SEARCHFIELD3'].forEach((id, i) => {
+  document.getElementById(id).addEventListener('change', function() {
+    const inputId = 'SEARCH' + (i + 1);
+    const input = document.getElementById(inputId);
+    if (this.value && PH[this.value]) {
+      input.placeholder = PH[this.value];
+    } else {
+      input.placeholder = 'Optional...';
+    }
+    input.value = '';
+    applyFilters();
+  });
 });
 
 // ════════════════════════════════════════════════
 // APPLY FILTERS - runs on every keystroke
 // ════════════════════════════════════════════════
 function applyFilters() {
-  const q = document.getElementById('SEARCH').value.trim().toLowerCase();
   const fs = document.getElementById('STATUSFILTER').value;
 
   // Start from full dataset
@@ -347,11 +377,18 @@ function applyFilters() {
   // Status dropdown filter
   if (fs) data = data.filter(r => r.status === fs);
 
-  // Text search - search by selected field only
-  if (q) {
-    const field = document.getElementById('SEARCHFIELD') ? document.getElementById('SEARCHFIELD').value : 'truck';
-    data = data.filter(r => (r[field] || '').toLowerCase().includes(q));
-  }
+  // Apply 3 search criteria - ALL must match (AND logic)
+  const searches = [
+    { field: document.getElementById('SEARCHFIELD1').value, val: (document.getElementById('SEARCH1').value || '').trim().toLowerCase() },
+    { field: document.getElementById('SEARCHFIELD2').value, val: (document.getElementById('SEARCH2').value || '').trim().toLowerCase() },
+    { field: document.getElementById('SEARCHFIELD3').value, val: (document.getElementById('SEARCH3').value || '').trim().toLowerCase() },
+  ];
+
+  searches.forEach(s => {
+    if (s.field && s.val) {
+      data = data.filter(r => (r[s.field] || '').toLowerCase().includes(s.val));
+    }
+  });
 
   // Sort
   data.sort((a, b) => {
@@ -530,9 +567,11 @@ function switchView(v) {
 
   // Search row visibility
   document.getElementById('searchrow').style.display = isTable ? 'flex' : 'none';
-  // Hide status filter for non-workshop views, hide field selector for parts
-  const sfEl = document.getElementById('SEARCHFIELD');
-  if (sfEl) sfEl.style.display = isTable ? 'block' : 'none';
+  // Hide field selectors for non-table views
+  ['SEARCHFIELD1','SEARCHFIELD2','SEARCHFIELD3'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.style.display = isTable ? 'block' : 'none';
+  });
   document.getElementById('STATUSFILTER').style.display = isWorkshop ? 'block' : 'none';
 
   // Parts banner
@@ -897,12 +936,18 @@ function exportParts() {
 // CLEAR SEARCH
 // ════════════════════════════════════════════════
 function clearSearch() {
-  document.getElementById('SEARCH').value = '';
+  ['SEARCH1','SEARCH2','SEARCH3'].forEach(id => {
+    document.getElementById(id).value = '';
+  });
+  document.getElementById('SEARCHFIELD1').value = 'truck';
+  document.getElementById('SEARCHFIELD2').value = '';
+  document.getElementById('SEARCHFIELD3').value = '';
+  document.getElementById('SEARCH1').placeholder = 'e.g. T843DEE';
+  document.getElementById('SEARCH2').placeholder = 'Optional...';
+  document.getElementById('SEARCH3').placeholder = 'Optional...';
   document.getElementById('STATUSFILTER').value = '';
-  document.getElementById('SEARCHFIELD').value = 'truck';
-  document.getElementById('SEARCH').placeholder = 'e.g. T843DEE';
   applyFilters();
-  document.getElementById('SEARCH').focus();
+  document.getElementById('SEARCH1').focus();
 }
 
 // ════════════════════════════════════════════════
