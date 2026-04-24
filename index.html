@@ -302,8 +302,8 @@ function renderMain(mn){
       </div>
     </div>
     <div class="sr">
-      <input class="si" id="SI" placeholder="Search by truck, driver, description, supplier, REQ no..." autocomplete="off" spellcheck="false" oninput="doSearch()">
-      ${view==='workshop'?`<select class="fs" id="SF" onchange="doSearch()"><option value="">All Status</option><option>RECEIVED</option><option>RECEIVED NOT PAID</option><option>ON HOLD</option><option>PAID NOT RECEIVED</option><option>NOT RECEIVED</option></select>`:''}
+      <input class="si" id="SI" placeholder="Search by truck, driver, description, supplier, REQ no..." autocomplete="off" spellcheck="false">
+      ${view==='workshop'?`<select class="fs" id="SF"><option value="">All Status</option><option>RECEIVED</option><option>RECEIVED NOT PAID</option><option>ON HOLD</option><option>PAID NOT RECEIVED</option><option>NOT RECEIVED</option></select>`:''}
     </div>
     <div class="tc" id="TC">
       <table>
@@ -333,6 +333,8 @@ function renderMain(mn){
 
   // Now run search to populate table
   doSearch();
+  // Attach persistent event listeners after render
+  attachSearchEvents();
 }
 
 // ── SEARCH & FILTER ──
@@ -343,8 +345,8 @@ const PG=100;
 function doSearch(){
   const si=document.getElementById('SI');
   const sf=document.getElementById('SF');
-  const q=(si?si.value:'').trim().toLowerCase();
-  const fs=sf?sf.value:'';
+  const q=(si&&si.value?si.value:'').trim().toLowerCase();
+  const fs=(sf&&sf.value?sf.value:'');
 
   // Base data for current view
   let data=[...ALL];
@@ -486,7 +488,7 @@ function renderParts(mn){
     <div class="vtb"><div><div class="vt">Parts Purchased & Fitted</div><div class="vs">${data.length} items received</div></div>
     <button class="btn" style="background:#1a3a2a;color:#4ade80;border:1px solid #166534" onclick="exportParts()">⬇ Export</button></div>
     <div class="pb"><div><div class="pt2">✅ All Received Parts</div><div class="ps">Auto-synced — RECEIVED status only</div></div></div>
-    <div class="sr"><input class="si" id="SI" placeholder="Search parts..." autocomplete="off" oninput="doSearch()"></div>
+    <div class="sr"><input class="si" id="SI" placeholder="Search parts..." autocomplete="off" spellcheck="false"></div>
     <div class="tc" id="TC">
       <table>
         <thead><tr><th>Req No</th><th>Date</th><th>Truck</th><th>Driver</th><th>Description</th><th>Qty</th><th>Cost</th><th>Supplier</th><th>Date Received</th><th>Payment</th><th>Job Card</th></tr></thead>
@@ -495,6 +497,7 @@ function renderParts(mn){
       <div class="lmb" id="LM" style="display:none"><button class="btn bg" onclick="loadMore()">Load more</button><span id="LMC" style="font-size:12px;color:var(--t3);margin-left:8px"></span></div>
     </div>`;
   doSearch();
+  attachSearchEvents();
 }
 
 // ── DASHBOARD ──
@@ -730,6 +733,25 @@ function exportParts(){
   const csv=rows.map(r=>r.map(v=>`"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n');
   const a=document.createElement('a');a.href='data:text/csv;charset=utf-8,'+encodeURIComponent(csv);a.download=`parts_${today()}.csv`;a.click();
   toast('Parts exported','ok');
+}
+
+
+// ── ATTACH SEARCH EVENTS ──
+function attachSearchEvents(){
+  const si = document.getElementById('SI');
+  const sf = document.getElementById('SF');
+  if(si){
+    // Remove old listener if any
+    si.removeEventListener('input', doSearch);
+    si.addEventListener('input', doSearch);
+    si.addEventListener('keydown', function(e){
+      if(e.key === 'Escape'){ si.value=''; doSearch(); }
+    });
+  }
+  if(sf){
+    sf.removeEventListener('change', doSearch);
+    sf.addEventListener('change', doSearch);
+  }
 }
 
 // ── INIT ──
