@@ -312,7 +312,11 @@ function instantSearch(val) {
   const subtitle = document.querySelector('#main-content .view-subtitle');
   const loadMore = document.getElementById('load-more-btn');
 
-  if (!tbody) return;
+  if (!tbody) {
+    // Table not rendered yet - do full render with search applied
+    renderTable(document.getElementById('main-content'));
+    return;
+  }
 
   tbody.innerHTML = filteredCache.slice(0, PAGE_SIZE).map(r => renderRow(r, isRO)).join('');
 
@@ -415,7 +419,19 @@ async function refreshData(){
 
 function startAutoRefresh(){
   if(autoRefreshTimer)clearInterval(autoRefreshTimer);
-  autoRefreshTimer=setInterval(async()=>{const ok=await loadAllRecords();if(ok)render();},30000);
+  autoRefreshTimer=setInterval(async()=>{
+  const ok=await loadAllRecords();
+  if(ok){
+    const si=document.getElementById('search-input');
+    const curVal=si?si.value:'';
+    searchQuery=curVal;
+    if(curVal){
+      fastRenderTable();
+    } else {
+      render();
+    }
+  }
+},30000);
 }
 
 function setSyncStatus(s){
@@ -457,11 +473,22 @@ function switchView(v){
 }
 
 function render(){
+  // Always sync searchQuery from actual input before rendering
+  const si=document.getElementById('search-input');
+  if(si && si.value) searchQuery=si.value;
+  const savedQuery=searchQuery;
   updateBadges();
   const m=document.getElementById('main-content');
   if(currentView==='dashboard')renderDashboard(m);
   else if(currentView==='parts')renderPartsSheet(m);
   else renderTable(m);
+  // Restore search input value after render
+  requestAnimationFrame(()=>{
+    const newSi=document.getElementById('search-input');
+    if(newSi && savedQuery){
+      newSi.value=savedQuery;
+    }
+  });
 }
 
 function getViewRecords(){
@@ -483,6 +510,9 @@ function getViewRecords(){
 }
 
 function renderTable(main){
+  // Sync search from input
+  const _si=document.getElementById('search-input');
+  if(_si) searchQuery=_si.value;
   filteredCache=getViewRecords();
   const data=filteredCache;
   const isRO=!['workshop','today'].includes(currentView);
@@ -548,7 +578,7 @@ function renderRow(r,isRO){
 }
 
 function si(col){if(sortCol!==col)return'<span style="opacity:.3">⇅</span>';return sortDir===1?'↑':'↓';}
-function setSort(col){if(sortCol===col)sortDir*=-1;else{sortCol=col;sortDir=1;}render();}
+function setSort(col){if(sortCol===col)sortDir*=-1;else{sortCol=col;sortDir=1;}searchQuery=document.getElementById('search-input')?document.getElementById('search-input').value:'';fastRenderTable();}
 
 function renderPartsSheet(main){
   let data=records.filter(r=>r.status==='RECEIVED');
