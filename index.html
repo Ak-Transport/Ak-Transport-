@@ -22,7 +22,6 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--tx);heigh
 .bg{background:transparent;color:var(--t2);border:1px solid var(--br)}.bg:hover{background:var(--s2);color:var(--tx)}
 .btn:disabled{opacity:.5;cursor:not-allowed}
 .layout{display:flex;flex:1;overflow:hidden}
-/* SIDEBAR */
 .sidebar{width:210px;background:var(--s1);border-right:1px solid var(--br);padding:10px 0;flex-shrink:0;overflow-y:auto}
 .slbl{font-size:9px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.12em;padding:10px 20px 3px}
 .navitem{display:flex;align-items:center;gap:8px;padding:8px 10px 8px 20px;cursor:pointer;font-size:13px;color:var(--t2);border-radius:8px;margin:1px 8px;transition:all .1s}
@@ -31,20 +30,16 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--tx);heigh
 .navdot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
 .navbadge{margin-left:auto;background:var(--s2);color:var(--t3);font-size:10px;padding:1px 6px;border-radius:8px;font-family:'DM Mono',monospace}
 .divider{height:1px;background:var(--br);margin:6px 14px}
-/* MAIN */
 .main{flex:1;display:flex;flex-direction:column;overflow:hidden}
-/* TOOLBAR - permanent, never replaced */
 #toolbar{padding:14px 20px 0;display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
 .vtitle{font-family:'Syne',sans-serif;font-size:20px;font-weight:800}
 .vsub{font-size:12px;color:var(--t2);margin-top:2px}
-/* SEARCH ROW - permanent, never replaced */
-#searchrow{padding:10px 20px;display:flex;gap:8px;flex-shrink:0}
-#searchrow input{flex:1;background:var(--s1);border:1.5px solid var(--br);border-radius:8px;padding:9px 14px;color:var(--tx);font-family:'DM Sans',sans-serif;font-size:13px;outline:none;transition:border-color .15s}
+#searchrow{padding:8px 20px;display:grid;grid-template-columns:1fr 1fr;gap:8px;flex-shrink:0}
+#searchrow input{flex:1;background:var(--s1);border:1.5px solid var(--br);border-radius:8px;padding:8px 12px;color:var(--tx);font-family:'DM Sans',sans-serif;font-size:13px;outline:none;min-width:0}
 #searchrow input:focus{border-color:var(--ac)}
 #searchrow input::placeholder{color:var(--t3)}
-#searchrow select{background:var(--s1);border:1.5px solid var(--br);border-radius:8px;padding:9px 12px;color:var(--tx);font-size:13px;outline:none;cursor:pointer;min-width:160px}
+#searchrow select{background:var(--s1);border:1.5px solid var(--br);border-radius:8px;padding:8px 10px;color:var(--tx);font-size:12px;outline:none;cursor:pointer}
 #searchrow select option{background:var(--s2)}
-/* TABLE CONTAINER - permanent */
 #tablearea{flex:1;overflow:auto;padding:0 20px 20px}
 table{width:100%;border-collapse:collapse;font-size:12px}
 thead tr{background:var(--s1);position:sticky;top:0;z-index:5}
@@ -63,7 +58,6 @@ tr:hover td{background:rgba(255,255,255,.02)}
 .actbtn{background:none;border:1px solid var(--br);color:var(--t2);border-radius:5px;padding:3px 7px;cursor:pointer;font-size:11px;margin-right:3px;transition:all .1s}
 .actbtn:hover{background:var(--s2)}.actbtn.e:hover{border-color:var(--ac);color:var(--ac)}.actbtn.d:hover{border-color:#f87171;color:#f87171}
 #loadmorediv{text-align:center;padding:14px}
-/* DASHBOARD */
 #dasharea{flex:1;overflow-y:auto;padding-bottom:20px}
 .dgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:14px;padding:0 20px 16px}
 .statcard{background:var(--s1);border:1px solid var(--br);border-radius:10px;padding:18px;cursor:pointer;transition:border-color .12s}
@@ -83,11 +77,9 @@ tr:hover td{background:rgba(255,255,255,.02)}
 .pielegend{display:flex;flex-direction:column;gap:7px;margin-top:10px}
 .pielegenditem{display:flex;align-items:center;gap:7px;font-size:11px;color:var(--t2)}
 .pielegendval{margin-left:auto;font-family:'DM Mono',monospace;font-size:10px;color:var(--tx)}
-/* LOADING */
 .loadingoverlay{position:fixed;inset:0;background:rgba(15,17,23,.88);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:9999;backdrop-filter:blur(3px)}
 .spinner{width:36px;height:36px;border:3px solid var(--br);border-top-color:var(--ac);border-radius:50%;animation:sp .75s linear infinite;margin-bottom:10px}
 @keyframes sp{to{transform:rotate(360deg)}}
-/* MODAL */
 .overlay{position:fixed;inset:0;background:rgba(0,0,0,.72);display:flex;align-items:center;justify-content:center;z-index:1000;padding:16px;backdrop-filter:blur(3px)}
 .modal{background:var(--s1);border:1px solid var(--br);border-radius:14px;width:100%;max-width:700px;max-height:92vh;overflow-y:auto}
 .modalhead{padding:18px 22px 14px;border-bottom:1px solid var(--br);display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;background:var(--s1);z-index:2}
@@ -106,46 +98,51 @@ select option{background:var(--s2)}
 textarea{resize:vertical;min-height:56px}
 input[readonly]{opacity:.55;cursor:not-allowed}
 .modalfoot{padding:14px 22px;border-top:1px solid var(--br);display:flex;justify-content:flex-end;gap:8px;position:sticky;bottom:0;background:var(--s1)}
-/* TOAST */
 .toastbox{position:fixed;bottom:20px;right:20px;display:flex;flex-direction:column;gap:7px;z-index:2000}
 .toast{background:var(--s2);border:1px solid var(--br);border-radius:9px;padding:11px 14px;font-size:12px;display:flex;align-items:center;gap:9px;animation:tin .25s ease;min-width:240px}
 .toast.ok{border-color:#166534}.toast.er{border-color:#991b1b}.toast.in{border-color:#1e40af}
 @keyframes tin{from{transform:translateX(100%);opacity:0}to{transform:translateX(0);opacity:1}}
-/* PARTS BANNER */
-.partsbanner{background:linear-gradient(135deg,#1a3a2a,#1e4a32);border:1px solid #166534;border-radius:10px;padding:14px 18px;margin:0 20px 14px;display:flex;align-items:center;justify-content:space-between}
-.partstitle{font-family:'Syne',sans-serif;font-size:15px;font-weight:800;color:#4ade80}
-.partssub{font-size:11px;color:#86efac;margin-top:1px}
 .hidden{display:none!important}
+/* NEW BUTTON DROPDOWN */
+.newwrap{position:relative;display:inline-block}
+.newdrop{display:none;position:absolute;right:0;top:108%;background:var(--s1);border:1px solid var(--br);border-radius:10px;min-width:185px;z-index:300;box-shadow:0 8px 24px rgba(0,0,0,.5);overflow:hidden}
+.newdrop div{padding:11px 16px;cursor:pointer;font-size:13px;color:var(--tx);display:flex;align-items:center;gap:10px}
+.newdrop div:hover{background:var(--s2)}
 ::-webkit-scrollbar{width:5px;height:5px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:var(--br);border-radius:3px}
-@media(max-width:700px){.sidebar{display:none}.formgrid{grid-template-columns:1fr}.chartgrid{grid-template-columns:1fr}}
+@media(max-width:700px){.sidebar{display:none}.formgrid{grid-template-columns:1fr}.chartgrid{grid-template-columns:1fr}.dgrid{grid-template-columns:1fr 1fr}}
 </style>
 </head>
 <body>
 
-<!-- LOADING -->
 <div class="loadingoverlay hidden" id="loading">
   <div class="spinner"></div>
   <div style="color:var(--t2);font-size:13px" id="loadtext">Connecting...</div>
 </div>
 
-<!-- TOP BAR -->
 <div class="topbar">
   <div class="logo">AK <span>TRANSPORT</span></div>
   <div class="ta">
     <div class="syncbadge"><div class="dot" id="syndot"></div><span id="synlbl">Connecting...</span></div>
     <button class="btn bg" onclick="refreshAll()">↻ Refresh</button>
     <button class="btn bg" onclick="doExport()">⬇ Export</button>
-    <button class="btn bp" onclick="openAdd()">+ New Request</button>
+    <div class="newwrap" id="newwrap">
+      <button class="btn bp" onclick="toggleDrop()">+ New ▾</button>
+      <div class="newdrop" id="newdrop">
+        <div onclick="openAdd();closeDrop()">📋 New Requisition</div>
+        <div onclick="openAddSupplier();closeDrop()">🏪 New Supplier</div>
+        <div onclick="openAddSparePart();closeDrop()">🔧 New Spare Part</div>
+        <div onclick="openAddJobCard();closeDrop()">📋 New Job Card</div>
+        <div onclick="openAddDriver();closeDrop()">👤 New Driver</div>
+        <div onclick="openAddVehicle();closeDrop()">🚛 New Vehicle</div>
+      </div>
+    </div>
   </div>
 </div>
 
-<!-- LAYOUT -->
 <div class="layout">
-
-  <!-- SIDEBAR -->
   <div class="sidebar">
     <div class="slbl">Navigation</div>
-    <div class="navitem active" id="nav-workshop" onclick="switchView('workshop')"><div class="navdot" style="background:#4f8ef7"></div>Workshop<span class="navbadge" id="badge-workshop">0</span></div>
+    <div class="navitem active" id="nav-workshop" onclick="switchView('workshop')"><div class="navdot" style="background:#4f8ef7"></div>Workshop Requisition<span class="navbadge" id="badge-workshop">0</span></div>
     <div class="navitem" id="nav-today" onclick="switchView('today')"><div class="navdot" style="background:#fc5ca4"></div>Today's Request<span class="navbadge" id="badge-today">0</span></div>
     <div class="divider"></div>
     <div class="slbl">Status Sheets</div>
@@ -155,28 +152,29 @@ input[readonly]{opacity:.55;cursor:not-allowed}
     <div class="navitem" id="nav-PAID NOT RECEIVED" onclick="switchView('PAID NOT RECEIVED')"><div class="navdot" style="background:#60a5fa"></div>Paid Not Received<span class="navbadge" id="badge-PAID NOT RECEIVED">0</span></div>
     <div class="navitem" id="nav-NOT RECEIVED" onclick="switchView('NOT RECEIVED')"><div class="navdot" style="background:#a0a0c0"></div>Not Received<span class="navbadge" id="badge-NOT RECEIVED">0</span></div>
     <div class="divider"></div>
+    <div class="slbl">Fleet</div>
+    <div class="navitem" id="nav-drivers" onclick="switchView('drivers')"><div class="navdot" style="background:#38bdf8"></div>Drivers<span class="navbadge" id="badge-drivers">0</span></div>
+    <div class="navitem" id="nav-vehicles" onclick="switchView('vehicles')"><div class="navdot" style="background:#fb923c"></div>Vehicles<span class="navbadge" id="badge-vehicles">0</span></div>
+    <div class="divider"></div>
     <div class="slbl">Reports</div>
-    <div class="navitem" id="nav-parts" onclick="switchView('parts')"><div class="navdot" style="background:#4ade80"></div>Parts Purchased<span class="navbadge" id="badge-parts">0</span></div>
+    <div class="navitem" id="nav-jobcards" onclick="switchView('jobcards')"><div class="navdot" style="background:#34d399"></div>Job Cards<span class="navbadge" id="badge-jobcards">0</span></div>
+    <div class="navitem" id="nav-suppliers" onclick="switchView('suppliers')"><div class="navdot" style="background:#f97316"></div>Suppliers<span class="navbadge" id="badge-suppliers">0</span></div>
+    <div class="navitem" id="nav-spareparts" onclick="switchView('spareparts')"><div class="navdot" style="background:#a78bfa"></div>Spare Parts<span class="navbadge" id="badge-spareparts">0</span></div>
     <div class="navitem" id="nav-dashboard" onclick="switchView('dashboard')"><div class="navdot" style="background:#7c5cfc"></div>Dashboard</div>
   </div>
 
-  <!-- MAIN - permanent structure, never replaced -->
   <div class="main">
-
-    <!-- TOOLBAR - permanent -->
     <div id="toolbar" style="padding:14px 20px 0;display:flex;align-items:center;justify-content:space-between;flex-shrink:0">
       <div>
-        <div class="vtitle" id="viewtitle">Workshop</div>
+        <div class="vtitle" id="viewtitle">Workshop Requisition</div>
         <div class="vsub" id="viewsub">Loading...</div>
       </div>
       <div id="toolbaractions"></div>
     </div>
 
-    <!-- SEARCH ROW - permanent, always in DOM -->
-    <div id="searchrow" style="padding:10px 20px;display:flex;flex-direction:column;gap:8px;flex-shrink:0">
-      <!-- ROW 1: Search criteria 1 + 2 -->
-      <div style="display:flex;gap:8px;flex-wrap:wrap">
-        <select id="SEARCHFIELD1" style="background:var(--s1);border:1.5px solid var(--ac);border-radius:8px;padding:9px 12px;color:var(--ac);font-size:13px;font-weight:600;outline:none;cursor:pointer;min-width:150px">
+    <div id="searchrow" style="padding:8px 20px;display:grid;grid-template-columns:1fr 1fr;gap:8px;flex-shrink:0">
+      <div style="display:flex;gap:6px">
+        <select id="SEARCHFIELD1" style="background:var(--s1);border:1.5px solid var(--ac);border-radius:8px;padding:8px 10px;color:var(--ac);font-size:12px;font-weight:600;outline:none;cursor:pointer;width:148px;flex-shrink:0">
           <option value="truck">🚛 Truck No</option>
           <option value="reqNo">🔢 REQ No</option>
           <option value="description">🔧 Spare Part</option>
@@ -185,8 +183,10 @@ input[readonly]{opacity:.55;cursor:not-allowed}
           <option value="jobCardNo">📋 Job Card</option>
           <option value="lpoNo">📄 LPO No</option>
         </select>
-        <input type="text" id="SEARCH1" placeholder="e.g. T843DEE" autocomplete="off" spellcheck="false" style="flex:1;min-width:180px">
-        <select id="SEARCHFIELD2" style="background:var(--s1);border:1.5px solid var(--ac);border-radius:8px;padding:9px 12px;color:var(--ac);font-size:13px;font-weight:600;outline:none;cursor:pointer;min-width:150px">
+        <input type="text" id="SEARCH1" placeholder="e.g. T843DEE" autocomplete="off" spellcheck="false" style="flex:1;min-width:0">
+      </div>
+      <div style="display:flex;gap:6px">
+        <select id="SEARCHFIELD2" style="background:var(--s1);border:1.5px solid var(--ac);border-radius:8px;padding:8px 10px;color:var(--ac);font-size:12px;font-weight:600;outline:none;cursor:pointer;width:148px;flex-shrink:0">
           <option value="">— Filter 2 —</option>
           <option value="truck">🚛 Truck No</option>
           <option value="reqNo">🔢 REQ No</option>
@@ -196,11 +196,10 @@ input[readonly]{opacity:.55;cursor:not-allowed}
           <option value="jobCardNo">📋 Job Card</option>
           <option value="lpoNo">📄 LPO No</option>
         </select>
-        <input type="text" id="SEARCH2" placeholder="Optional..." autocomplete="off" spellcheck="false" style="flex:1;min-width:180px">
+        <input type="text" id="SEARCH2" placeholder="Optional..." autocomplete="off" spellcheck="false" style="flex:1;min-width:0">
       </div>
-      <!-- ROW 2: Search criteria 3 + Status filter + Clear -->
-      <div style="display:flex;gap:8px;flex-wrap:wrap">
-        <select id="SEARCHFIELD3" style="background:var(--s1);border:1.5px solid var(--ac);border-radius:8px;padding:9px 12px;color:var(--ac);font-size:13px;font-weight:600;outline:none;cursor:pointer;min-width:150px">
+      <div style="display:flex;gap:6px">
+        <select id="SEARCHFIELD3" style="background:var(--s1);border:1.5px solid var(--ac);border-radius:8px;padding:8px 10px;color:var(--ac);font-size:12px;font-weight:600;outline:none;cursor:pointer;width:148px;flex-shrink:0">
           <option value="">— Filter 3 —</option>
           <option value="truck">🚛 Truck No</option>
           <option value="reqNo">🔢 REQ No</option>
@@ -210,8 +209,10 @@ input[readonly]{opacity:.55;cursor:not-allowed}
           <option value="jobCardNo">📋 Job Card</option>
           <option value="lpoNo">📄 LPO No</option>
         </select>
-        <input type="text" id="SEARCH3" placeholder="Optional..." autocomplete="off" spellcheck="false" style="flex:1;min-width:180px">
-        <select id="STATUSFILTER" style="min-width:160px;background:var(--s1);border:1.5px solid var(--br);border-radius:8px;padding:9px 12px;color:var(--tx);font-size:13px;outline:none;cursor:pointer">
+        <input type="text" id="SEARCH3" placeholder="Optional..." autocomplete="off" spellcheck="false" style="flex:1;min-width:0">
+      </div>
+      <div style="display:flex;gap:6px">
+        <select id="STATUSFILTER" style="flex:1;background:var(--s1);border:1.5px solid var(--br);border-radius:8px;padding:8px 10px;color:var(--tx);font-size:12px;outline:none;cursor:pointer">
           <option value="">All Status</option>
           <option>RECEIVED</option>
           <option>RECEIVED NOT PAID</option>
@@ -219,22 +220,12 @@ input[readonly]{opacity:.55;cursor:not-allowed}
           <option>PAID NOT RECEIVED</option>
           <option>NOT RECEIVED</option>
         </select>
-        <button class="btn bg" onclick="clearSearch()" style="padding:9px 14px">✕ Clear All</button>
+        <button class="btn bg" onclick="clearSearch()" style="padding:8px 14px;font-size:12px;white-space:nowrap">✕ Clear</button>
       </div>
     </div>
 
-    <!-- PARTS BANNER - hidden by default -->
-    <div id="partsbanner" class="partsbanner hidden">
-      <div><div class="partstitle">✅ All Received Parts</div><div class="partssub">Auto-synced — RECEIVED status only</div></div>
-      <button class="btn" style="background:#1a3a2a;color:#4ade80;border:1px solid #166534" onclick="exportParts()">⬇ Export Parts</button>
-    </div>
-
-    <!-- TABLE AREA - permanent -->
     <div id="tablearea" style="flex:1;overflow:auto;padding:0 20px 20px">
-      <table id="maintable">
-        <thead id="tablehead"></thead>
-        <tbody id="TBODY"></tbody>
-      </table>
+      <table><thead id="tablehead"></thead><tbody id="TBODY"></tbody></table>
       <div id="loadmorediv" style="text-align:center;padding:14px;display:none">
         <button class="btn bg" onclick="loadMore()">Load more</button>
         <span id="morelabel" style="font-size:12px;color:var(--t3);margin-left:8px"></span>
@@ -246,15 +237,13 @@ input[readonly]{opacity:.55;cursor:not-allowed}
       </div>
     </div>
 
-    <!-- DASHBOARD AREA - hidden by default -->
     <div id="dasharea" class="hidden" style="flex:1;overflow-y:auto;padding-bottom:20px">
       <div id="dashcontent"></div>
     </div>
-
   </div>
 </div>
 
-<!-- RECORD MODAL -->
+<!-- REQUISITION MODAL -->
 <div class="overlay hidden" id="recmodal">
   <div class="modal">
     <div class="modalhead"><div class="modaltitle" id="modaltitle">New Requisition</div><button class="modalclose" onclick="closeModal('recmodal')">✕</button></div>
@@ -262,16 +251,25 @@ input[readonly]{opacity:.55;cursor:not-allowed}
       <div class="formgrid">
         <div class="formgroup"><label>Req No.</label><input type="text" id="f_req" readonly></div>
         <div class="formgroup"><label>Date Requested</label><input type="date" id="f_date"></div>
-        <div class="formgroup"><label>Truck</label><input type="text" id="f_truck" placeholder="e.g. T751EEF"></div>
+        <div class="formgroup"><label>Truck / Vehicle No</label><select id="f_truck" onchange="onTruckSelect()"><option value="">Select vehicle...</option></select></div>
         <div class="formgroup"><label>Vehicle Type</label><select id="f_vtype"><option value="">Select...</option><option>TRUCK</option><option>TRAILER</option><option>WORKSHOP</option><option>OTHER</option></select></div>
-        <div class="formgroup"><label>Driver Name</label><input type="text" id="f_driver"></div>
+        <div class="formgroup"><label>Driver Name</label><input type="text" id="f_driver" placeholder="Driver name"></div>
         <div class="formgroup"><label>Priority</label><select id="f_priority"><option value="">Select...</option><option>TODAY'S REQUEST</option><option>NORMAL</option></select></div>
-        <div class="formgroup"><label>Job Card No</label><input type="text" id="f_jobcard"></div>
+        <div class="formgroup"><label>Job Card No</label><select id="f_jobcard"><option value="">Select job card...</option></select></div>
         <div class="formgroup"><label>LPO No</label><input type="text" id="f_lpo"></div>
-        <div class="formgroup full"><label>Description</label><textarea id="f_desc" placeholder="Item description"></textarea></div>
+        <div class="formgroup full"><label>Description / Spare Part</label>
+  <select id="f_desc_select" onchange="onDescSelect()" style="background:var(--s2);border:1px solid var(--br);border-radius:7px;padding:9px 11px;color:var(--tx);font-family:'DM Sans',sans-serif;font-size:13px;outline:none;width:100%;margin-bottom:6px">
+    <option value="">Select spare part or type custom...</option>
+  </select>
+  <input type="text" id="f_desc" placeholder="Or type custom description here">
+</div>
         <div class="formgroup"><label>Qty</label><input type="number" id="f_qty" min="0"></div>
         <div class="formgroup"><label>Cost</label><input type="number" id="f_cost" min="0"></div>
-        <div class="formgroup"><label>Supplier</label><input type="text" id="f_supplier"></div>
+        <div class="formgroup"><label>Supplier</label>
+  <select id="f_supplier" onchange="onSupplierSelect()" style="background:var(--s2);border:1px solid var(--br);border-radius:7px;padding:9px 11px;color:var(--tx);font-family:'DM Sans',sans-serif;font-size:13px;outline:none;width:100%">
+    <option value="">Select supplier...</option>
+  </select>
+</div>
         <div class="formgroup"><label>Date Received</label><input type="date" id="f_datercvd"></div>
         <div class="formgroup"><label>Status</label><select id="f_status"><option value="">Select...</option><option>RECEIVED</option><option>RECEIVED NOT PAID</option><option>ON HOLD</option><option>PAID NOT RECEIVED</option><option>NOT RECEIVED</option></select></div>
         <div class="formgroup"><label>Payment Mode</label><select id="f_payment"><option value="">Select...</option><option>CASH</option><option>CREDIT</option><option>STORE</option></select></div>
@@ -299,19 +297,54 @@ input[readonly]{opacity:.55;cursor:not-allowed}
   </div>
 </div>
 
+<!-- SUPPLIER MODAL -->
+<div class="overlay hidden" id="supmodal">
+  <div class="modal" style="max-width:520px">
+    <div class="modalhead"><div class="modaltitle" id="suptitle">New Supplier</div><button class="modalclose" onclick="closeModal('supmodal')">✕</button></div>
+    <div class="modalbody">
+      <div class="formgrid">
+        <div class="formgroup"><label>Supplier Code</label><input type="text" id="s_code" readonly style="font-family:'DM Mono',monospace;color:var(--ac)"></div>
+        <div class="formgroup"><label>Supplier Name</label><input type="text" id="s_name" placeholder="e.g. GUPTA TRADERS"></div>
+        <div class="formgroup"><label>Phone No</label><input type="text" id="s_phone" placeholder="+255 712 000 000"></div>
+        <div class="formgroup"><label>Contact Person</label><input type="text" id="s_contact" placeholder="Contact name"></div>
+        <div class="formgroup full"><label>Address</label><input type="text" id="s_address" placeholder="Physical address"></div>
+        <div class="formgroup"><label>Category</label><select id="s_cat"><option value="">Select...</option><option>SPARE PARTS</option><option>TYRES</option><option>LUBRICANTS</option><option>BATTERIES</option><option>SERVICES</option><option>OTHER</option></select></div>
+        <div class="formgroup"><label>Status</label><select id="s_status"><option value="ACTIVE">ACTIVE</option><option value="INACTIVE">INACTIVE</option></select></div>
+        <div class="formgroup full"><label>Remarks</label><textarea id="s_remarks" placeholder="Additional notes"></textarea></div>
+      </div>
+    </div>
+    <div class="modalfoot"><button class="btn bg" onclick="closeModal('supmodal')">Cancel</button><button class="btn bp" id="supsavebtn" onclick="saveSupplier()">Save Supplier</button></div>
+  </div>
+</div>
+
+<!-- SPARE PART MODAL -->
+<div class="overlay hidden" id="spmodal">
+  <div class="modal" style="max-width:520px">
+    <div class="modalhead"><div class="modaltitle" id="sptitle">New Spare Part</div><button class="modalclose" onclick="closeModal('spmodal')">✕</button></div>
+    <div class="modalbody">
+      <div class="formgrid">
+        <div class="formgroup"><label>Part Code</label><input type="text" id="p_code" readonly style="font-family:'DM Mono',monospace;color:var(--ac)"></div>
+        <div class="formgroup"><label>Part Name</label><input type="text" id="p_name" placeholder="e.g. BRAKE PAD SCANIA"></div>
+        <div class="formgroup"><label>Part Number</label><input type="text" id="p_partno" placeholder="Manufacturer part no."></div>
+        <div class="formgroup"><label>Compatible Trucks</label><input type="text" id="p_trucks" placeholder="e.g. SCANIA, HOWO"></div>
+        <div class="formgroup"><label>Category</label><select id="p_cat"><option value="">Select...</option><option>ENGINE</option><option>BRAKE</option><option>SUSPENSION</option><option>ELECTRICAL</option><option>BODY</option><option>TYRES</option><option>LUBRICANTS</option><option>OTHER</option></select></div>
+        <div class="formgroup"><label>Unit</label><select id="p_unit"><option value="PCS">PCS</option><option value="SET">SET</option><option value="LITRE">LITRE</option><option value="KG">KG</option><option value="METRE">METRE</option><option value="OTHER">OTHER</option></select></div>
+        <div class="formgroup"><label>Avg Cost</label><input type="number" id="p_cost" placeholder="0" min="0"></div>
+        <div class="formgroup"><label>Status</label><select id="p_status"><option value="ACTIVE">ACTIVE</option><option value="INACTIVE">INACTIVE</option></select></div>
+        <div class="formgroup full"><label>Remarks</label><textarea id="p_remarks" placeholder="Additional notes"></textarea></div>
+      </div>
+    </div>
+    <div class="modalfoot"><button class="btn bg" onclick="closeModal('spmodal')">Cancel</button><button class="btn bp" id="spsavebtn" onclick="saveSparePart()">Save Spare Part</button></div>
+  </div>
+</div>
+
 <div class="toastbox" id="toastbox"></div>
 
 <script>
-// ════════════════════════════════════════════════
-// CONFIG
-// ════════════════════════════════════════════════
-const API = 'https://script.google.com/macros/s/AKfycbyIXEjT6KOFtBKsJ7hS8EhPo3ddjnY2Mx0gW1G95K9WY3ZttJ0u8izPHiU7VhJUsSD1PA/exec';
+const API = 'https://script.google.com/macros/s/AKfycbzBYwHH3kUd1KYFWk8Y1AOeuy-tSvMhOKq0ed6gG2ah4U9Cza8uQnDpb8d_8zVZ2v9E8Q/exec';
 const ADMINPWD = 'akadmin321';
 const PAGESIZE = 100;
 
-// ════════════════════════════════════════════════
-// STATE
-// ════════════════════════════════════════════════
 let ALL = [];
 let filtered = [];
 let currentPage = 0;
@@ -320,313 +353,175 @@ let editingId = null;
 let pwdCb = null;
 let sortColumn = 'dateRequested';
 let sortDir = -1;
+let SUPPLIERS = [];
+let SPAREPARTS = [];
+let editingSup = null;
+let editingPart = null;
 
-// ════════════════════════════════════════════════
-// SEARCH INPUT - wire up ONCE on page load
-// This is the key fix: permanent elements, wired once
-// ════════════════════════════════════════════════
-// Wire all search inputs and field selectors - wired ONCE on page load
-const PH = {
-  truck:'e.g. T843DEE', reqNo:'e.g. REQ-001234',
-  description:'e.g. BRAKE PAD', supplier:'e.g. GUPTA',
-  driverName:'e.g. RAMADHAN', jobCardNo:'e.g. TN/AKT/WO-001',
-  lpoNo:'e.g. LPO-001'
-};
+// ── DROPDOWN MENU ──
+function toggleDrop() {
+  const d = document.getElementById('newdrop');
+  d.style.display = d.style.display === 'block' ? 'none' : 'block';
+}
+function closeDrop() { document.getElementById('newdrop').style.display = 'none'; }
+document.addEventListener('click', e => { if (!document.getElementById('newwrap').contains(e.target)) closeDrop(); });
 
+// ── SEARCH — wired ONCE at page load ──
+const PH = {truck:'e.g. T843DEE',reqNo:'e.g. REQ-001234',description:'e.g. BRAKE PAD',supplier:'e.g. GUPTA',driverName:'e.g. RAMADHAN',jobCardNo:'e.g. TN/AKT/WO-001',lpoNo:'e.g. LPO-001'};
 ['SEARCH1','SEARCH2','SEARCH3'].forEach(id => {
   document.getElementById(id).addEventListener('input', applyFilters);
-  document.getElementById(id).addEventListener('keydown', function(e) {
-    if (e.key === 'Escape') { this.value = ''; applyFilters(); }
-  });
+  document.getElementById(id).addEventListener('keydown', function(e){ if(e.key==='Escape'){this.value='';applyFilters();} });
 });
-
 document.getElementById('STATUSFILTER').addEventListener('change', applyFilters);
-
-['SEARCHFIELD1','SEARCHFIELD2','SEARCHFIELD3'].forEach((id, i) => {
-  document.getElementById(id).addEventListener('change', function() {
-    const inputId = 'SEARCH' + (i + 1);
-    const input = document.getElementById(inputId);
-    if (this.value && PH[this.value]) {
-      input.placeholder = PH[this.value];
-    } else {
-      input.placeholder = 'Optional...';
-    }
-    input.value = '';
+['SEARCHFIELD1','SEARCHFIELD2','SEARCHFIELD3'].forEach((id,i) => {
+  document.getElementById(id).addEventListener('change', function(){
+    const inp = document.getElementById('SEARCH'+(i+1));
+    inp.placeholder = this.value && PH[this.value] ? PH[this.value] : 'Optional...';
+    inp.value = '';
     applyFilters();
   });
 });
 
-// ════════════════════════════════════════════════
-// APPLY FILTERS - runs on every keystroke
-// ════════════════════════════════════════════════
+// ── APPLY FILTERS ──
 function applyFilters() {
+  // Don't run for non-table views
+  if (['dashboard','suppliers','spareparts','jobcards','drivers','vehicles'].includes(currentView)) return;
   const fs = document.getElementById('STATUSFILTER').value;
-
-  // Start from full dataset
   let data = ALL.slice();
-
-  // View filter
-  if (currentView === 'today') {
-    data = data.filter(r => r.priority === "TODAY'S REQUEST" && r.status === 'NOT RECEIVED');
-  } else if (currentView === 'parts') {
-    data = data.filter(r => r.status === 'RECEIVED');
-  } else if (currentView !== 'workshop') {
-    data = data.filter(r => r.status === currentView);
-  }
-
-  // Status dropdown filter
+  if (currentView === 'today') data = data.filter(r => r.priority === "TODAY'S REQUEST" && r.status === 'NOT RECEIVED');
+  else if (currentView !== 'workshop') data = data.filter(r => r.status === currentView);
   if (fs) data = data.filter(r => r.status === fs);
-
-  // Apply 3 search criteria - ALL must match (AND logic)
-  const searches = [
-    { field: document.getElementById('SEARCHFIELD1').value, val: (document.getElementById('SEARCH1').value || '').trim().toLowerCase() },
-    { field: document.getElementById('SEARCHFIELD2').value, val: (document.getElementById('SEARCH2').value || '').trim().toLowerCase() },
-    { field: document.getElementById('SEARCHFIELD3').value, val: (document.getElementById('SEARCH3').value || '').trim().toLowerCase() },
-  ];
-
-  searches.forEach(s => {
-    if (s.field && s.val) {
-      data = data.filter(r => (r[s.field] || '').toLowerCase().includes(s.val));
-    }
+  [{f:document.getElementById('SEARCHFIELD1').value,v:(document.getElementById('SEARCH1').value||'').trim().toLowerCase()},
+   {f:document.getElementById('SEARCHFIELD2').value,v:(document.getElementById('SEARCH2').value||'').trim().toLowerCase()},
+   {f:document.getElementById('SEARCHFIELD3').value,v:(document.getElementById('SEARCH3').value||'').trim().toLowerCase()}
+  ].forEach(s => { if(s.f&&s.v) data = data.filter(r => (r[s.f]||'').toLowerCase().includes(s.v)); });
+  data.sort((a,b) => {
+    let va=a[sortColumn]||'',vb=b[sortColumn]||'';
+    if(sortColumn==='qty'||sortColumn==='cost'){va=parseFloat(va)||0;vb=parseFloat(vb)||0;}
+    return va<vb?-sortDir:va>vb?sortDir:0;
   });
-
-  // Sort
-  data.sort((a, b) => {
-    let va = a[sortColumn] || '';
-    let vb = b[sortColumn] || '';
-    if (sortColumn === 'qty' || sortColumn === 'cost') {
-      va = parseFloat(va) || 0;
-      vb = parseFloat(vb) || 0;
-    }
-    if (va < vb) return -sortDir;
-    if (va > vb) return sortDir;
-    return 0;
-  });
-
-  filtered = data;
-  currentPage = 0;
-
-  // Update subtitle
-  document.getElementById('viewsub').textContent = filtered.length + ' record' + (filtered.length !== 1 ? 's' : '');
-
-  // Paint rows
+  filtered=data; currentPage=0;
+  document.getElementById('viewsub').textContent = filtered.length+' record'+(filtered.length!==1?'s':'');
+  const aid = document.activeElement?document.activeElement.id:null;
   paintTable(false);
-
-  // Keep focus on search input
-  document.getElementById('SEARCH').focus();
+  if(aid){const el=document.getElementById(aid);if(el){el.focus();if(el.tagName==='INPUT'){try{el.setSelectionRange(el.value.length,el.value.length);}catch(e){}}}}
 }
 
-// ════════════════════════════════════════════════
-// PAINT TABLE ROWS
-// ════════════════════════════════════════════════
+// ── PAINT TABLE ──
 function paintTable(append) {
-  const tbody = document.getElementById('TBODY');
-  const loadmore = document.getElementById('loadmorediv');
-  const empty = document.getElementById('emptystate');
-  const isRO = !['workshop', 'today'].includes(currentView);
-
-  const start = currentPage * PAGESIZE;
-  const end = start + PAGESIZE;
-  const slice = filtered.slice(start, end);
-
-  if (!append) {
-    if (filtered.length === 0) {
-      tbody.innerHTML = '';
-      empty.style.display = 'block';
-      loadmore.style.display = 'none';
-      return;
-    }
-    empty.style.display = 'none';
-    tbody.innerHTML = slice.map(r => buildRow(r, isRO)).join('');
-  } else {
-    tbody.innerHTML += slice.map(r => buildRow(r, isRO)).join('');
-  }
-
-  // Load more
-  const remaining = filtered.length - end;
-  if (remaining > 0) {
-    loadmore.style.display = 'block';
-    document.getElementById('morelabel').textContent = remaining + ' more records';
-  } else {
-    loadmore.style.display = 'none';
-  }
+  const tbody=document.getElementById('TBODY'), lm=document.getElementById('loadmorediv'), em=document.getElementById('emptystate');
+  const isRO=!['workshop','today'].includes(currentView);
+  const start=currentPage*PAGESIZE, end=start+PAGESIZE, slice=filtered.slice(start,end);
+  if(!append){
+    if(filtered.length===0){tbody.innerHTML='';em.style.display='block';lm.style.display='none';return;}
+    em.style.display='none'; tbody.innerHTML=slice.map(r=>buildRow(r,isRO)).join('');
+  } else tbody.innerHTML+=slice.map(r=>buildRow(r,isRO)).join('');
+  const rem=filtered.length-end;
+  if(rem>0){lm.style.display='block';document.getElementById('morelabel').textContent=rem+' more records';}
+  else lm.style.display='none';
 }
+function loadMore(){currentPage++;paintTable(true);}
 
-function loadMore() {
-  currentPage++;
-  paintTable(true);
-}
-
-// ════════════════════════════════════════════════
-// BUILD ROW HTML
-// ════════════════════════════════════════════════
-function buildRow(r, isRO) {
-  const sc = { 'RECEIVED':'sR', 'RECEIVED NOT PAID':'sRNP', 'ON HOLD':'sOH', 'PAID NOT RECEIVED':'sPNR', 'NOT RECEIVED':'sNR' };
-  const statusClass = sc[r.status] || '';
-  const priorityHTML = r.priority === "TODAY'S REQUEST"
-    ? '<span class="ptbadge">TODAY</span>'
-    : `<span style="color:var(--t3);font-size:10px">${r.priority || ''}</span>`;
-  const desc = r.description || '';
-  const actions = isRO ? '' : `
-    <td>
-      <button class="actbtn e" onclick="editRecord('${r.id}')">✏</button>
-      <button class="actbtn d" onclick="deleteRecord('${r.id}')">🗑</button>
-      ${r.status === 'RECEIVED' ? '<span style="font-size:9px;opacity:.4">🔒</span>' : ''}
-    </td>`;
-
+// ── BUILD ROW ──
+function buildRow(r,isRO){
+  const sc={'RECEIVED':'sR','RECEIVED NOT PAID':'sRNP','ON HOLD':'sOH','PAID NOT RECEIVED':'sPNR','NOT RECEIVED':'sNR'};
+  const desc=r.description||'';
+  const ph=r.priority==="TODAY'S REQUEST"?'<span class="ptbadge">TODAY</span>':`<span style="color:var(--t3);font-size:10px">${r.priority||''}</span>`;
+  const ac=isRO?'':`<td><button class="actbtn e" onclick="editRecord('${r.id}')">✏</button><button class="actbtn d" onclick="deleteRecord('${r.id}')">🗑</button>${r.status==='RECEIVED'?'<span style="font-size:9px;opacity:.4">🔒</span>':''}</td>`;
   return `<tr>
-    <td><span class="reqbadge">${r.reqNo || ''}</span></td>
-    <td>${formatDate(r.dateRequested)}</td>
-    <td><b>${r.truck || ''}</b></td>
-    <td style="color:var(--t2);font-size:10px">${r.vehicleType || ''}</td>
-    <td>${r.driverName || ''}</td>
-    <td>${priorityHTML}</td>
-    <td title="${desc}">${desc.length > 28 ? desc.substring(0, 28) + '…' : desc}</td>
-    <td style="font-family:'DM Mono',monospace">${r.qty || ''}</td>
-    <td style="font-family:'DM Mono',monospace">${r.cost ? Number(r.cost).toLocaleString() : ''}</td>
-    <td>${r.supplier || ''}</td>
-    <td>${formatDate(r.dateReceived)}</td>
-    <td><span class="sb ${statusClass}">${r.status || ''}</span></td>
-    <td style="color:var(--t2);font-size:10px">${r.paymentMode || ''}</td>
-    ${actions}
+    <td><span class="reqbadge">${r.reqNo||''}</span></td>
+    <td>${fd(r.dateRequested)}</td><td><b>${r.truck||''}</b></td>
+    <td style="color:var(--t2);font-size:10px">${r.vehicleType||''}</td>
+    <td>${r.driverName||''}</td><td>${ph}</td>
+    <td style="color:var(--t2);font-size:10px">${r.jobCardNo||''}</td>
+    <td style="color:var(--t2);font-size:10px;font-family:'DM Mono',monospace">${r.lpoNo||''}</td>
+    <td title="${desc}">${desc.length>28?desc.substring(0,28)+'…':desc}</td>
+    <td style="font-family:'DM Mono',monospace">${r.qty||''}</td>
+    <td style="font-family:'DM Mono',monospace">${r.cost?Number(r.cost).toLocaleString():''}</td>
+    <td>${r.supplier||''}</td><td>${fd(r.dateReceived)}</td>
+    <td><span class="sb ${sc[r.status]||''}">${r.status||''}</span></td>
+    <td style="color:var(--t2);font-size:10px">${r.paymentMode||''}</td>
+    <td style="color:var(--t2);font-size:10px">${r.category||''}</td>
+    <td style="color:var(--t2);font-size:10px">${r.requestedBy||''}</td>
+    <td style="color:var(--t2);font-size:10px">${fd(r.dateIssued)}</td>
+    ${ac}</tr>`;
+}
+
+// ── SORT ──
+function doSort(col){if(sortColumn===col)sortDir*=-1;else{sortColumn=col;sortDir=1;}buildHeader();applyFilters();}
+function si(col){return sortColumn===col?(sortDir===1?'↑':'↓'):'<span style="opacity:.25">⇅</span>';}
+function buildHeader(){
+  const isRO=!['workshop','today'].includes(currentView);
+  document.getElementById('tablehead').innerHTML=`<tr>
+    <th onclick="doSort('reqNo')">Req No ${si('reqNo')}</th>
+    <th onclick="doSort('dateRequested')">Date ${si('dateRequested')}</th>
+    <th onclick="doSort('truck')">Truck ${si('truck')}</th>
+    <th onclick="doSort('vehicleType')">Type ${si('vehicleType')}</th>
+    <th onclick="doSort('driverName')">Driver ${si('driverName')}</th>
+    <th onclick="doSort('priority')">Priority ${si('priority')}</th>
+    <th onclick="doSort('jobCardNo')">Job Card ${si('jobCardNo')}</th>
+    <th onclick="doSort('lpoNo')">LPO No ${si('lpoNo')}</th>
+    <th onclick="doSort('description')">Description ${si('description')}</th>
+    <th onclick="doSort('qty')">Qty ${si('qty')}</th>
+    <th onclick="doSort('cost')">Cost ${si('cost')}</th>
+    <th onclick="doSort('supplier')">Supplier ${si('supplier')}</th>
+    <th onclick="doSort('dateReceived')">Date Rcvd ${si('dateReceived')}</th>
+    <th onclick="doSort('status')">Status ${si('status')}</th>
+    <th onclick="doSort('paymentMode')">Payment ${si('paymentMode')}</th>
+    <th onclick="doSort('category')">Category ${si('category')}</th>
+    <th onclick="doSort('requestedBy')">Req By ${si('requestedBy')}</th>
+    <th onclick="doSort('dateIssued')">Date Issued ${si('dateIssued')}</th>
+    ${!isRO?'<th>Actions</th>':''}
   </tr>`;
 }
 
-// ════════════════════════════════════════════════
-// SORT
-// ════════════════════════════════════════════════
-function doSort(col) {
-  if (sortColumn === col) sortDir *= -1;
-  else { sortColumn = col; sortDir = 1; }
+// ── SWITCH VIEW ──
+function switchView(v){
+  currentView=v;
+  document.querySelectorAll('.navitem').forEach(n=>n.classList.remove('active'));
+  const el=document.getElementById('nav-'+v);if(el)el.classList.add('active');
+  const titles={workshop:'Workshop Requisition',today:"Today's Requests",'RECEIVED':'Received','RECEIVED NOT PAID':'Received Not Paid','ON HOLD':'On Hold','PAID NOT RECEIVED':'Paid Not Received','NOT RECEIVED':'Not Received',suppliers:'Suppliers',spareparts:'Spare Parts',jobcards:'Job Cards',drivers:'Drivers',vehicles:'Vehicles',dashboard:'Dashboard'};
+  document.getElementById('viewtitle').textContent=titles[v]||v;
+  ['SEARCH1','SEARCH2','SEARCH3'].forEach(id=>{document.getElementById(id).value='';});
+  document.getElementById('STATUSFILTER').value='';
+  document.getElementById('SEARCHFIELD1').value='truck';
+  document.getElementById('SEARCHFIELD2').value='';
+  document.getElementById('SEARCHFIELD3').value='';
+  document.getElementById('SEARCH1').placeholder='e.g. T843DEE';
+  const isTable=!['dashboard','suppliers','spareparts','jobcards','drivers','vehicles'].includes(v);
+  const isRO=!['workshop','today'].includes(v);
+  document.getElementById('searchrow').style.display=isTable?'grid':'none';
+  document.getElementById('STATUSFILTER').style.display=v==='workshop'?'block':'none';
+  document.getElementById('tablearea').style.display=v==='dashboard'?'none':'block';
+  document.getElementById('dasharea').classList.toggle('hidden',v!=='dashboard');
+  document.getElementById('toolbaractions').innerHTML=isRO&&isTable?'<span style="font-size:11px;color:var(--t3);background:var(--s2);padding:3px 9px;border-radius:6px;border:1px solid var(--br)">🔒 View Only</span>':'';
+  if(v==='dashboard'){renderDashboard();return;}
+  if(v==='suppliers'){renderSuppliers();return;}
+  if(v==='spareparts'){renderSpareParts();return;}
+  if(v==='jobcards'){renderJobCards();return;}
+  if(v==='drivers'){renderDrivers();return;}
+  if(v==='vehicles'){renderVehicles();return;}
   buildHeader();
   applyFilters();
 }
 
-function sortIcon(col) {
-  if (sortColumn !== col) return '<span style="opacity:.25">⇅</span>';
-  return sortDir === 1 ? '↑' : '↓';
-}
-
-function buildHeader() {
-  const isRO = !['workshop', 'today'].includes(currentView);
-  document.getElementById('tablehead').innerHTML = `<tr>
-    <th onclick="doSort('reqNo')">Req No ${sortIcon('reqNo')}</th>
-    <th onclick="doSort('dateRequested')">Date ${sortIcon('dateRequested')}</th>
-    <th onclick="doSort('truck')">Truck ${sortIcon('truck')}</th>
-    <th onclick="doSort('vehicleType')">Type ${sortIcon('vehicleType')}</th>
-    <th onclick="doSort('driverName')">Driver ${sortIcon('driverName')}</th>
-    <th onclick="doSort('priority')">Priority ${sortIcon('priority')}</th>
-    <th onclick="doSort('description')">Description ${sortIcon('description')}</th>
-    <th onclick="doSort('qty')">Qty ${sortIcon('qty')}</th>
-    <th onclick="doSort('cost')">Cost ${sortIcon('cost')}</th>
-    <th onclick="doSort('supplier')">Supplier ${sortIcon('supplier')}</th>
-    <th onclick="doSort('dateReceived')">Rcvd ${sortIcon('dateReceived')}</th>
-    <th onclick="doSort('status')">Status ${sortIcon('status')}</th>
-    <th onclick="doSort('paymentMode')">Payment ${sortIcon('paymentMode')}</th>
-    ${!isRO ? '<th>Actions</th>' : ''}
-  </tr>`;
-}
-
-function buildPartsHeader() {
-  document.getElementById('tablehead').innerHTML = `<tr>
-    <th>Req No</th><th>Date</th><th>Truck</th><th>Driver</th>
-    <th>Description</th><th>Qty</th><th>Cost</th>
-    <th>Supplier</th><th>Date Received</th><th>Payment</th><th>Job Card</th>
-  </tr>`;
-}
-
-// ════════════════════════════════════════════════
-// VIEW SWITCHING
-// ════════════════════════════════════════════════
-function switchView(v) {
-  currentView = v;
-
-  // Update nav
-  document.querySelectorAll('.navitem').forEach(n => n.classList.remove('active'));
-  const navEl = document.getElementById('nav-' + v);
-  if (navEl) navEl.classList.add('active');
-
-  // Update title
-  const titles = {
-    workshop: 'Workshop', today: "Today's Requests",
-    'RECEIVED': 'Received', 'RECEIVED NOT PAID': 'Received Not Paid',
-    'ON HOLD': 'On Hold', 'PAID NOT RECEIVED': 'Paid Not Received',
-    'NOT RECEIVED': 'Not Received', parts: 'Parts Purchased & Fitted', dashboard: 'Dashboard'
-  };
-  document.getElementById('viewtitle').textContent = titles[v] || v;
-
-  // Clear search on view change
-  document.getElementById('SEARCH').value = '';
-  document.getElementById('STATUSFILTER').value = '';
-
-  // Show/hide sections
-  const isTable = !['dashboard'].includes(v);
-  const isParts = v === 'parts';
-  const isWorkshop = v === 'workshop';
-  const isRO = !['workshop', 'today'].includes(v);
-
-  // Search row visibility
-  document.getElementById('searchrow').style.display = isTable ? 'flex' : 'none';
-  // Hide field selectors for non-table views
-  ['SEARCHFIELD1','SEARCHFIELD2','SEARCHFIELD3'].forEach(id => {
-    const el = document.getElementById(id);
-    if (el) el.style.display = isTable ? 'block' : 'none';
-  });
-  document.getElementById('STATUSFILTER').style.display = isWorkshop ? 'block' : 'none';
-
-  // Parts banner
-  document.getElementById('partsbanner').classList.toggle('hidden', !isParts);
-
-  // Table vs dashboard
-  document.getElementById('tablearea').style.display = isTable ? 'block' : 'none';
-  document.getElementById('dasharea').classList.toggle('hidden', v !== 'dashboard');
-
-  // Toolbar actions
-  document.getElementById('toolbaractions').innerHTML = isRO && isTable
-    ? '<span style="font-size:11px;color:var(--t3);background:var(--s2);padding:3px 9px;border-radius:6px;border:1px solid var(--br)">🔒 View Only</span>'
-    : !isTable ? ''
-    : '<button class="btn bp" onclick="openAdd()">+ New Request</button>';
-
-  if (v === 'dashboard') {
-    renderDashboard();
-    return;
-  }
-
-  if (isParts) {
-    buildPartsHeader();
-  } else {
-    buildHeader();
-  }
-
-  applyFilters();
-}
-
-// ════════════════════════════════════════════════
-// DASHBOARD
-// ════════════════════════════════════════════════
-function renderDashboard() {
+// ── DASHBOARD ──
+function renderDashboard(){
   updateBadges();
-  const c = {'RECEIVED':0,'RECEIVED NOT PAID':0,'ON HOLD':0,'PAID NOT RECEIVED':0,'NOT RECEIVED':0};
-  let tod = 0, tot = 0, rec = 0;
-  ALL.forEach(r => {
-    if (c.hasOwnProperty(r.status)) c[r.status]++;
-    if (r.priority === "TODAY'S REQUEST" && r.status === 'NOT RECEIVED') tod++;
-    if (r.cost) tot += parseFloat(r.cost) || 0;
-    if (r.status === 'RECEIVED' && r.cost) rec += parseFloat(r.cost) || 0;
-  });
-  const n = ALL.length;
-  const mx = Math.max(...Object.values(c), 1);
-  const col = {'RECEIVED':'#4ade80','RECEIVED NOT PAID':'#fbbf24','ON HOLD':'#f87171','PAID NOT RECEIVED':'#60a5fa','NOT RECEIVED':'#a0a0c0'};
-  const bg = {'RECEIVED':'linear-gradient(90deg,#166534,#4ade80)','RECEIVED NOT PAID':'linear-gradient(90deg,#92400e,#fbbf24)','ON HOLD':'linear-gradient(90deg,#991b1b,#f87171)','PAID NOT RECEIVED':'linear-gradient(90deg,#1e40af,#60a5fa)','NOT RECEIVED':'linear-gradient(90deg,#3a3a5a,#a0a0c0)'};
-
-  document.getElementById('dashcontent').innerHTML = `
+  const c={'RECEIVED':0,'RECEIVED NOT PAID':0,'ON HOLD':0,'PAID NOT RECEIVED':0,'NOT RECEIVED':0};
+  let tod=0,tot=0,rec=0;
+  ALL.forEach(r=>{if(c.hasOwnProperty(r.status))c[r.status]++;if(r.priority==="TODAY'S REQUEST"&&r.status==='NOT RECEIVED')tod++;if(r.cost)tot+=parseFloat(r.cost)||0;if(r.status==='RECEIVED'&&r.cost)rec+=parseFloat(r.cost)||0;});
+  const n=ALL.length,mx=Math.max(...Object.values(c),1);
+  const col={'RECEIVED':'#4ade80','RECEIVED NOT PAID':'#fbbf24','ON HOLD':'#f87171','PAID NOT RECEIVED':'#60a5fa','NOT RECEIVED':'#a0a0c0'};
+  const bg={'RECEIVED':'linear-gradient(90deg,#166534,#4ade80)','RECEIVED NOT PAID':'linear-gradient(90deg,#92400e,#fbbf24)','ON HOLD':'linear-gradient(90deg,#991b1b,#f87171)','PAID NOT RECEIVED':'linear-gradient(90deg,#1e40af,#60a5fa)','NOT RECEIVED':'linear-gradient(90deg,#3a3a5a,#a0a0c0)'};
+  document.getElementById('dashcontent').innerHTML=`
     <div class="dgrid">
       <div class="statcard" onclick="switchView('workshop')"><div class="statlbl">Total Records</div><div class="statval" style="color:var(--ac)">${n.toLocaleString()}</div><div class="statsub">All requisitions</div></div>
       <div class="statcard" onclick="switchView('today')"><div class="statlbl">Today's Requests</div><div class="statval" style="color:#fc5ca4">${tod}</div><div class="statsub">Pending today</div></div>
       <div class="statcard" onclick="switchView('RECEIVED')"><div class="statlbl">Received</div><div class="statval" style="color:#4ade80">${c['RECEIVED'].toLocaleString()}</div><div class="statsub">Parts fitted</div></div>
       <div class="statcard" onclick="switchView('ON HOLD')"><div class="statlbl">On Hold</div><div class="statval" style="color:#f87171">${c['ON HOLD'].toLocaleString()}</div><div class="statsub">Needs attention</div></div>
       <div class="statcard"><div class="statlbl">Total Cost</div><div class="statval" style="color:var(--ac);font-size:20px">${tot.toLocaleString()}</div><div class="statsub">All items</div></div>
-      <div class="statcard" onclick="switchView('parts')"><div class="statlbl">Received Cost</div><div class="statval" style="color:#4ade80;font-size:20px">${rec.toLocaleString()}</div><div class="statsub">Parts purchased</div></div>
+      <div class="statcard"><div class="statlbl">Received Cost</div><div class="statval" style="color:#4ade80;font-size:20px">${rec.toLocaleString()}</div><div class="statsub">Parts purchased</div></div>
     </div>
     <div class="chartgrid">
       <div class="chartcard"><div class="charttitle">Status Breakdown</div><div class="barchart">
@@ -637,349 +532,1016 @@ function renderDashboard() {
         <div class="pielegend">${Object.entries(c).map(([s,v])=>`<div class="pielegenditem"><div style="width:9px;height:9px;border-radius:50%;background:${col[s]};flex-shrink:0"></div>${s}<span class="pielegendval">${v}</span></div>`).join('')}</div>
       </div>
     </div>`;
+  document.getElementById('viewsub').textContent=n.toLocaleString()+' total records';
+}
+function buildPie(c,col,n){
+  if(!n)return'<circle cx="100" cy="100" r="80" fill="var(--s2)"/>';
+  let a=-Math.PI/2,p='';
+  Object.entries(c).forEach(([k,v])=>{if(!v)return;const s=(v/n)*2*Math.PI,e=a+s,x1=100+80*Math.cos(a),y1=100+80*Math.sin(a),x2=100+80*Math.cos(e),y2=100+80*Math.sin(e);p+=`<path d="M100,100 L${x1},${y1} A80,80 0 ${s>Math.PI?1:0},1 ${x2},${y2} Z" fill="${col[k]}" opacity=".85"/>`;a=e;});
+  return p+`<circle cx="100" cy="100" r="42" fill="var(--s1)"/><text x="100" y="96" text-anchor="middle" fill="var(--tx)" font-size="18" font-weight="700" font-family="Syne">${n}</text><text x="100" y="110" text-anchor="middle" fill="var(--t2)" font-size="9">TOTAL</text>`;
 }
 
-function buildPie(c, col, n) {
-  if (!n) return '<circle cx="100" cy="100" r="80" fill="var(--s2)"/>';
-  let a = -Math.PI / 2, p = '';
-  Object.entries(c).forEach(([k, v]) => {
-    if (!v) return;
-    const s = (v / n) * 2 * Math.PI, e = a + s;
-    const x1 = 100 + 80*Math.cos(a), y1 = 100 + 80*Math.sin(a);
-    const x2 = 100 + 80*Math.cos(e), y2 = 100 + 80*Math.sin(e);
-    p += `<path d="M100,100 L${x1},${y1} A80,80 0 ${s>Math.PI?1:0},1 ${x2},${y2} Z" fill="${col[k]}" opacity=".85"/>`;
-    a = e;
-  });
-  return p + `<circle cx="100" cy="100" r="42" fill="var(--s1)"/><text x="100" y="96" text-anchor="middle" fill="var(--tx)" font-size="18" font-weight="700" font-family="Syne">${n}</text><text x="100" y="110" text-anchor="middle" fill="var(--t2)" font-size="9">TOTAL</text>`;
+// ── BADGES ──
+function updateBadges(){
+  const c={};let t=0,p=0;
+  ALL.forEach(r=>{c[r.status]=(c[r.status]||0)+1;if(r.priority==="TODAY'S REQUEST"&&r.status==='NOT RECEIVED')t++;if(r.status==='RECEIVED')p++;});
+  document.getElementById('badge-workshop').textContent=ALL.length;
+  document.getElementById('badge-today').textContent=t;
+  ['RECEIVED','RECEIVED NOT PAID','ON HOLD','PAID NOT RECEIVED','NOT RECEIVED'].forEach(s=>{const el=document.getElementById('badge-'+s);if(el)el.textContent=c[s]||0;});
+  document.getElementById('badge-suppliers').textContent=SUPPLIERS.length;
+  document.getElementById('badge-spareparts').textContent=SPAREPARTS.length;
+  const bjc=document.getElementById('badge-jobcards');if(bjc)bjc.textContent=JOBCARDS.length;
+  const bdrv=document.getElementById('badge-drivers');if(bdrv)bdrv.textContent=DRIVERS.length;
+  const bveh=document.getElementById('badge-vehicles');if(bveh)bveh.textContent=VEHICLES.length;
 }
 
-// ════════════════════════════════════════════════
-// BADGES
-// ════════════════════════════════════════════════
-function updateBadges() {
-  const c = {}; let t = 0, p = 0;
-  ALL.forEach(r => {
-    c[r.status] = (c[r.status] || 0) + 1;
-    if (r.priority === "TODAY'S REQUEST" && r.status === 'NOT RECEIVED') t++;
-    if (r.status === 'RECEIVED') p++;
-  });
-  document.getElementById('badge-workshop').textContent = ALL.length;
-  document.getElementById('badge-today').textContent = t;
-  document.getElementById('badge-parts').textContent = p;
-  ['RECEIVED','RECEIVED NOT PAID','ON HOLD','PAID NOT RECEIVED','NOT RECEIVED'].forEach(s => {
-    const el = document.getElementById('badge-' + s);
-    if (el) el.textContent = c[s] || 0;
-  });
-}
-
-// ════════════════════════════════════════════════
-// API
-// ════════════════════════════════════════════════
-async function callAPI(action, data = {}) {
-  setSyncStatus('sy');
-  try {
-    const res = await fetch(API, { method: 'POST', body: JSON.stringify({ action, ...data }) });
-    const json = await res.json();
-    if (json.error) throw new Error(json.error);
-    setSyncStatus('on');
+// ── API ──
+async function callAPI(action,data={}){
+  if(action==='getAll')setSyncStatus('sy');
+  try{
+    const res=await fetch(API,{method:'POST',body:JSON.stringify({action,...data}),headers:{'Content-Type':'text/plain'}});
+    const json=await res.json();
+    if(json.error)throw new Error(json.error);
+    if(action==='getAll')setSyncStatus('on');
     return json;
-  } catch(e) {
-    setSyncStatus('er');
-    throw e;
-  }
+  }catch(e){if(action==='getAll')setSyncStatus('er');throw e;}
 }
-
-async function loadRecords() {
-  try {
-    const res = await callAPI('getAll');
-    ALL = res.records || [];
-    setSyncStatus('on');
-    return true;
-  } catch(e) {
-    setSyncStatus('er');
-    toast('Failed to load data', 'er');
-    return false;
-  }
+async function loadRecords(){
+  try{const res=await callAPI('getAll');ALL=res.records||[];setSyncStatus('on');return true;}
+  catch(e){setSyncStatus('er');toast('Failed to load data','er');return false;}
 }
-
-async function refreshAll() {
-  showLoad('Refreshing...');
-  await loadRecords();
-  hideLoad();
-  updateBadges();
-  applyFilters();
-  toast('Data refreshed', 'ok');
+async function refreshAll(){
+  showLoad('Refreshing...');await loadRecords();hideLoad();updateBadges();applyFilters();toast('Data refreshed','ok');
 }
+function setSyncStatus(s){document.getElementById('syndot').className='dot '+s;document.getElementById('synlbl').textContent={on:'Live',sy:'Syncing...',er:'Offline'}[s]||s;}
+function showLoad(t){document.getElementById('loadtext').textContent=t;document.getElementById('loading').classList.remove('hidden');}
+function hideLoad(){document.getElementById('loading').classList.add('hidden');}
 
-function setSyncStatus(s) {
-  document.getElementById('syndot').className = 'dot ' + s;
-  document.getElementById('synlbl').textContent = {on:'Live',sy:'Syncing...',er:'Offline'}[s] || s;
-}
-
-function showLoad(t) { document.getElementById('loadtext').textContent = t; document.getElementById('loading').classList.remove('hidden'); }
-function hideLoad() { document.getElementById('loading').classList.add('hidden'); }
-
-// ════════════════════════════════════════════════
-// ADD / EDIT
-// ════════════════════════════════════════════════
-function nextReqNo() {
-  let max = 0;
-  ALL.forEach(r => { const n = parseInt((r.reqNo || '').replace('REQ-', ''), 10); if (!isNaN(n) && n > max) max = n; });
-  return 'REQ-' + String(max + 1).padStart(6, '0');
-}
-
-function openAdd() {
-  editingId = null;
-  document.getElementById('modaltitle').textContent = 'New Requisition';
-  clearForm();
-  document.getElementById('f_req').value = nextReqNo();
-  document.getElementById('f_date').value = todayStr();
-  document.getElementById('recmodal').classList.remove('hidden');
-}
-
-function editRecord(id) {
-  const r = ALL.find(x => x.id === id);
-  if (!r) return;
-  if (r.status === 'RECEIVED') { askPassword(() => doEditRecord(r)); }
-  else doEditRecord(r);
-}
-
-function doEditRecord(r) {
-  editingId = r.id;
-  document.getElementById('modaltitle').textContent = 'Edit Requisition';
-  document.getElementById('f_req').value = r.reqNo || '';
-  document.getElementById('f_date').value = r.dateRequested || '';
-  document.getElementById('f_truck').value = r.truck || '';
-  document.getElementById('f_vtype').value = r.vehicleType || '';
-  document.getElementById('f_driver').value = r.driverName || '';
-  document.getElementById('f_priority').value = r.priority || '';
-  document.getElementById('f_jobcard').value = r.jobCardNo || '';
-  document.getElementById('f_lpo').value = r.lpoNo || '';
-  document.getElementById('f_desc').value = r.description || '';
-  document.getElementById('f_qty').value = r.qty || '';
-  document.getElementById('f_cost').value = r.cost || '';
-  document.getElementById('f_supplier').value = r.supplier || '';
-  document.getElementById('f_datercvd').value = r.dateReceived || '';
-  document.getElementById('f_status').value = r.status || '';
-  document.getElementById('f_payment').value = r.paymentMode || '';
-  document.getElementById('f_category').value = r.category || '';
-  document.getElementById('f_reqby').value = r.requestedBy || '';
-  document.getElementById('f_dateissued').value = r.dateIssued || '';
-  document.getElementById('f_remarks').value = r.remarks || '';
-  document.getElementById('recmodal').classList.remove('hidden');
-}
-
-function clearForm() {
-  ['f_req','f_date','f_truck','f_vtype','f_driver','f_priority','f_jobcard','f_lpo',
-   'f_desc','f_qty','f_cost','f_supplier','f_datercvd','f_status','f_payment',
-   'f_category','f_reqby','f_dateissued','f_remarks'].forEach(id => {
-    document.getElementById(id).value = '';
-  });
-}
-
-async function saveRecord() {
-  const btn = document.getElementById('savebtn');
-  btn.disabled = true; btn.textContent = 'Saving...';
-  const U = s => (s || '').toUpperCase();
-  const data = {
-    reqNo: document.getElementById('f_req').value,
-    dateRequested: document.getElementById('f_date').value,
-    truck: U(document.getElementById('f_truck').value),
-    vehicleType: document.getElementById('f_vtype').value,
-    driverName: U(document.getElementById('f_driver').value),
-    priority: document.getElementById('f_priority').value,
-    jobCardNo: U(document.getElementById('f_jobcard').value),
-    lpoNo: U(document.getElementById('f_lpo').value),
-    description: U(document.getElementById('f_desc').value),
-    qty: document.getElementById('f_qty').value,
-    cost: document.getElementById('f_cost').value,
-    supplier: U(document.getElementById('f_supplier').value),
-    dateReceived: document.getElementById('f_datercvd').value,
-    status: document.getElementById('f_status').value,
-    paymentMode: document.getElementById('f_payment').value,
-    category: U(document.getElementById('f_category').value),
-    requestedBy: U(document.getElementById('f_reqby').value),
-    dateIssued: document.getElementById('f_dateissued').value,
-    remarks: U(document.getElementById('f_remarks').value),
-  };
-  try {
-    if (editingId) {
-      data.id = editingId;
-      await callAPI('update', { record: data });
-      const i = ALL.findIndex(r => r.id === editingId);
-      if (i !== -1) ALL[i] = { ...ALL[i], ...data };
-      toast('Record updated', 'ok');
-    } else {
-      data.id = Date.now().toString(36) + Math.random().toString(36).slice(2);
-      await callAPI('add', { record: data });
-      ALL.push(data);
-      toast('Record added', 'ok');
+// ── REQUISITION CRUD ──
+function nextReqNo(){let max=0;ALL.forEach(r=>{const n=parseInt((r.reqNo||'').replace('REQ-',''),10);if(!isNaN(n)&&n>max)max=n;});return'REQ-'+String(max+1).padStart(6,'0');}
+function openAdd(){editingId=null;document.getElementById('modaltitle').textContent='New Requisition';clearForm();document.getElementById('f_req').value=nextReqNo();document.getElementById('f_date').value=todayStr();populateFormDropdowns();document.getElementById('recmodal').classList.remove('hidden');}
+function editRecord(id){const r=ALL.find(x=>x.id===id);if(!r)return;if(r.status==='RECEIVED')askPassword(()=>doEdit(r));else doEdit(r);}
+function doEdit(r){
+  editingId=r.id;document.getElementById('modaltitle').textContent='Edit Requisition';
+  populateFormDropdowns();
+  const m={f_req:'reqNo',f_date:'dateRequested',f_truck:'truck',f_vtype:'vehicleType',f_driver:'driverName',f_priority:'priority',f_jobcard:'jobCardNo',f_lpo:'lpoNo',f_desc:'description',f_qty:'qty',f_cost:'cost',f_datercvd:'dateReceived',f_status:'status',f_payment:'paymentMode',f_category:'category',f_reqby:'requestedBy',f_dateissued:'dateIssued',f_remarks:'remarks'};
+  Object.entries(m).forEach(([fid,key])=>document.getElementById(fid).value=r[key]||'');
+  // Set supplier dropdown
+  const supSel=document.getElementById('f_supplier');
+  if(supSel){
+    supSel.value=r.supplier||'';
+    if(supSel.value===''&&r.supplier){
+      // Supplier not in list - show as custom
+      const opt=document.createElement('option');
+      opt.value=r.supplier;opt.textContent=r.supplier;
+      supSel.insertBefore(opt,supSel.firstChild);
+      supSel.value=r.supplier;
     }
-    closeModal('recmodal');
-    updateBadges();
-    applyFilters();
-  } catch(e) {
-    toast('Failed to save', 'er');
-  } finally {
-    btn.disabled = false; btn.textContent = 'Save Record';
+  }
+  // Set description dropdown
+  const descSel=document.getElementById('f_desc_select');
+  if(descSel&&r.description){
+    descSel.value=r.description;
+    if(descSel.value===''){
+      // Not in list - it's a custom description, just leave text input
+    }
+  }
+  document.getElementById('recmodal').classList.remove('hidden');
+}
+function clearForm(){
+  ['f_req','f_date','f_vtype','f_priority','f_lpo','f_desc','f_qty','f_cost','f_datercvd','f_status','f_payment','f_category','f_reqby','f_dateissued','f_remarks'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+  // Reset selects
+  ['f_supplier','f_truck','f_driver','f_jobcard'].forEach(id=>{const el=document.getElementById(id);if(el){el.value='';el.style.display='';}});
+  // Remove custom inputs
+  ['f_supplier_custom','f_truck_custom','f_driver_custom'].forEach(id=>{const el=document.getElementById(id);if(el)el.remove();});
+  // Reset desc select
+  const descSel=document.getElementById('f_desc_select');if(descSel)descSel.value='';
+  const descInp=document.getElementById('f_desc');if(descInp)descInp.value='';
+}
+async function saveRecord(){
+  const btn=document.getElementById('savebtn');btn.disabled=true;btn.textContent='Saving...';
+  const U=s=>(s||'').toUpperCase();
+  const data={reqNo:document.getElementById('f_req').value,dateRequested:document.getElementById('f_date').value,truck:U(document.getElementById('f_truck').value),vehicleType:document.getElementById('f_vtype').value,driverName:U(document.getElementById('f_driver').value),priority:document.getElementById('f_priority').value,jobCardNo:U(document.getElementById('f_jobcard').value),lpoNo:U(document.getElementById('f_lpo').value),description:U(document.getElementById('f_desc').value),qty:document.getElementById('f_qty').value,cost:document.getElementById('f_cost').value,supplier:U((()=>{
+      const custom=document.getElementById('f_supplier_custom');
+      if(custom&&custom.style.display!=='none')return custom.value;
+      return document.getElementById('f_supplier').value;
+    })()),dateReceived:document.getElementById('f_datercvd').value,status:document.getElementById('f_status').value,paymentMode:document.getElementById('f_payment').value,category:U(document.getElementById('f_category').value),requestedBy:U(document.getElementById('f_reqby').value),dateIssued:document.getElementById('f_dateissued').value,remarks:U(document.getElementById('f_remarks').value)};
+  try{
+    if(editingId){data.id=editingId;const i=ALL.findIndex(r=>r.id===editingId);if(i!==-1)ALL[i]={...ALL[i],...data};closeModal('recmodal');updateBadges();applyFilters();toast('Saving...','in');callAPI('update',{record:data}).then(()=>toast('Updated ✓','ok')).catch(()=>toast('Sync failed','er'));}
+    else{data.id=Date.now().toString(36)+Math.random().toString(36).slice(2);ALL.push(data);closeModal('recmodal');updateBadges();applyFilters();toast('Saving...','in');callAPI('add',{record:data}).then(()=>toast('Added ✓','ok')).catch(()=>{toast('Sync failed','er');ALL=ALL.filter(r=>r.id!==data.id);updateBadges();applyFilters();});}
+  }catch(e){toast('Failed to save','er');}
+  finally{btn.disabled=false;btn.textContent='Save Record';}
+}
+function deleteRecord(id){const r=ALL.find(x=>x.id===id);if(!r)return;if(r.status==='RECEIVED')askPassword(()=>doDelete(id));else doDelete(id);}
+async function doDelete(id){
+  if(!confirm('Delete this record? Cannot be undone.'))return;
+  const bk=ALL.find(r=>r.id===id);ALL=ALL.filter(r=>r.id!==id);updateBadges();applyFilters();toast('Deleting...','in');
+  callAPI('delete',{id}).then(()=>toast('Deleted ✓','in')).catch(()=>{toast('Delete failed','er');if(bk){ALL.push(bk);updateBadges();applyFilters();}});
+}
+
+// ── PASSWORD ──
+function askPassword(cb){pwdCb=cb;document.getElementById('pwdinput').value='';document.getElementById('pwderr').textContent='';document.getElementById('pwdmodal').classList.remove('hidden');setTimeout(()=>document.getElementById('pwdinput').focus(),80);}
+function checkPwd(){if(document.getElementById('pwdinput').value===ADMINPWD){closeModal('pwdmodal');if(pwdCb){pwdCb();pwdCb=null;}}else{document.getElementById('pwderr').textContent='❌ Incorrect password';document.getElementById('pwdinput').value='';document.getElementById('pwdinput').focus();}}
+document.getElementById('pwdinput').addEventListener('keydown',e=>{if(e.key==='Enter')checkPwd();});
+
+// ── SUPPLIERS ──
+function nextSupCode(){let mx=0;SUPPLIERS.forEach(s=>{const n=parseInt((s.code||'').replace('SUP-',''),10);if(!isNaN(n)&&n>mx)mx=n;});return'SUP-'+String(mx+1).padStart(4,'0');}
+function openAddSupplier(){editingSup=null;document.getElementById('suptitle').textContent='New Supplier';['s_code','s_name','s_phone','s_contact','s_address','s_cat','s_status','s_remarks'].forEach(id=>document.getElementById(id).value='');document.getElementById('s_code').value=nextSupCode();document.getElementById('s_status').value='ACTIVE';document.getElementById('supmodal').classList.remove('hidden');setTimeout(()=>document.getElementById('s_name').focus(),80);}
+function editSupplier(id){const s=SUPPLIERS.find(x=>x.id===id);if(!s)return;editingSup=id;document.getElementById('suptitle').textContent='Edit Supplier';document.getElementById('s_code').value=s.code||'';document.getElementById('s_name').value=s.name||'';document.getElementById('s_phone').value=s.phone||'';document.getElementById('s_contact').value=s.contact||'';document.getElementById('s_address').value=s.address||'';document.getElementById('s_cat').value=s.category||'';document.getElementById('s_status').value=s.status||'ACTIVE';document.getElementById('s_remarks').value=s.remarks||'';document.getElementById('supmodal').classList.remove('hidden');}
+function saveSupplier(){
+  const btn=document.getElementById('supsavebtn');
+  if(!document.getElementById('s_name').value.trim()){alert('Supplier name is required');return;}
+  btn.disabled=true;btn.textContent='Saving...';
+  const data={code:document.getElementById('s_code').value,name:document.getElementById('s_name').value.toUpperCase(),phone:document.getElementById('s_phone').value,contact:document.getElementById('s_contact').value.toUpperCase(),address:document.getElementById('s_address').value.toUpperCase(),category:document.getElementById('s_cat').value,status:document.getElementById('s_status').value,remarks:document.getElementById('s_remarks').value.toUpperCase()};
+  if(editingSup){
+    data.id=editingSup;
+    const i=SUPPLIERS.findIndex(s=>s.id===editingSup);if(i!==-1)SUPPLIERS[i]={...SUPPLIERS[i],...data};
+    closeModal('supmodal');updateBadges();renderSuppliers();toast('Saving...','in');
+    callAPI('updateSupplier',{record:data}).then(()=>toast('Supplier updated ✓','ok')).catch(()=>toast('Sync failed','er'));
+  }else{
+    data.id=Date.now().toString(36)+Math.random().toString(36).slice(2);
+    SUPPLIERS.push(data);
+    closeModal('supmodal');updateBadges();renderSuppliers();toast('Saving...','in');
+    callAPI('addSupplier',{record:data}).then(()=>toast('Supplier added ✓','ok')).catch(()=>{toast('Sync failed','er');SUPPLIERS=SUPPLIERS.filter(s=>s.id!==data.id);updateBadges();renderSuppliers();});
+  }
+  btn.disabled=false;btn.textContent='Save Supplier';
+}
+function deleteSupplier(id){
+  if(!confirm('Delete this supplier? Cannot be undone.'))return;
+  const bk=SUPPLIERS.find(s=>s.id===id);
+  SUPPLIERS=SUPPLIERS.filter(s=>s.id!==id);updateBadges();renderSuppliers();toast('Deleting...','in');
+  callAPI('deleteSupplier',{id}).then(()=>toast('Supplier deleted ✓','in')).catch(()=>{toast('Delete failed','er');if(bk){SUPPLIERS.push(bk);updateBadges();renderSuppliers();}});
+}
+function renderSuppliers(){
+  document.getElementById('viewsub').textContent=SUPPLIERS.length+' supplier'+(SUPPLIERS.length!==1?'s':'');
+  document.getElementById('tablehead').innerHTML=`<tr><th>Code</th><th>Name</th><th>Phone</th><th>Contact</th><th>Address</th><th>Category</th><th>Status</th><th>Actions</th></tr>`;
+  document.getElementById('loadmorediv').style.display='none';
+  if(SUPPLIERS.length===0){document.getElementById('TBODY').innerHTML='';document.getElementById('emptystate').style.display='block';document.getElementById('emptystate').innerHTML='<div style="font-size:40px;margin-bottom:10px">🏪</div><div style="font-size:15px;font-weight:600;color:var(--t2);margin-bottom:5px">No suppliers yet</div><div style="font-size:13px">Click + New → New Supplier to add one</div>';return;}
+  document.getElementById('emptystate').style.display='none';
+  document.getElementById('TBODY').innerHTML=SUPPLIERS.map(s=>`<tr>
+    <td><span class="reqbadge">${s.code||''}</span></td>
+    <td><b>${s.name||''}</b></td>
+    <td style="font-family:'DM Mono',monospace;font-size:11px">${s.phone||''}</td>
+    <td style="color:var(--t2)">${s.contact||''}</td>
+    <td style="color:var(--t2);font-size:11px">${s.address||''}</td>
+    <td><span style="background:var(--s2);padding:2px 7px;border-radius:5px;font-size:10px;color:var(--t2)">${s.category||''}</span></td>
+    <td><span class="sb ${s.status==='ACTIVE'?'sR':'sNR'}">${s.status||''}</span></td>
+    <td><button class="actbtn e" onclick="editSupplier('${s.id}')">✏</button><button class="actbtn d" onclick="deleteSupplier('${s.id}')">🗑</button></td>
+  </tr>`).join('');
+}
+
+// ── SPARE PARTS ──
+function nextPartCode(){let mx=0;SPAREPARTS.forEach(p=>{const n=parseInt((p.code||'').replace('PRT-',''),10);if(!isNaN(n)&&n>mx)mx=n;});return'PRT-'+String(mx+1).padStart(4,'0');}
+function openAddSparePart(){editingPart=null;document.getElementById('sptitle').textContent='New Spare Part';['p_code','p_name','p_partno','p_trucks','p_cat','p_unit','p_cost','p_status','p_remarks'].forEach(id=>document.getElementById(id).value='');document.getElementById('p_code').value=nextPartCode();document.getElementById('p_status').value='ACTIVE';document.getElementById('p_unit').value='PCS';document.getElementById('spmodal').classList.remove('hidden');setTimeout(()=>document.getElementById('p_name').focus(),80);}
+function editSparePart(id){const p=SPAREPARTS.find(x=>x.id===id);if(!p)return;editingPart=id;document.getElementById('sptitle').textContent='Edit Spare Part';document.getElementById('p_code').value=p.code||'';document.getElementById('p_name').value=p.name||'';document.getElementById('p_partno').value=p.partNo||'';document.getElementById('p_trucks').value=p.trucks||'';document.getElementById('p_cat').value=p.category||'';document.getElementById('p_unit').value=p.unit||'PCS';document.getElementById('p_cost').value=p.cost||'';document.getElementById('p_status').value=p.status||'ACTIVE';document.getElementById('p_remarks').value=p.remarks||'';document.getElementById('spmodal').classList.remove('hidden');}
+function saveSparePart(){
+  const btn=document.getElementById('spsavebtn');
+  if(!document.getElementById('p_name').value.trim()){alert('Part name is required');return;}
+  btn.disabled=true;btn.textContent='Saving...';
+  const data={code:document.getElementById('p_code').value,name:document.getElementById('p_name').value.toUpperCase(),partNo:document.getElementById('p_partno').value.toUpperCase(),trucks:document.getElementById('p_trucks').value.toUpperCase(),category:document.getElementById('p_cat').value,unit:document.getElementById('p_unit').value,cost:document.getElementById('p_cost').value,status:document.getElementById('p_status').value,remarks:document.getElementById('p_remarks').value.toUpperCase()};
+  if(editingPart){
+    data.id=editingPart;
+    const i=SPAREPARTS.findIndex(p=>p.id===editingPart);if(i!==-1)SPAREPARTS[i]={...SPAREPARTS[i],...data};
+    closeModal('spmodal');updateBadges();renderSpareParts();toast('Saving...','in');
+    callAPI('updateSparePart',{record:data}).then(()=>toast('Spare part updated ✓','ok')).catch(()=>toast('Sync failed','er'));
+  }else{
+    data.id=Date.now().toString(36)+Math.random().toString(36).slice(2);
+    SPAREPARTS.push(data);
+    closeModal('spmodal');updateBadges();renderSpareParts();toast('Saving...','in');
+    callAPI('addSparePart',{record:data}).then(()=>toast('Spare part added ✓','ok')).catch(()=>{toast('Sync failed','er');SPAREPARTS=SPAREPARTS.filter(p=>p.id!==data.id);updateBadges();renderSpareParts();});
+  }
+  btn.disabled=false;btn.textContent='Save Spare Part';
+}
+function deleteSparePart(id){
+  if(!confirm('Delete this spare part? Cannot be undone.'))return;
+  const bk=SPAREPARTS.find(p=>p.id===id);
+  SPAREPARTS=SPAREPARTS.filter(p=>p.id!==id);updateBadges();renderSpareParts();toast('Deleting...','in');
+  callAPI('deleteSparePart',{id}).then(()=>toast('Spare part deleted ✓','in')).catch(()=>{toast('Delete failed','er');if(bk){SPAREPARTS.push(bk);updateBadges();renderSpareParts();}});
+}
+function renderSpareParts(){
+  document.getElementById('viewsub').textContent=SPAREPARTS.length+' part'+(SPAREPARTS.length!==1?'s':'');
+  document.getElementById('tablehead').innerHTML=`<tr><th>Code</th><th>Part Name</th><th>Part No</th><th>Compatible Trucks</th><th>Category</th><th>Unit</th><th>Avg Cost</th><th>Status</th><th>Actions</th></tr>`;
+  document.getElementById('loadmorediv').style.display='none';
+  if(SPAREPARTS.length===0){document.getElementById('TBODY').innerHTML='';document.getElementById('emptystate').style.display='block';document.getElementById('emptystate').innerHTML='<div style="font-size:40px;margin-bottom:10px">🔧</div><div style="font-size:15px;font-weight:600;color:var(--t2);margin-bottom:5px">No spare parts yet</div><div style="font-size:13px">Click + New → New Spare Part to add one</div>';return;}
+  document.getElementById('emptystate').style.display='none';
+  document.getElementById('TBODY').innerHTML=SPAREPARTS.map(p=>`<tr>
+    <td><span class="reqbadge">${p.code||''}</span></td>
+    <td><b>${p.name||''}</b></td>
+    <td style="font-family:'DM Mono',monospace;font-size:11px;color:var(--t2)">${p.partNo||''}</td>
+    <td style="color:var(--t2);font-size:11px">${p.trucks||''}</td>
+    <td><span style="background:var(--s2);padding:2px 7px;border-radius:5px;font-size:10px;color:var(--t2)">${p.category||''}</span></td>
+    <td style="color:var(--t2);font-size:11px">${p.unit||''}</td>
+    <td style="font-family:'DM Mono',monospace">${p.cost?Number(p.cost).toLocaleString():''}</td>
+    <td><span class="sb ${p.status==='ACTIVE'?'sR':'sNR'}">${p.status||''}</span></td>
+    <td><button class="actbtn e" onclick="editSparePart('${p.id}')">✏</button><button class="actbtn d" onclick="deleteSparePart('${p.id}')">🗑</button></td>
+  </tr>`).join('');
+}
+
+
+// ── POPULATE FORM DROPDOWNS ──
+function populateFormDropdowns() {
+
+  // 1. SUPPLIER dropdown
+  const supSel = document.getElementById('f_supplier');
+  if (supSel && supSel.tagName === 'SELECT') {
+    const cur = supSel.value;
+    supSel.innerHTML = '<option value="">Select supplier...</option>';
+    SUPPLIERS.filter(s => s.status !== 'INACTIVE').forEach(s => {
+      const o = document.createElement('option');
+      o.value = s.name;
+      o.textContent = s.code + ' — ' + s.name;
+      supSel.appendChild(o);
+    });
+    const oc = document.createElement('option');
+    oc.value = '__custom__'; oc.textContent = '✏ Type manually...';
+    supSel.appendChild(oc);
+    if (cur) supSel.value = cur;
+  }
+
+  // 2. SPARE PARTS dropdown
+  const descSel = document.getElementById('f_desc_select');
+  if (descSel) {
+    descSel.innerHTML = '<option value="">Select spare part or type custom...</option>';
+    SPAREPARTS.filter(p => p.status !== 'INACTIVE').forEach(p => {
+      const o = document.createElement('option');
+      o.value = p.name;
+      o.textContent = p.code + ' — ' + p.name;
+      descSel.appendChild(o);
+    });
+    const oc = document.createElement('option');
+    oc.value = '__custom__'; oc.textContent = '✏ Type manually...';
+    descSel.appendChild(oc);
+  }
+
+  // 3. TRUCK/VEHICLE dropdown — populate from VEHICLES
+  const truckSel = document.getElementById('f_truck');
+  if (truckSel) {
+    const cur = truckSel.value;
+    truckSel.innerHTML = '<option value="">Select vehicle...</option>';
+    VEHICLES.filter(v => v.status !== 'INACTIVE').forEach(v => {
+      const o = document.createElement('option');
+      o.value = v.plate;
+      o.textContent = v.plate + (v.make ? ' — ' + v.make : '');
+      o.setAttribute('data-vtype', v.vehicleType || '');
+      truckSel.appendChild(o);
+    });
+    const oc = document.createElement('option');
+    oc.value = '__custom__'; oc.textContent = '✏ Type manually...';
+    truckSel.appendChild(oc);
+    if (cur) truckSel.value = cur;
+  }
+
+  // 4. JOB CARD dropdown — exclude COMPLETED
+  const jcSel = document.getElementById('f_jobcard');
+  if (jcSel) {
+    const cur = jcSel.value;
+    jcSel.innerHTML = '<option value="">Select job card...</option>';
+    JOBCARDS.filter(j => j.workStatus !== 'COMPLETED').forEach(j => {
+      const o = document.createElement('option');
+      o.value = j.code;
+      o.textContent = j.code + (j.vehicle ? ' — ' + j.vehicle : '') + (j.taskDescription ? ' (' + j.taskDescription.substring(0,20) + ')' : '');
+      jcSel.appendChild(o);
+    });
+    const oc = document.createElement('option');
+    oc.value = 'OTHER'; oc.textContent = 'Other';
+    jcSel.appendChild(oc);
+    if (cur) jcSel.value = cur;
   }
 }
 
-// ════════════════════════════════════════════════
-// DELETE
-// ════════════════════════════════════════════════
-function deleteRecord(id) {
-  const r = ALL.find(x => x.id === id);
-  if (!r) return;
-  if (r.status === 'RECEIVED') askPassword(() => doDelete(id));
-  else doDelete(id);
-}
-
-async function doDelete(id) {
-  if (!confirm('Delete this record? Cannot be undone.')) return;
-  try {
-    await callAPI('delete', { id });
-    ALL = ALL.filter(r => r.id !== id);
-    updateBadges();
-    applyFilters();
-    toast('Deleted', 'in');
-  } catch(e) {
-    toast('Failed to delete', 'er');
+// When truck selected in requisition — auto fill vehicle type
+function onTruckSelect() {
+  const sel = document.getElementById('f_truck');
+  if (!sel) return;
+  const plate = sel.value;
+  if (!plate || plate === '__custom__') return;
+  // Find vehicle and auto-fill type
+  const veh = VEHICLES.find(v => v.plate === plate);
+  if (veh) {
+    const vt = document.getElementById('f_vtype');
+    if (vt && veh.vehicleType) vt.value = veh.vehicleType;
   }
 }
 
-// ════════════════════════════════════════════════
-// PASSWORD
-// ════════════════════════════════════════════════
-function askPassword(cb) {
-  pwdCb = cb;
-  document.getElementById('pwdinput').value = '';
-  document.getElementById('pwderr').textContent = '';
-  document.getElementById('pwdmodal').classList.remove('hidden');
-  setTimeout(() => document.getElementById('pwdinput').focus(), 80);
+function onSupplierSelect() {
+  const sel = document.getElementById('f_supplier');
+  if (sel.value === '__custom__') {
+    // Convert to text input temporarily
+    const wrapper = sel.parentNode;
+    sel.style.display = 'none';
+    const inp = document.createElement('input');
+    inp.type = 'text';
+    inp.id = 'f_supplier_custom';
+    inp.placeholder = 'Type supplier name...';
+    inp.style.cssText = "background:var(--s2);border:1.5px solid var(--ac);border-radius:7px;padding:9px 11px;color:var(--tx);font-family:'DM Sans',sans-serif;font-size:13px;outline:none;width:100%";
+    wrapper.appendChild(inp);
+    inp.focus();
+  }
 }
 
-function checkPwd() {
-  if (document.getElementById('pwdinput').value === ADMINPWD) {
-    closeModal('pwdmodal');
-    if (pwdCb) { pwdCb(); pwdCb = null; }
+// ── HELPERS ──
+function closeModal(id){document.getElementById(id).classList.add('hidden');}
+document.querySelectorAll('.overlay').forEach(o=>o.addEventListener('click',e=>{if(e.target===o){o.classList.add('hidden');pwdCb=null;}}));
+function fd(v){if(!v)return'–';const m=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];const d=new Date(v);if(isNaN(d.getTime()))return v;return`${String(d.getDate()).padStart(2,'0')}-${m[d.getMonth()]}-${String(d.getFullYear()).slice(-2)}`;}
+function todayStr(){return new Date().toISOString().split('T')[0];}
+function toast(msg,type='in'){const icons={ok:'✅',er:'❌',in:'ℹ️'};const el=document.createElement('div');el.className=`toast ${type}`;el.innerHTML=`<span>${icons[type]}</span><span>${msg}</span>`;document.getElementById('toastbox').appendChild(el);setTimeout(()=>el.remove(),3000);}
+function doExport(){const data=filtered.length?filtered:ALL;const hd=['Req No','Date Requested','Truck','Vehicle Type','Driver Name','Priority','Job Card No','LPO No','Description','Qty','Cost','Supplier','Date Received','Status','Payment Mode','Category','Requested By','Remarks','Date Issued'];const ks=['reqNo','dateRequested','truck','vehicleType','driverName','priority','jobCardNo','lpoNo','description','qty','cost','supplier','dateReceived','status','paymentMode','category','requestedBy','remarks','dateIssued'];const rows=[hd,...data.map(r=>ks.map(k=>r[k]||''))];const csv=rows.map(r=>r.map(v=>`"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n');const a=document.createElement('a');a.href='data:text/csv;charset=utf-8,'+encodeURIComponent(csv);a.download=`requisitions_${todayStr()}.csv`;a.click();toast('Exported','ok');}
+function clearSearch(){['SEARCH1','SEARCH2','SEARCH3'].forEach(id=>document.getElementById(id).value='');document.getElementById('STATUSFILTER').value='';document.getElementById('SEARCHFIELD1').value='truck';document.getElementById('SEARCHFIELD2').value='';document.getElementById('SEARCHFIELD3').value='';document.getElementById('SEARCH1').placeholder='e.g. T843DEE';applyFilters();document.getElementById('SEARCH1').focus();}
+
+
+// ════════════════════════════════════════════════
+// JOB CARDS
+// ════════════════════════════════════════════════
+function calcDuration() {
+  const s = document.getElementById('jc_startdate').value;
+  const e = document.getElementById('jc_enddate').value;
+  const dur = document.getElementById('jc_duration');
+  if (s && e) {
+    const start = new Date(s);
+    const end = new Date(e);
+    const diff = Math.round((end - start) / (1000 * 60 * 60 * 24));
+    dur.value = diff >= 0 ? diff : 0;
   } else {
-    document.getElementById('pwderr').textContent = '❌ Incorrect password';
-    document.getElementById('pwdinput').value = '';
-    document.getElementById('pwdinput').focus();
+    dur.value = '';
   }
 }
 
-document.getElementById('pwdinput').addEventListener('keydown', e => { if (e.key === 'Enter') checkPwd(); });
-
 // ════════════════════════════════════════════════
-// MODAL
+// JOB CARDS
 // ════════════════════════════════════════════════
-function closeModal(id) { document.getElementById(id).classList.add('hidden'); }
+let JOBCARDS = [];
+let editingJC = null;
 
-document.querySelectorAll('.overlay').forEach(o => {
-  o.addEventListener('click', e => { if (e.target === o) { o.classList.add('hidden'); pwdCb = null; } });
-});
-
-// ════════════════════════════════════════════════
-// HELPERS
-// ════════════════════════════════════════════════
-function formatDate(v) {
-  if (!v) return '–';
-  const m = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-  const d = new Date(v);
-  if (isNaN(d.getTime())) return v;
-  return `${String(d.getDate()).padStart(2,'0')}-${m[d.getMonth()]}-${String(d.getFullYear()).slice(-2)}`;
-}
-
-function todayStr() { return new Date().toISOString().split('T')[0]; }
-
-function toast(msg, type = 'in') {
-  const icons = { ok: '✅', er: '❌', in: 'ℹ️' };
-  const el = document.createElement('div');
-  el.className = `toast ${type}`;
-  el.innerHTML = `<span>${icons[type]}</span><span>${msg}</span>`;
-  document.getElementById('toastbox').appendChild(el);
-  setTimeout(() => el.remove(), 3000);
-}
-
-// ════════════════════════════════════════════════
-// EXPORT
-// ════════════════════════════════════════════════
-function doExport() {
-  const data = filtered.length ? filtered : ALL;
-  const hd = ['Req No','Date Requested','Truck','Vehicle Type','Driver Name','Priority','Job Card No','LPO No','Description','Qty','Cost','Supplier','Date Received','Status','Payment Mode','Category','Requested By','Remarks','Date Issued'];
-  const ks = ['reqNo','dateRequested','truck','vehicleType','driverName','priority','jobCardNo','lpoNo','description','qty','cost','supplier','dateReceived','status','paymentMode','category','requestedBy','remarks','dateIssued'];
-  const rows = [hd, ...data.map(r => ks.map(k => r[k] || ''))];
-  const csv = rows.map(r => r.map(v => `"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n');
-  const a = document.createElement('a');
-  a.href = 'data:text/csv;charset=utf-8,' + encodeURIComponent(csv);
-  a.download = `requisitions_${todayStr()}.csv`;
-  a.click();
-  toast('Exported', 'ok');
-}
-
-function exportParts() {
-  const data = ALL.filter(r => r.status === 'RECEIVED');
-  const hd = ['Req No','Date','Truck','Driver','Description','Qty','Cost','Supplier','Date Received','Payment','Job Card'];
-  const ks = ['reqNo','dateRequested','truck','driverName','description','qty','cost','supplier','dateReceived','paymentMode','jobCardNo'];
-  const rows = [hd, ...data.map(r => ks.map(k => r[k] || ''))];
-  const csv = rows.map(r => r.map(v => `"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n');
-  const a = document.createElement('a');
-  a.href = 'data:text/csv;charset=utf-8,' + encodeURIComponent(csv);
-  a.download = `parts_${todayStr()}.csv`;
-  a.click();
-  toast('Parts exported', 'ok');
-}
-
-// ════════════════════════════════════════════════
-// CLEAR SEARCH
-// ════════════════════════════════════════════════
-function clearSearch() {
-  ['SEARCH1','SEARCH2','SEARCH3'].forEach(id => {
-    document.getElementById(id).value = '';
+function nextJCCode() {
+  let mx = 0;
+  JOBCARDS.forEach(j => {
+    const n = parseInt((j.code||'').replace('AK',''), 10);
+    if (!isNaN(n) && n > mx) mx = n;
   });
-  document.getElementById('SEARCHFIELD1').value = 'truck';
-  document.getElementById('SEARCHFIELD2').value = '';
-  document.getElementById('SEARCHFIELD3').value = '';
-  document.getElementById('SEARCH1').placeholder = 'e.g. T843DEE';
-  document.getElementById('SEARCH2').placeholder = 'Optional...';
-  document.getElementById('SEARCH3').placeholder = 'Optional...';
-  document.getElementById('STATUSFILTER').value = '';
-  applyFilters();
-  document.getElementById('SEARCH1').focus();
+  return 'AK' + String(mx + 1).padStart(5, '0');
+});
+  return 'AK' + String(mx + 1).padStart(5, '0');
 }
 
-// ════════════════════════════════════════════════
-// INIT
-// ════════════════════════════════════════════════
-async function init() {
-  showLoad('Connecting to database...');
-  const ok = await loadRecords();
-  hideLoad();
+function openAddJobCard() {
+  editingJC = null;
+  document.getElementById('jctitle').textContent = 'New Job Card';
+  const fields = ['jc_no','jc_vtype','jc_odometer','jc_orderstatus','jc_client','jc_category','jc_location','jc_maintlevel','jc_workstatus','jc_manualcode','jc_task','jc_parts','jc_startdate','jc_enddate','jc_releasedate','jc_duration','jc_comment'];
+  fields.forEach(id => { const el = document.getElementById(id); if(el) el.value = ''; });
+  // Reset vehicle/driver custom inputs
+  ['jc_vehicle_custom','jc_driver_custom'].forEach(id=>{const el=document.getElementById(id);if(el)el.remove();});
+  const jcv=document.getElementById('jc_vehicle');if(jcv){jcv.style.display='';jcv.value='';}
+  const jcd=document.getElementById('jc_driver');if(jcd){jcd.style.display='';jcd.value='';}
+  // Reset client field
+  const cb=document.getElementById('jc_client_booked');if(cb){cb.style.display='none';cb.value='';}
+  const ci=document.getElementById('jc_client');if(ci){ci.style.display='';ci.value='';}
+  document.getElementById('jc_no').value = nextJCCode();
+  document.getElementById('jc_startdate').value = todayStr();
+  populateJCFormDropdowns();
+  document.getElementById('jcmodal').classList.remove('hidden');
+  setTimeout(() => document.getElementById('jc_vehicle').focus(), 80);
+}
 
-  if (ok) {
-    updateBadges();
-    buildHeader();
-    applyFilters();
-    toast('Connected — ' + ALL.length + ' records loaded', 'ok');
-    // Auto refresh every 30 seconds
-    setInterval(async () => {
-      const res = await loadRecords();
-      if (res) { updateBadges(); applyFilters(); }
-    }, 30000);
+function editJobCard(id) {
+  const j = JOBCARDS.find(x => x.id === id);
+  if (!j) return;
+  editingJC = id;
+  document.getElementById('jctitle').textContent = 'Edit Job Card';
+  document.getElementById('jc_no').value = j.code || '';
+  document.getElementById('jc_vehicle').value = j.vehicle || '';
+  document.getElementById('jc_vtype').value = j.vehicleType || '';
+  document.getElementById('jc_driver').value = j.driverName || '';
+  document.getElementById('jc_odometer').value = j.odometer || '';
+  document.getElementById('jc_orderstatus').value = j.orderStatus || '';
+  document.getElementById('jc_client').value = j.clientName || '';
+  document.getElementById('jc_category').value = j.category || '';
+  document.getElementById('jc_location').value = j.location || '';
+  document.getElementById('jc_maintlevel').value = j.maintenanceLevel || '';
+  document.getElementById('jc_workstatus').value = j.workStatus || '';
+  document.getElementById('jc_manualcode').value = j.jobCardNo || '';
+  document.getElementById('jc_task').value = j.taskDescription || '';
+  document.getElementById('jc_parts').value = j.partsRequested || '';
+  document.getElementById('jc_startdate').value = j.startDate || '';
+  document.getElementById('jc_enddate').value = j.endDate || '';
+  document.getElementById('jc_releasedate').value = j.expectedReleaseDate || '';
+  document.getElementById('jc_duration').value = j.duration || '';
+  document.getElementById('jc_comment').value = j.comment || '';
+  document.getElementById('jcmodal').classList.remove('hidden');
+}
+
+function saveJobCard() {
+  const btn = document.getElementById('jcsavebtn');
+  if (!document.getElementById('jc_vehicle').value.trim()) { alert('Vehicle No is required'); return; }
+  btn.disabled = true; btn.textContent = 'Saving...';
+
+  const U = s => (s||'').toUpperCase();
+  const data = {
+    code: document.getElementById('jc_no').value,
+    vehicle: U((()=>{const c=document.getElementById('jc_vehicle_custom');if(c)return c.value;const s=document.getElementById('jc_vehicle');return s?s.value:'';})()),
+    vehicleType: document.getElementById('jc_vtype').value,
+    driverName: U((()=>{const c=document.getElementById('jc_driver_custom');if(c)return c.value;return document.getElementById('jc_driver').value||'';})()),
+    odometer: document.getElementById('jc_odometer').value,
+    orderStatus: document.getElementById('jc_orderstatus').value,
+    clientName: U(document.getElementById('jc_client').value),
+    category: document.getElementById('jc_category').value,
+    location: U(document.getElementById('jc_location').value),
+    maintenanceLevel: document.getElementById('jc_maintlevel').value,
+    workStatus: document.getElementById('jc_workstatus').value,
+    jobCardNo: U(document.getElementById('jc_manualcode').value),
+    taskDescription: U(document.getElementById('jc_task').value),
+    partsRequested: U(document.getElementById('jc_parts').value),
+    startDate: document.getElementById('jc_startdate').value,
+    endDate: document.getElementById('jc_enddate').value,
+    expectedReleaseDate: document.getElementById('jc_releasedate').value,
+    duration: document.getElementById('jc_duration').value,
+    comment: U(document.getElementById('jc_comment').value),
+  };
+
+  if (editingJC) {
+    data.id = editingJC;
+    const i = JOBCARDS.findIndex(j => j.id === editingJC);
+    if (i !== -1) JOBCARDS[i] = { ...JOBCARDS[i], ...data };
+    closeModal('jcmodal'); updateBadges(); renderJobCards(); toast('Saving...', 'in');
+    callAPI('updateJobCard', { record: data }).then(() => toast('Job Card updated ✓', 'ok')).catch(() => toast('Sync failed', 'er'));
   } else {
+    data.id = Date.now().toString(36) + Math.random().toString(36).slice(2);
+    JOBCARDS.push(data);
+    closeModal('jcmodal'); updateBadges(); renderJobCards(); toast('Saving...', 'in');
+    callAPI('addJobCard', { record: data }).then(() => toast('Job Card added ✓', 'ok')).catch(() => { toast('Sync failed', 'er'); JOBCARDS = JOBCARDS.filter(j => j.id !== data.id); updateBadges(); renderJobCards(); });
+  }
+  btn.disabled = false; btn.textContent = 'Save Job Card';
+}
+
+function deleteJobCard(id) {
+  if (!confirm('Delete this job card? Cannot be undone.')) return;
+  const bk = JOBCARDS.find(j => j.id === id);
+  JOBCARDS = JOBCARDS.filter(j => j.id !== id);
+  updateBadges(); renderJobCards(); toast('Deleting...', 'in');
+  callAPI('deleteJobCard', { id }).then(() => toast('Job Card deleted ✓', 'in')).catch(() => { toast('Delete failed', 'er'); if(bk){JOBCARDS.push(bk);updateBadges();renderJobCards();} });
+}
+
+function renderJobCards() {
+  document.getElementById('viewsub').textContent = JOBCARDS.length + ' job card' + (JOBCARDS.length !== 1 ? 's' : '');
+  document.getElementById('tablehead').innerHTML = `<tr>
+    <th>JC Code</th>
+    <th>Vehicle No</th>
+    <th>Type</th>
+    <th>Driver</th>
+    <th>Odometer</th>
+    <th>Order Status</th>
+    <th>Client</th>
+    <th>Category</th>
+    <th>Location</th>
+    <th>Maint. Level</th>
+    <th>Job Card No</th>
+    <th>Task</th>
+    <th>Parts</th>
+    <th>Start Date</th>
+    <th>End Date</th>
+    <th>Release Date</th>
+    <th>Duration</th>
+    <th>Work Status</th>
+    <th>Comment</th>
+    <th>Actions</th>
+  </tr>`;
+  document.getElementById('loadmorediv').style.display = 'none';
+
+  const wsColors = {
+    'IN PROGRESS': 'sPNR',
+    'COMPLETED': 'sR',
+    'STALLED': 'sOH',
+    'PENDING': 'sRNP',
+    'TO BE REPAIRED AFTER LOADING': 'sNR'
+  };
+
+  if (JOBCARDS.length === 0) {
     document.getElementById('TBODY').innerHTML = '';
     document.getElementById('emptystate').style.display = 'block';
-    document.getElementById('emptystate').innerHTML = `
-      <div style="font-size:40px;margin-bottom:10px">⚠️</div>
-      <div style="font-size:15px;font-weight:600;color:var(--t2);margin-bottom:5px">Cannot connect to database</div>
-      <div style="font-size:13px;margin-bottom:14px">Check your internet connection</div>
-      <button class="btn bp" onclick="init()">Try Again</button>`;
+    document.getElementById('emptystate').innerHTML = '<div style="font-size:40px;margin-bottom:10px">🔧</div><div style="font-size:15px;font-weight:600;color:var(--t2);margin-bottom:5px">No job cards yet</div><div style="font-size:13px">Click + New → New Job Card to create one</div>';
+    return;
+  }
+
+  document.getElementById('emptystate').style.display = 'none';
+  document.getElementById('TBODY').innerHTML = JOBCARDS.map(j => `<tr>
+    <td><span class="reqbadge">${j.code||''}</span></td>
+    <td><b>${j.vehicle||''}</b></td>
+    <td style="color:var(--t2);font-size:10px">${j.vehicleType||''}</td>
+    <td>${j.driverName||''}</td>
+    <td style="font-family:'DM Mono',monospace;font-size:10px">${j.odometer?Number(j.odometer).toLocaleString()+' km':''}</td>
+    <td><span style="font-size:10px;font-weight:600;color:${j.orderStatus==='BOOKED'?'#4ade80':'#f97316'}">${j.orderStatus||''}</span></td>
+    <td style="color:var(--t2)">${j.clientName||''}</td>
+    <td><span style="background:${j.category==='WORKSHOP'?'rgba(79,142,247,.15)':'rgba(249,115,22,.15)'};color:${j.category==='WORKSHOP'?'#4f8ef7':'#f97316'};padding:2px 7px;border-radius:5px;font-size:10px;font-weight:700">${j.category||''}</span></td>
+    <td style="color:var(--t2);font-size:10px">${j.location||''}</td>
+    <td style="color:var(--t2);font-size:10px">${j.maintenanceLevel||''}</td>
+    <td><span style="font-family:'DM Mono',monospace;font-size:10px;color:var(--ac)">${j.jobCardNo||''}</span></td>
+    <td title="${j.taskDescription||''}">${(j.taskDescription||'').substring(0,25)}${(j.taskDescription||'').length>25?'…':''}</td>
+    <td title="${j.partsRequested||''}" style="color:var(--t2);font-size:10px">${(j.partsRequested||'').substring(0,20)}${(j.partsRequested||'').length>20?'…':''}</td>
+    <td>${fd(j.startDate)}</td>
+    <td>${fd(j.endDate)}</td>
+    <td>${fd(j.expectedReleaseDate)}</td>
+    <td style="font-family:'DM Mono',monospace;text-align:center">${j.duration||''}</td>
+    <td><span class="sb ${wsColors[j.workStatus]||'sNR'}">${j.workStatus||''}</span></td>
+    <td style="color:var(--t2);font-size:10px" title="${j.comment||''}">${(j.comment||'').substring(0,20)}${(j.comment||'').length>20?'…':''}</td>
+    <td><button class="actbtn e" onclick="editJobCard('${j.id}')">✏</button><button class="actbtn d" onclick="deleteJobCard('${j.id}')">🗑</button></td>
+  </tr>`).join('');
+}
+
+
+// ════════════════════════════════════════════════
+// DRIVERS
+// ════════════════════════════════════════════════
+let DRIVERS = [];
+let editingDriver = null;
+
+function nextDriverCode() {
+  let mx = 0;
+  DRIVERS.forEach(d => { const n = parseInt((d.code||'').replace('DRV-',''),10); if(!isNaN(n)&&n>mx)mx=n; });
+  return 'DRV-' + String(mx+1).padStart(4,'0');
+}
+
+function openAddDriver() {
+  editingDriver = null;
+  document.getElementById('drvtitle').textContent = 'New Driver';
+  ['d_code','d_name','d_phone','d_emergency','d_license','d_licenseexp','d_licenseclass','d_passport','d_passportexp','d_nationalid','d_dob','d_nationality','d_vehicle','d_status','d_remarks'].forEach(id=>{ const el=document.getElementById(id); if(el)el.value=''; });
+  document.getElementById('d_code').value = nextDriverCode();
+  document.getElementById('d_status').value = 'ACTIVE';
+  document.getElementById('drvmodal').classList.remove('hidden');
+  setTimeout(()=>document.getElementById('d_name').focus(), 80);
+}
+
+function editDriver(id) {
+  const d = DRIVERS.find(x=>x.id===id); if(!d) return;
+  editingDriver = id;
+  document.getElementById('drvtitle').textContent = 'Edit Driver';
+  document.getElementById('d_code').value = d.code||'';
+  document.getElementById('d_name').value = d.name||'';
+  document.getElementById('d_phone').value = d.phone||'';
+  document.getElementById('d_emergency').value = d.emergency||'';
+  document.getElementById('d_license').value = d.licenseNo||'';
+  document.getElementById('d_licenseexp').value = d.licenseExpiry||'';
+  document.getElementById('d_licenseclass').value = d.licenseClass||'';
+  document.getElementById('d_passport').value = d.passportNo||'';
+  document.getElementById('d_passportexp').value = d.passportExpiry||'';
+  document.getElementById('d_nationalid').value = d.nationalId||'';
+  document.getElementById('d_dob').value = d.dob||'';
+  document.getElementById('d_nationality').value = d.nationality||'';
+  document.getElementById('d_vehicle').value = d.assignedVehicle||'';
+  document.getElementById('d_status').value = d.status||'ACTIVE';
+  document.getElementById('d_remarks').value = d.remarks||'';
+  document.getElementById('drvmodal').classList.remove('hidden');
+}
+
+function saveDriver() {
+  const btn = document.getElementById('drvsavebtn');
+  if (!document.getElementById('d_name').value.trim()) { alert('Driver name is required'); return; }
+  btn.disabled=true; btn.textContent='Saving...';
+  const U = s => (s||'').toUpperCase();
+  const data = {
+    code: document.getElementById('d_code').value,
+    name: U(document.getElementById('d_name').value),
+    phone: document.getElementById('d_phone').value,
+    emergency: document.getElementById('d_emergency').value,
+    licenseNo: U(document.getElementById('d_license').value),
+    licenseExpiry: document.getElementById('d_licenseexp').value,
+    licenseClass: document.getElementById('d_licenseclass').value,
+    passportNo: U(document.getElementById('d_passport').value),
+    passportExpiry: document.getElementById('d_passportexp').value,
+    nationalId: U(document.getElementById('d_nationalid').value),
+    dob: document.getElementById('d_dob').value,
+    nationality: U(document.getElementById('d_nationality').value),
+    assignedVehicle: U(document.getElementById('d_vehicle').value),
+    status: document.getElementById('d_status').value,
+    remarks: U(document.getElementById('d_remarks').value),
+  };
+  if (editingDriver) {
+    data.id = editingDriver;
+    const i = DRIVERS.findIndex(d=>d.id===editingDriver);
+    if(i!==-1) DRIVERS[i] = {...DRIVERS[i],...data};
+    closeModal('drvmodal'); updateBadges(); renderDrivers(); toast('Saving...','in');
+    callAPI('updateDriver',{record:data}).then(()=>toast('Driver updated ✓','ok')).catch(()=>toast('Sync failed','er'));
+  } else {
+    data.id = Date.now().toString(36)+Math.random().toString(36).slice(2);
+    DRIVERS.push(data);
+    closeModal('drvmodal'); updateBadges(); renderDrivers(); toast('Saving...','in');
+    callAPI('addDriver',{record:data}).then(()=>toast('Driver added ✓','ok')).catch(()=>{toast('Sync failed','er');DRIVERS=DRIVERS.filter(d=>d.id!==data.id);updateBadges();renderDrivers();});
+  }
+  btn.disabled=false; btn.textContent='Save Driver';
+}
+
+function deleteDriver(id) {
+  if(!confirm('Delete this driver? Cannot be undone.')) return;
+  const bk = DRIVERS.find(d=>d.id===id);
+  DRIVERS = DRIVERS.filter(d=>d.id!==id); updateBadges(); renderDrivers(); toast('Deleting...','in');
+  callAPI('deleteDriver',{id}).then(()=>toast('Driver deleted ✓','in')).catch(()=>{toast('Delete failed','er');if(bk){DRIVERS.push(bk);updateBadges();renderDrivers();}});
+}
+
+function renderDrivers() {
+  document.getElementById('viewsub').textContent = DRIVERS.length+' driver'+(DRIVERS.length!==1?'s':'');
+  document.getElementById('loadmorediv').style.display='none';
+  document.getElementById('tablehead').innerHTML=`<tr>
+    <th>Code</th><th>Full Name</th><th>Phone</th><th>Emergency</th>
+    <th>License No</th><th>License Expiry</th><th>License Class</th>
+    <th>Passport No</th><th>Passport Expiry</th><th>National ID</th>
+    <th>Date of Birth</th><th>Nationality</th><th>Assigned Vehicle</th>
+    <th>Status</th><th>Actions</th>
+  </tr>`;
+  if (DRIVERS.length===0) {
+    document.getElementById('TBODY').innerHTML='';
+    document.getElementById('emptystate').style.display='block';
+    document.getElementById('emptystate').innerHTML='<div style="font-size:40px;margin-bottom:10px">👤</div><div style="font-size:15px;font-weight:600;color:var(--t2);margin-bottom:5px">No drivers yet</div><div style="font-size:13px">Click + New → New Driver to add one</div>';
+    return;
+  }
+  document.getElementById('emptystate').style.display='none';
+
+  function expiryBadge(dateStr) {
+    if (!dateStr) return '<span style="color:var(--t3)">—</span>';
+    const d = new Date(dateStr);
+    const now = new Date();
+    const days = Math.ceil((d-now)/(1000*60*60*24));
+    let color = '#4ade80'; // green
+    if (days < 0) color = '#f87171';
+    else if (days < 30) color = '#f87171';
+    else if (days < 90) color = '#fbbf24';
+    return `<span style="font-size:10px;font-weight:600;color:${color}">${fd(dateStr)}</span>`;
+  }
+
+  const statusColors = {ACTIVE:'sR', INACTIVE:'sNR', SUSPENDED:'sOH'};
+  document.getElementById('TBODY').innerHTML = DRIVERS.map(d=>`<tr>
+    <td><span class="reqbadge">${d.code||''}</span></td>
+    <td><b>${d.name||''}</b></td>
+    <td style="font-family:'DM Mono',monospace;font-size:11px">${d.phone||''}</td>
+    <td style="font-family:'DM Mono',monospace;font-size:11px;color:var(--t2)">${d.emergency||''}</td>
+    <td style="font-family:'DM Mono',monospace;font-size:11px">${d.licenseNo||''}</td>
+    <td>${expiryBadge(d.licenseExpiry)}</td>
+    <td style="color:var(--t2);font-size:10px">${d.licenseClass||''}</td>
+    <td style="font-family:'DM Mono',monospace;font-size:11px">${d.passportNo||''}</td>
+    <td>${expiryBadge(d.passportExpiry)}</td>
+    <td style="font-family:'DM Mono',monospace;font-size:11px;color:var(--t2)">${d.nationalId||''}</td>
+    <td style="font-size:10px;color:var(--t2)">${fd(d.dob)}</td>
+    <td style="font-size:10px;color:var(--t2)">${d.nationality||''}</td>
+    <td><span style="color:var(--ac);font-weight:700;font-size:11px">${d.assignedVehicle||''}</span></td>
+    <td><span class="sb ${statusColors[d.status]||'sNR'}">${d.status||''}</span></td>
+    <td><button class="actbtn e" onclick="editDriver('${d.id}')">✏</button><button class="actbtn d" onclick="deleteDriver('${d.id}')">🗑</button></td>
+  </tr>`).join('');
+}
+
+// ════════════════════════════════════════════════
+// VEHICLES
+// ════════════════════════════════════════════════
+let VEHICLES = [];
+let editingVehicle = null;
+
+function nextVehicleCode() {
+  let mx = 0;
+  VEHICLES.forEach(v => { const n = parseInt((v.code||'').replace('VEH-',''),10); if(!isNaN(n)&&n>mx)mx=n; });
+  return 'VEH-' + String(mx+1).padStart(4,'0');
+}
+
+function openAddVehicle() {
+  editingVehicle = null;
+  document.getElementById('vehtitle').textContent = 'New Vehicle';
+  ['v_code','v_plate','v_type','v_make','v_model','v_year','v_engine','v_chassis','v_colour','v_fuel','v_odometer','v_driver','v_roadlic','v_insurance','v_inspection','v_ownership','v_status','v_remarks'].forEach(id=>{ const el=document.getElementById(id); if(el)el.value=''; });
+  document.getElementById('v_code').value = nextVehicleCode();
+  document.getElementById('v_status').value = 'ACTIVE';
+  document.getElementById('vehmodal').classList.remove('hidden');
+  setTimeout(()=>document.getElementById('v_plate').focus(), 80);
+}
+
+function editVehicle(id) {
+  const v = VEHICLES.find(x=>x.id===id); if(!v) return;
+  editingVehicle = id;
+  document.getElementById('vehtitle').textContent = 'Edit Vehicle';
+  document.getElementById('v_code').value = v.code||'';
+  document.getElementById('v_plate').value = v.plate||'';
+  document.getElementById('v_type').value = v.vehicleType||'';
+  document.getElementById('v_make').value = v.make||'';
+  document.getElementById('v_model').value = v.model||'';
+  document.getElementById('v_year').value = v.year||'';
+  document.getElementById('v_engine').value = v.engineNo||'';
+  document.getElementById('v_chassis').value = v.chassisNo||'';
+  document.getElementById('v_colour').value = v.colour||'';
+  document.getElementById('v_fuel').value = v.fuelType||'';
+  document.getElementById('v_odometer').value = v.odometer||'';
+  document.getElementById('v_driver').value = v.assignedDriver||'';
+  document.getElementById('v_roadlic').value = v.roadLicExpiry||'';
+  document.getElementById('v_insurance').value = v.insuranceExpiry||'';
+  document.getElementById('v_inspection').value = v.inspectionExpiry||'';
+  document.getElementById('v_ownership').value = v.ownership||'';
+  document.getElementById('v_status').value = v.status||'ACTIVE';
+  document.getElementById('v_remarks').value = v.remarks||'';
+  document.getElementById('vehmodal').classList.remove('hidden');
+}
+
+function saveVehicle() {
+  const btn = document.getElementById('vehsavebtn');
+  if (!document.getElementById('v_plate').value.trim()) { alert('Vehicle plate is required'); return; }
+  btn.disabled=true; btn.textContent='Saving...';
+  const U = s => (s||'').toUpperCase();
+  const data = {
+    code: document.getElementById('v_code').value,
+    plate: U(document.getElementById('v_plate').value),
+    vehicleType: document.getElementById('v_type').value,
+    make: U(document.getElementById('v_make').value),
+    model: U(document.getElementById('v_model').value),
+    year: document.getElementById('v_year').value,
+    engineNo: U(document.getElementById('v_engine').value),
+    chassisNo: U(document.getElementById('v_chassis').value),
+    colour: U(document.getElementById('v_colour').value),
+    fuelType: document.getElementById('v_fuel').value,
+    odometer: document.getElementById('v_odometer').value,
+    assignedDriver: U(document.getElementById('v_driver').value),
+    roadLicExpiry: document.getElementById('v_roadlic').value,
+    insuranceExpiry: document.getElementById('v_insurance').value,
+    inspectionExpiry: document.getElementById('v_inspection').value,
+    ownership: document.getElementById('v_ownership').value,
+    status: document.getElementById('v_status').value,
+    remarks: U(document.getElementById('v_remarks').value),
+  };
+  if (editingVehicle) {
+    data.id = editingVehicle;
+    const i = VEHICLES.findIndex(v=>v.id===editingVehicle);
+    if(i!==-1) VEHICLES[i] = {...VEHICLES[i],...data};
+    closeModal('vehmodal'); updateBadges(); renderVehicles(); toast('Saving...','in');
+    callAPI('updateVehicle',{record:data}).then(()=>toast('Vehicle updated ✓','ok')).catch(()=>toast('Sync failed','er'));
+  } else {
+    data.id = Date.now().toString(36)+Math.random().toString(36).slice(2);
+    VEHICLES.push(data);
+    closeModal('vehmodal'); updateBadges(); renderVehicles(); toast('Saving...','in');
+    callAPI('addVehicle',{record:data}).then(()=>toast('Vehicle added ✓','ok')).catch(()=>{toast('Sync failed','er');VEHICLES=VEHICLES.filter(v=>v.id!==data.id);updateBadges();renderVehicles();});
+  }
+  btn.disabled=false; btn.textContent='Save Vehicle';
+}
+
+function deleteVehicle(id) {
+  if(!confirm('Delete this vehicle? Cannot be undone.')) return;
+  const bk = VEHICLES.find(v=>v.id===id);
+  VEHICLES = VEHICLES.filter(v=>v.id!==id); updateBadges(); renderVehicles(); toast('Deleting...','in');
+  callAPI('deleteVehicle',{id}).then(()=>toast('Vehicle deleted ✓','in')).catch(()=>{toast('Delete failed','er');if(bk){VEHICLES.push(bk);updateBadges();renderVehicles();}});
+}
+
+function renderVehicles() {
+  document.getElementById('viewsub').textContent = VEHICLES.length+' vehicle'+(VEHICLES.length!==1?'s':'');
+  document.getElementById('loadmorediv').style.display='none';
+  document.getElementById('tablehead').innerHTML=`<tr>
+    <th>Code</th><th>Plate No</th><th>Type</th><th>Make</th><th>Model</th>
+    <th>Year</th><th>Engine No</th><th>Chassis No</th><th>Colour</th>
+    <th>Fuel</th><th>Odometer</th><th>Driver</th>
+    <th>Road Lic Expiry</th><th>Insurance Expiry</th><th>Inspection Expiry</th>
+    <th>Ownership</th><th>Status</th><th>Actions</th>
+  </tr>`;
+  if (VEHICLES.length===0) {
+    document.getElementById('TBODY').innerHTML='';
+    document.getElementById('emptystate').style.display='block';
+    document.getElementById('emptystate').innerHTML='<div style="font-size:40px;margin-bottom:10px">🚛</div><div style="font-size:15px;font-weight:600;color:var(--t2);margin-bottom:5px">No vehicles yet</div><div style="font-size:13px">Click + New → New Vehicle to add one</div>';
+    return;
+  }
+  document.getElementById('emptystate').style.display='none';
+
+  function expiryBadge(dateStr) {
+    if (!dateStr) return '<span style="color:var(--t3)">—</span>';
+    const d = new Date(dateStr);
+    const now = new Date();
+    const days = Math.ceil((d-now)/(1000*60*60*24));
+    let color = '#4ade80';
+    if (days < 0) color = '#f87171';
+    else if (days < 30) color = '#f87171';
+    else if (days < 90) color = '#fbbf24';
+    return `<span style="font-size:10px;font-weight:600;color:${color}">${fd(dateStr)}</span>`;
+  }
+
+  const statusColors = {'ACTIVE':'sR','IN WORKSHOP':'sPNR','BREAKDOWN':'sOH','INACTIVE':'sNR'};
+  document.getElementById('TBODY').innerHTML = VEHICLES.map(v=>`<tr>
+    <td><span class="reqbadge">${v.code||''}</span></td>
+    <td><b style="color:var(--ac)">${v.plate||''}</b></td>
+    <td style="color:var(--t2);font-size:10px">${v.vehicleType||''}</td>
+    <td>${v.make||''}</td>
+    <td style="color:var(--t2)">${v.model||''}</td>
+    <td style="font-family:'DM Mono',monospace;font-size:11px">${v.year||''}</td>
+    <td style="font-family:'DM Mono',monospace;font-size:10px;color:var(--t2)">${v.engineNo||''}</td>
+    <td style="font-family:'DM Mono',monospace;font-size:10px;color:var(--t2)">${v.chassisNo||''}</td>
+    <td style="color:var(--t2);font-size:10px">${v.colour||''}</td>
+    <td style="color:var(--t2);font-size:10px">${v.fuelType||''}</td>
+    <td style="font-family:'DM Mono',monospace;font-size:11px">${v.odometer?Number(v.odometer).toLocaleString()+' km':''}</td>
+    <td style="color:var(--t2)">${v.assignedDriver||''}</td>
+    <td>${expiryBadge(v.roadLicExpiry)}</td>
+    <td>${expiryBadge(v.insuranceExpiry)}</td>
+    <td>${expiryBadge(v.inspectionExpiry)}</td>
+    <td style="color:var(--t2);font-size:10px">${v.ownership||''}</td>
+    <td><span class="sb ${statusColors[v.status]||'sNR'}">${v.status||''}</span></td>
+    <td><button class="actbtn e" onclick="editVehicle('${v.id}')">✏</button><button class="actbtn d" onclick="deleteVehicle('${v.id}')">🗑</button></td>
+  </tr>`).join('');
+}
+
+
+function populateJCFormDropdowns() {
+  // Driver dropdown in JC form
+  const dSel = document.getElementById('jc_driver');
+  if (dSel && dSel.tagName === 'SELECT') {
+    const cur = dSel.value;
+    dSel.innerHTML = '<option value="">Select driver...</option>';
+    DRIVERS.filter(d => d.status === 'ACTIVE').forEach(d => {
+      const o = document.createElement('option');
+      o.value = d.name; o.textContent = d.name;
+      dSel.appendChild(o);
+    });
+    if (cur) dSel.value = cur;
+  }
+
+  // Vehicle dropdown in JC form
+  const vSel = document.getElementById('jc_vehicle');
+  if (vSel && vSel.tagName === 'SELECT') {
+    const cur = vSel.value;
+    vSel.innerHTML = '<option value="">Select vehicle...</option>';
+    VEHICLES.filter(v => v.status !== 'INACTIVE').forEach(v => {
+      const o = document.createElement('option');
+      o.value = v.plate;
+      o.textContent = v.plate + (v.make ? ' — ' + v.make : '');
+      o.setAttribute('data-vtype', v.vehicleType || '');
+      vSel.appendChild(o);
+    });
+    const oc = document.createElement('option');
+    oc.value = '__custom__'; oc.textContent = '✏ Type manually...';
+    vSel.appendChild(oc);
+    if (cur) vSel.value = cur;
   }
 }
 
+// When vehicle selected in JC form — auto fill vehicle type
+function onJCVehicleSelect() {
+  const sel = document.getElementById('jc_vehicle');
+  if (!sel) return;
+  const plate = sel.value;
+  if (!plate || plate === '__custom__') return;
+  const veh = VEHICLES.find(v => v.plate === plate);
+  if (veh) {
+    const vt = document.getElementById('jc_vtype');
+    if (vt && veh.vehicleType) vt.value = veh.vehicleType;
+  }
+}
+
+function onOrderStatusChange() {
+  const os = document.getElementById('jc_orderstatus').value;
+  const clientBooked = document.getElementById('jc_client_booked');
+  const clientInp = document.getElementById('jc_client');
+  if (!clientBooked || !clientInp) return;
+
+  if (os === 'BOOKED') {
+    clientBooked.style.display = 'block';
+    clientInp.style.display = 'none';
+    clientInp.value = '';
+    clientBooked.value = '';
+    clientBooked.onchange = function() {
+      if (this.value === '__other__') {
+        this.style.display = 'none';
+        clientInp.style.display = 'block';
+        clientInp.value = '';
+        clientInp.focus();
+      } else if (this.value) {
+        clientInp.value = this.value;
+      }
+    };
+  } else {
+    clientBooked.style.display = 'none';
+    clientInp.style.display = 'block';
+  }
+}
+// ── INIT ──
+async function init(){
+  showLoad('Connecting to database...');
+  const ok=await loadRecords();
+  // Load suppliers and spare parts in parallel
+  try{
+    // Load each independently - one failure won't block others
+  const loadSafe = async (action) => {
+    try { const r = await callAPI(action); return r.records||[]; }
+    catch(e) { console.warn(action+' failed:',e); return []; }
+  };
+  [SUPPLIERS,SPAREPARTS,JOBCARDS,DRIVERS,VEHICLES] = await Promise.all([
+    loadSafe('getSuppliers'),
+    loadSafe('getSpareParts'),
+    loadSafe('getJobCards'),
+    loadSafe('getDrivers'),
+    loadSafe('getVehicles')
+  ]);
+  }catch(e){console.log('Could not load suppliers/parts:',e);}
+  hideLoad();
+  if(ok){
+    updateBadges();buildHeader();applyFilters();
+    toast('Connected — '+ALL.length+' records loaded','ok');
+    setInterval(async()=>{
+    if(await loadRecords()){
+      updateBadges();
+      if(['dashboard','suppliers','spareparts','jobcards','drivers','vehicles'].includes(currentView)){
+        if(currentView==='suppliers')renderSuppliers();
+        else if(currentView==='spareparts')renderSpareParts();
+        else if(currentView==='jobcards')renderJobCards();
+        else if(currentView==='drivers')renderDrivers();
+        else if(currentView==='vehicles')renderVehicles();
+        else renderDashboard();
+      } else {
+        applyFilters();
+      }
+    }
+  },30000);
+  }else{
+    document.getElementById('emptystate').style.display='block';
+    document.getElementById('emptystate').innerHTML='<div style="font-size:40px;margin-bottom:10px">⚠️</div><div style="font-size:15px;font-weight:600;color:var(--t2);margin-bottom:5px">Cannot connect to database</div><div style="font-size:13px;margin-bottom:14px">Check your internet connection</div><button class="btn bp" onclick="init()">Try Again</button>';
+  }
+}
 init();
 </script>
+
+<!-- JOB CARD MODAL -->
+<div class="overlay hidden" id="jcmodal">
+  <div class="modal" style="max-width:780px">
+    <div class="modalhead"><div class="modaltitle" id="jctitle">New Job Card</div><button class="modalclose" onclick="closeModal('jcmodal')">✕</button></div>
+    <div class="modalbody">
+      <div class="formgrid">
+        <div class="formgroup"><label>Job Card Code</label><input type="text" id="jc_no" readonly style="font-family:'DM Mono',monospace;color:var(--ac)"></div>
+        <div class="formgroup"><label>Job Card No (Manual)</label><input type="text" id="jc_manualcode" placeholder="e.g. TN/AKT/WO-0470"></div>
+        <div class="formgroup"><label>Vehicle No</label><select id="jc_vehicle" onchange="onJCVehicleSelect()"><option value="">Select vehicle...</option></select></div>
+        <div class="formgroup"><label>Vehicle Type</label><select id="jc_vtype"><option value="">Select...</option><option>TRUCK</option><option>TRAILER</option><option>OTHER</option></select></div>
+        <div class="formgroup"><label>Driver Name</label><input type="text" id="jc_driver" placeholder="Driver name"></div>
+        <div class="formgroup"><label>Odometer Reading (KM)</label><input type="number" id="jc_odometer" placeholder="e.g. 125000" min="0"></div>
+        <div class="formgroup"><label>Order Status</label><select id="jc_orderstatus" onchange="onOrderStatusChange()"><option value="">Select...</option><option>BOOKED</option><option>NOT BOOKED</option></select></div>
+        <div class="formgroup" id="jc_client_wrap"><label>Client Name</label>
+  <select id="jc_client_booked" style="display:none;background:var(--s2);border:1px solid var(--br);border-radius:7px;padding:9px 11px;color:var(--tx);font-size:13px;outline:none;width:100%"><option value="">Select client...</option><option>TOTAL ENERGIES</option><option>KEMEXON</option><option>GLENCORE</option><option value="__other__">Other...</option></select>
+  <input type="text" id="jc_client" placeholder="Client name" style="margin-top:0">
+</div>
+        <div class="formgroup"><label>Category</label><select id="jc_category"><option value="">Select...</option><option>WORKSHOP</option><option>BREAKDOWN</option></select></div>
+        <div class="formgroup"><label>Location</label><input type="text" id="jc_location" placeholder="e.g. Dar es Salaam, Dodoma..."></div>
+        <div class="formgroup"><label>Maintenance Level</label><select id="jc_maintlevel"><option value="">Select...</option><option>MINOR MAINTENANCE</option><option>MAJOR MAINTENANCE</option><option>ACCIDENT REPAIR</option><option>SERVICE</option></select></div>
+        <div class="formgroup"><label>Work Status</label><select id="jc_workstatus"><option value="">Select...</option><option>IN PROGRESS</option><option>COMPLETED</option><option>STALLED</option><option>PENDING</option><option>TO BE REPAIRED AFTER LOADING</option></select></div>
+        <div class="formgroup full"><label>Task Description</label><textarea id="jc_task" placeholder="Describe the task to be done..." style="min-height:80px"></textarea></div>
+        <div class="formgroup full"><label>Parts Requested</label><textarea id="jc_parts" placeholder="List parts needed..." style="min-height:60px"></textarea></div>
+        <div class="formgroup"><label>Start Date</label><input type="date" id="jc_startdate" onchange="calcDuration()"></div>
+        <div class="formgroup"><label>End Date</label><input type="date" id="jc_enddate" onchange="calcDuration()"></div>
+        <div class="formgroup"><label>Expected Release Date</label><input type="date" id="jc_releasedate"></div>
+        <div class="formgroup"><label>Duration (Days)</label><input type="number" id="jc_duration" min="0" placeholder="Auto-calculated" readonly style="opacity:.7;cursor:not-allowed"></div>
+        <div class="formgroup full"><label>Comment</label><textarea id="jc_comment" placeholder="Additional comments..."></textarea></div>
+      </div>
+    </div>
+    <div class="modalfoot"><button class="btn bg" onclick="closeModal('jcmodal')">Cancel</button><button class="btn bp" id="jcsavebtn" onclick="saveJobCard()">Save Job Card</button></div>
+  </div>
+</div>
+
+
+<!-- DRIVER MODAL -->
+<div class="overlay hidden" id="drvmodal">
+  <div class="modal" style="max-width:600px">
+    <div class="modalhead"><div class="modaltitle" id="drvtitle">New Driver</div><button class="modalclose" onclick="closeModal('drvmodal')">✕</button></div>
+    <div class="modalbody">
+      <div class="formgrid">
+        <div class="formgroup"><label>Driver Code</label><input type="text" id="d_code" readonly style="font-family:'DM Mono',monospace;color:var(--ac)"></div>
+        <div class="formgroup"><label>Full Name</label><input type="text" id="d_name" placeholder="e.g. JOHN MWANGI"></div>
+        <div class="formgroup"><label>Phone No</label><input type="text" id="d_phone" placeholder="+255 712 000 000"></div>
+        <div class="formgroup"><label>Emergency Contact</label><input type="text" id="d_emergency" placeholder="+255 712 000 000"></div>
+        <div class="formgroup"><label>License No</label><input type="text" id="d_license" placeholder="License number"></div>
+        <div class="formgroup"><label>License Expiry</label><input type="date" id="d_licenseexp"></div>
+        <div class="formgroup"><label>License Class</label><select id="d_licenseclass"><option value="">Select...</option><option>CLASS C</option><option>CLASS CE</option><option>CLASS B</option><option>CLASS A</option><option>OTHER</option></select></div>
+        <div class="formgroup"><label>Passport No</label><input type="text" id="d_passport" placeholder="Passport number"></div>
+        <div class="formgroup"><label>Passport Expiry</label><input type="date" id="d_passportexp"></div>
+        <div class="formgroup"><label>National ID</label><input type="text" id="d_nationalid" placeholder="National ID number"></div>
+        <div class="formgroup"><label>Date of Birth</label><input type="date" id="d_dob"></div>
+        <div class="formgroup"><label>Nationality</label><input type="text" id="d_nationality" placeholder="e.g. TANZANIAN"></div>
+        <div class="formgroup"><label>Assigned Vehicle</label><input type="text" id="d_vehicle" placeholder="e.g. T843DEE"></div>
+        <div class="formgroup"><label>Status</label><select id="d_status"><option value="ACTIVE">ACTIVE</option><option value="INACTIVE">INACTIVE</option><option value="SUSPENDED">SUSPENDED</option></select></div>
+        <div class="formgroup full"><label>Remarks</label><textarea id="d_remarks" placeholder="Additional notes"></textarea></div>
+      </div>
+    </div>
+    <div class="modalfoot"><button class="btn bg" onclick="closeModal('drvmodal')">Cancel</button><button class="btn bp" id="drvsavebtn" onclick="saveDriver()">Save Driver</button></div>
+  </div>
+</div>
+
+<!-- VEHICLE MODAL -->
+<div class="overlay hidden" id="vehmodal">
+  <div class="modal" style="max-width:600px">
+    <div class="modalhead"><div class="modaltitle" id="vehtitle">New Vehicle</div><button class="modalclose" onclick="closeModal('vehmodal')">✕</button></div>
+    <div class="modalbody">
+      <div class="formgrid">
+        <div class="formgroup"><label>Vehicle Code</label><input type="text" id="v_code" readonly style="font-family:'DM Mono',monospace;color:var(--ac)"></div>
+        <div class="formgroup"><label>Vehicle No (Plate)</label><input type="text" id="v_plate" placeholder="e.g. T843DEE"></div>
+        <div class="formgroup"><label>Vehicle Type</label><select id="v_type"><option value="">Select...</option><option>TRUCK</option><option>TRAILER</option><option>OTHER</option></select></div>
+        <div class="formgroup"><label>Make / Brand</label><input type="text" id="v_make" placeholder="e.g. SCANIA, HOWO, MAN"></div>
+        <div class="formgroup"><label>Model</label><input type="text" id="v_model" placeholder="e.g. R500, A7, TGA"></div>
+        <div class="formgroup"><label>Year</label><input type="number" id="v_year" placeholder="e.g. 2018" min="1990" max="2030"></div>
+        <div class="formgroup"><label>Engine No</label><input type="text" id="v_engine" placeholder="Engine number"></div>
+        <div class="formgroup"><label>Chassis No</label><input type="text" id="v_chassis" placeholder="Chassis number"></div>
+        <div class="formgroup"><label>Colour</label><input type="text" id="v_colour" placeholder="e.g. WHITE"></div>
+        <div class="formgroup"><label>Fuel Type</label><select id="v_fuel"><option value="">Select...</option><option>DIESEL</option><option>PETROL</option><option>OTHER</option></select></div>
+        <div class="formgroup"><label>Current Odometer (KM)</label><input type="number" id="v_odometer" placeholder="e.g. 125000" min="0"></div>
+        <div class="formgroup"><label>Assigned Driver</label><input type="text" id="v_driver" placeholder="Driver name"></div>
+        <div class="formgroup"><label>Road Licence Expiry</label><input type="date" id="v_roadlic"></div>
+        <div class="formgroup"><label>Insurance Expiry</label><input type="date" id="v_insurance"></div>
+        <div class="formgroup"><label>Inspection Expiry</label><input type="date" id="v_inspection"></div>
+        <div class="formgroup"><label>Ownership</label><select id="v_ownership"><option value="">Select...</option><option>OWNED</option><option>LEASED</option><option>CONTRACTED</option></select></div>
+        <div class="formgroup"><label>Status</label><select id="v_status"><option value="ACTIVE">ACTIVE</option><option value="IN WORKSHOP">IN WORKSHOP</option><option value="BREAKDOWN">BREAKDOWN</option><option value="INACTIVE">INACTIVE</option></select></div>
+        <div class="formgroup full"><label>Remarks</label><textarea id="v_remarks" placeholder="Additional notes"></textarea></div>
+      </div>
+    </div>
+    <div class="modalfoot"><button class="btn bg" onclick="closeModal('vehmodal')">Cancel</button><button class="btn bp" id="vehsavebtn" onclick="saveVehicle()">Save Vehicle</button></div>
+  </div>
+</div>
+
 </body>
 </html>
