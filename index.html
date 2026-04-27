@@ -241,7 +241,7 @@ window.onerror = function(msg, src, line, col, err) {
   return false;
 };
 
-const API = 'https://script.google.com/macros/s/AKfycbzBYwHH3kUd1KYFWk8Y1AOeuy-tSvMhOKq0ed6gG2ah4U9Cza8uQnDpb8d_8zVZ2v9E8Q/exec';
+const API = 'https://script.google.com/macros/s/AKfycbxt0lSJDdxlo3_4MbMmmSu6q26LxWOdJSGCLCiLkQDqlIUq--8nj0jfbLJ1RgDdKuZd_g/exec';
 const ADMINPWD = 'akadmin321';
 const PAGESIZE = 100;
 
@@ -364,7 +364,7 @@ function buildHeader(){
     <th onclick="doSort('lpoNo')">LPO No ${si('lpoNo')}</th>
     <th onclick="doSort('description')">Description ${si('description')}</th>
     <th onclick="doSort('qty')">Qty ${si('qty')}</th>
-    <th onclick="doSort('cost')">Cost ${si('cost')}</th>
+    <th onclick="doSort('cost')">Total Amount ${si('cost')}</th>
     <th onclick="doSort('supplier')">Supplier ${si('supplier')}</th>
     <th onclick="doSort('dateReceived')">Date Rcvd ${si('dateReceived')}</th>
     <th onclick="doSort('status')">Status ${si('status')}</th>
@@ -488,6 +488,22 @@ function showLoad(t){document.getElementById('loadtext').textContent=t;document.
 function hideLoad(){document.getElementById('loading').classList.add('hidden');}
 
 // ── REQUISITION CRUD ──
+function calcTotal() {
+  var qty = parseFloat(document.getElementById('f_qty').value) || 0;
+  var unitEl = document.getElementById('f_unit_price');
+  var unit = unitEl ? (parseFloat(unitEl.value.replace(/,/g,'')) || 0) : 0;
+  var total = qty * unit;
+  var costEl = document.getElementById('f_cost');
+  if (costEl) costEl.value = total > 0 ? total.toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2}) : '';
+}
+
+function fmtNum(el) {
+  if (!el) return;
+  var raw = el.value.replace(/,/g,'');
+  var num = parseFloat(raw);
+  if (!isNaN(num) && num > 0) el.value = num.toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2});
+}
+
 function nextReqNo(){let max=0;ALL.forEach(r=>{const n=parseInt((r.reqNo||'').replace('REQ-',''),10);if(!isNaN(n)&&n>max)max=n;});return'REQ-'+String(max+1).padStart(6,'0');}
 function openAdd(){
   if (!can('req')) { toast('You do not have permission to create requisitions', 'er'); return; }
@@ -496,34 +512,86 @@ function editRecord(id){
   if (!canEditReq()) { toast('You do not have permission to edit requisitions', 'er'); return; }
   const r=ALL.find(x=>x.id===id);if(!r)return;if(r.status==='RECEIVED')askPassword(()=>doEdit(r));else doEdit(r);}
 function doEdit(r){
-  editingId=r.id;document.getElementById('modaltitle').textContent='Edit Requisition';
+  editingId=r.id;
+  document.getElementById('modaltitle').textContent='Edit Requisition';
+
+  // Populate dropdowns first so we can set values
   populateFormDropdowns();
-  const m={f_req:'reqNo',f_date:'dateRequested',f_truck:'truck',f_vtype:'vehicleType',f_driver:'driverName',f_priority:'priority',f_jobcard:'jobCardNo',f_lpo:'lpoNo',f_desc:'description',f_qty:'qty',f_cost:'cost',f_datercvd:'dateReceived',f_status:'status',f_payment:'paymentMode',f_category:'category',f_reqby:'requestedBy',f_dateissued:'dateIssued',f_remarks:'remarks'};
-  Object.entries(m).forEach(([fid,key])=>document.getElementById(fid).value=r[key]||'');
-  // Set supplier dropdown
-  const supSel=document.getElementById('f_supplier');
-  if(supSel){
-    supSel.value=r.supplier||'';
-    if(supSel.value===''&&r.supplier){
-      // Supplier not in list - show as custom
-      const opt=document.createElement('option');
-      opt.value=r.supplier;opt.textContent=r.supplier;
-      supSel.insertBefore(opt,supSel.firstChild);
+
+  // Now set ALL field values after dropdowns are ready
+  // Plain inputs
+  var setVal = function(id, val) { var el=document.getElementById(id); if(el) el.value = val||''; };
+  setVal('f_req', r.reqNo);
+  setVal('f_date', r.dateRequested);
+  setVal('f_vtype', r.vehicleType);
+  setVal('f_priority', r.priority);
+  setVal('f_lpo', r.lpoNo);
+  setVal('f_qty', r.qty);
+  setVal('f_datercvd', r.dateReceived);
+  setVal('f_status', r.status);
+  setVal('f_payment', r.paymentMode);
+  setVal('f_category', r.category);
+  setVal('f_reqby', r.requestedBy);
+  setVal('f_dateissued', r.dateIssued);
+  setVal('f_remarks', r.remarks);
+
+  // Unit price and total
+  setVal('f_unit_price', r.unitPrice);
+  setVal('f_cost', r.cost);
+
+  // Description - always set text input directly
+  setVal('f_desc', r.description);
+
+  // SELECT: Truck - add option if not in list
+  var truckSel = document.getElementById('f_truck');
+  if(truckSel) {
+    truckSel.value = r.truck||'';
+    if(truckSel.value === '' && r.truck) {
+      var o=document.createElement('option'); o.value=r.truck; o.textContent=r.truck;
+      truckSel.insertBefore(o, truckSel.firstChild);
+      truckSel.value=r.truck;
+    }
+    // Filter job cards for this truck
+    populateJobCardDropdown(r.truck);
+  }
+
+  // SELECT: Driver - add option if not in list
+  var drvSel = document.getElementById('f_driver');
+  if(drvSel) {
+    drvSel.value = r.driverName||'';
+    if(drvSel.value === '' && r.driverName) {
+      var o=document.createElement('option'); o.value=r.driverName; o.textContent=r.driverName;
+      drvSel.insertBefore(o, drvSel.firstChild);
+      drvSel.value=r.driverName;
+    }
+  }
+
+  // SELECT: Job Card - add option if not in list
+  var jcSel = document.getElementById('f_jobcard');
+  if(jcSel) {
+    jcSel.value = r.jobCardNo||'';
+    if(jcSel.value === '' && r.jobCardNo) {
+      var o=document.createElement('option'); o.value=r.jobCardNo; o.textContent=r.jobCardNo;
+      jcSel.insertBefore(o, jcSel.firstChild);
+      jcSel.value=r.jobCardNo;
+    }
+  }
+
+  // SELECT: Supplier - add option if not in list
+  var supSel = document.getElementById('f_supplier');
+  if(supSel) {
+    supSel.value = r.supplier||'';
+    if(supSel.value === '' && r.supplier) {
+      var o=document.createElement('option'); o.value=r.supplier; o.textContent=r.supplier;
+      supSel.insertBefore(o, supSel.firstChild);
       supSel.value=r.supplier;
     }
   }
-  // Set description dropdown
-  const descSel=document.getElementById('f_desc_select');
-  if(descSel&&r.description){
-    descSel.value=r.description;
-    if(descSel.value===''){
-      // Not in list - it's a custom description, just leave text input
-    }
-  }
+
   document.getElementById('recmodal').classList.remove('hidden');
 }
 function clearForm(){
-  ['f_req','f_date','f_vtype','f_priority','f_lpo','f_desc','f_qty','f_cost','f_datercvd','f_status','f_payment','f_category','f_reqby','f_dateissued','f_remarks'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+  ['f_req','f_date','f_vtype','f_priority','f_lpo','f_desc','f_qty','f_unit_price','f_cost','f_datercvd','f_status','f_payment','f_category','f_reqby','f_dateissued','f_remarks'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
   ['f_supplier','f_truck','f_driver','f_jobcard'].forEach(id=>{const el=document.getElementById(id);if(el){el.value='';el.style.display='';}});
   ['f_supplier_custom','f_truck_custom','f_driver_txt'].forEach(id=>{const el=document.getElementById(id);if(el){el.remove?el.remove():el.style.display='none';}});
   const descSel=document.getElementById('f_desc_select');if(descSel)descSel.value='';
@@ -564,14 +632,51 @@ async function saveRecord(){
   }
   const btn=document.getElementById('savebtn');btn.disabled=true;btn.textContent='Saving...';
   const U=s=>(s||'').toUpperCase();
-  const data={reqNo:document.getElementById('f_req').value,dateRequested:document.getElementById('f_date').value,truck:U(document.getElementById('f_truck').value),vehicleType:document.getElementById('f_vtype').value,driverName:U(document.getElementById('f_driver').value),priority:document.getElementById('f_priority').value,jobCardNo:U(document.getElementById('f_jobcard').value),lpoNo:U(document.getElementById('f_lpo').value),description:U(document.getElementById('f_desc').value),qty:document.getElementById('f_qty').value,cost:document.getElementById('f_cost').value,supplier:U((()=>{
+  const data={reqNo:document.getElementById('f_req').value,dateRequested:document.getElementById('f_date').value,truck:U(document.getElementById('f_truck').value),vehicleType:document.getElementById('f_vtype').value,driverName:U(document.getElementById('f_driver').value),priority:document.getElementById('f_priority').value,jobCardNo:U(document.getElementById('f_jobcard').value),lpoNo:U(document.getElementById('f_lpo').value),description:U(document.getElementById('f_desc').value),qty:document.getElementById('f_qty').value,unitPrice:document.getElementById('f_unit_price')?(document.getElementById('f_unit_price').value.replace(/,/g,'')):'' ,cost:(document.getElementById('f_cost').value||'').replace(/,/g,''),supplier:U((()=>{
       const custom=document.getElementById('f_supplier_custom');
       if(custom&&custom.style.display!=='none')return custom.value;
       return document.getElementById('f_supplier').value;
     })()),dateReceived:document.getElementById('f_datercvd').value,status:document.getElementById('f_status').value,paymentMode:document.getElementById('f_payment').value,category:U(document.getElementById('f_category').value),requestedBy:U(document.getElementById('f_reqby').value),dateIssued:document.getElementById('f_dateissued').value,remarks:U(document.getElementById('f_remarks').value)};
   try{
-    if(editingId){data.id=editingId;const i=ALL.findIndex(r=>r.id===editingId);if(i!==-1)ALL[i]={...ALL[i],...data};closeModal('recmodal');updateBadges();applyFilters();toast('Saving...','in');callAPI('update',{record:data}).then(()=>toast('Updated ✓','ok')).catch(()=>toast('Sync failed','er'));}
-    else{data.id=Date.now().toString(36)+Math.random().toString(36).slice(2);ALL.push(data);closeModal('recmodal');updateBadges();applyFilters();toast('Saving...','in');callAPI('add',{record:data}).then(()=>toast('Added ✓','ok')).catch(()=>{toast('Sync failed','er');ALL=ALL.filter(r=>r.id!==data.id);updateBadges();applyFilters();});}
+    if(editingId){
+      data.id=editingId;
+      const i=ALL.findIndex(r=>r.id===editingId);
+      if(i!==-1)ALL[i]={...ALL[i],...data};
+      closeModal('recmodal');
+      updateBadges();applyFilters();
+      toast('Saving...','in');
+      callAPI('update',{record:data}).then(function(){
+        toast('Updated ✓','ok');
+        loadRecords().then(function(){ updateBadges(); applyFilters(); });
+      }).catch(()=>toast('Sync failed','er'));
+    }
+    else{
+      data.id=Date.now().toString(36)+Math.random().toString(36).slice(2);
+      if(!data.dateRequested) data.dateRequested = todayStr();
+      ALL.unshift(data);
+      closeModal('recmodal');
+      // Always switch to workshop view so new record is visible
+      currentView='workshop';
+      document.querySelectorAll('.navitem').forEach(n=>n.classList.remove('active'));
+      var nw=document.getElementById('nav-workshop');if(nw)nw.classList.add('active');
+      document.getElementById('viewtitle').textContent='Workshop Requisition';
+      document.getElementById('searchrow').style.display='grid';
+      document.getElementById('tablearea').style.display='block';
+      document.getElementById('dasharea').classList.add('hidden');
+      document.getElementById('toolbaractions').innerHTML='';
+      sortColumn='dateRequested'; sortDir=-1;
+      buildHeader();
+      applyFilters();
+      updateBadges();
+      toast('Saving...','in');
+      callAPI('add',{record:data}).then(function(){
+        toast('Saved ✓','ok');
+      }).catch(function(){
+        toast('Sync failed - check connection','er');
+        ALL=ALL.filter(r=>r.id!==data.id);
+        updateBadges();applyFilters();
+      });
+    }
   }catch(e){toast('Failed to save','er');}
   finally{btn.disabled=false;btn.textContent='Save Record';}
 }
@@ -607,9 +712,9 @@ function saveSupplier(){
     callAPI('updateSupplier',{record:data}).then(()=>toast('Supplier updated ✓','ok')).catch(()=>toast('Sync failed','er'));
   }else{
     data.id=Date.now().toString(36)+Math.random().toString(36).slice(2);
-    SUPPLIERS.push(data);
+    SUPPLIERS.unshift(data);
     closeModal('supmodal');updateBadges();renderSuppliers();toast('Saving...','in');
-    callAPI('addSupplier',{record:data}).then(()=>toast('Supplier added ✓','ok')).catch(()=>{toast('Sync failed','er');SUPPLIERS=SUPPLIERS.filter(s=>s.id!==data.id);updateBadges();renderSuppliers();});
+    callAPI('addSupplier',{record:data}).then(function(){toast('Supplier added ✓','ok');}).catch(function(){toast('Sync failed','er');SUPPLIERS=SUPPLIERS.filter(s=>s.id!==data.id);updateBadges();renderSuppliers();});
   }
   btn.disabled=false;btn.textContent='Save Supplier';
 }
@@ -655,9 +760,9 @@ function saveSparePart(){
     callAPI('updateSparePart',{record:data}).then(()=>toast('Spare part updated ✓','ok')).catch(()=>toast('Sync failed','er'));
   }else{
     data.id=Date.now().toString(36)+Math.random().toString(36).slice(2);
-    SPAREPARTS.push(data);
+    SPAREPARTS.unshift(data);
     closeModal('spmodal');updateBadges();renderSpareParts();toast('Saving...','in');
-    callAPI('addSparePart',{record:data}).then(()=>toast('Spare part added ✓','ok')).catch(()=>{toast('Sync failed','er');SPAREPARTS=SPAREPARTS.filter(p=>p.id!==data.id);updateBadges();renderSpareParts();});
+    callAPI('addSparePart',{record:data}).then(function(){toast('Spare part added ✓','ok');}).catch(function(){toast('Sync failed','er');SPAREPARTS=SPAREPARTS.filter(p=>p.id!==data.id);updateBadges();renderSpareParts();});
   }
   btn.disabled=false;btn.textContent='Save Spare Part';
 }
@@ -744,7 +849,7 @@ function populateFormDropdowns() {
     VEHICLES.filter(v => v.status !== 'INACTIVE').forEach(v => {
       const o = document.createElement('option');
       o.value = v.plate;
-      o.textContent = v.plate + (v.vehicleType ? ' (' + v.vehicleType + ')' : '') + (v.make ? ' — ' + v.make : '');
+      o.textContent = v.plate + (v.make ? ' — ' + v.make : '');
       o.setAttribute('data-vtype', v.vehicleType || '');
       truckSel.appendChild(o);
     });
@@ -762,7 +867,7 @@ function populateFormDropdowns() {
     JOBCARDS.filter(j => j.workStatus !== 'COMPLETED').forEach(j => {
       const o = document.createElement('option');
       o.value = j.code;
-      o.textContent = j.code + (j.vehicle ? ' — ' + j.vehicle : '') + (j.taskDescription ? ' (' + j.taskDescription.substring(0,20) + ')' : '');
+      o.textContent = j.code + (j.vehicle ? ' — ' + j.vehicle : '');
       jcSel.appendChild(o);
     });
     const oc = document.createElement('option');
@@ -781,11 +886,45 @@ function onTruckSelect() {
   const plate = sel.value;
   if (!plate || plate === '__custom__') {
     vtEl.value = '';
+    // Reset job card dropdown to show all
+    populateJobCardDropdown('');
     return;
   }
   const opt = sel.options[sel.selectedIndex];
   const vtype = opt ? opt.getAttribute('data-vtype') : '';
   vtEl.value = vtype || '';
+  // Filter job cards to only show ones matching this truck
+  populateJobCardDropdown(plate);
+}
+
+function populateJobCardDropdown(plate) {
+  const jcSel = document.getElementById('f_jobcard');
+  if (!jcSel) return;
+  const cur = jcSel.value;
+  jcSel.innerHTML = '<option value="">Select job card...</option>';
+  // Filter job cards by vehicle plate if plate is provided
+  const filtered = plate
+    ? JOBCARDS.filter(j => j.workStatus !== 'COMPLETED' && (j.vehicle||'').toUpperCase() === plate.toUpperCase())
+    : JOBCARDS.filter(j => j.workStatus !== 'COMPLETED');
+  filtered.forEach(j => {
+    const o = document.createElement('option');
+    o.value = j.code;
+    o.textContent = j.code + (j.vehicle ? ' — ' + j.vehicle : '');
+    jcSel.appendChild(o);
+  });
+  // Add OTHER option always
+  const oc = document.createElement('option');
+  oc.value = 'OTHER'; oc.textContent = 'Other';
+  jcSel.appendChild(oc);
+  // Restore previous value if it still exists
+  if (cur) jcSel.value = cur;
+  // Show count hint
+  if (plate && filtered.length === 0) {
+    const o = document.createElement('option');
+    o.value = ''; o.textContent = '— No open job cards for this truck —';
+    o.disabled = true;
+    jcSel.insertBefore(o, jcSel.children[1]);
+  }
 }
 
 function onSupplierSelect() {
@@ -898,28 +1037,53 @@ function editJobCard(id) {
   if (!j) return;
   editingJC = id;
   document.getElementById('jctitle').textContent = 'Edit Job Card';
-  document.getElementById('jc_no').value = j.code || '';
-  document.getElementById('jc_vehicle').value = j.vehicle || '';
-  document.getElementById('jc_vtype').value = j.vehicleType || '';
-  document.getElementById('jc_driver').value = j.driverName || '';
-  document.getElementById('jc_odometer').value = j.odometer || '';
-  document.getElementById('jc_orderstatus').value = j.orderStatus || '';
-  document.getElementById('jc_client').value = j.clientName || '';
-  document.getElementById('jc_category').value = j.category || '';
-  document.getElementById('jc_location').value = j.location || '';
-  document.getElementById('jc_maintlevel').value = j.maintenanceLevel || '';
-  document.getElementById('jc_workstatus').value = j.workStatus || '';
 
-  document.getElementById('jc_task').value = j.taskDescription || '';
-  document.getElementById('jc_parts').value = j.partsRequested || '';
-  document.getElementById('jc_startdate').value = j.startDate || '';
-  document.getElementById('jc_enddate').value = j.endDate || '';
-  document.getElementById('jc_releasedate').value = j.expectedReleaseDate || '';
-  document.getElementById('jc_duration').value = j.duration || '';
-  document.getElementById('jc_comment').value = j.comment || '';
+  // Populate dropdowns first so values can be set
+  populateJCFormDropdowns();
+
+  var sv = function(eid, val) { var el=document.getElementById(eid); if(el) el.value=val||''; };
+  sv('jc_no', j.code);
+  sv('jc_vtype', j.vehicleType);
+  sv('jc_odometer', j.odometer);
+  sv('jc_orderstatus', j.orderStatus);
+  sv('jc_client', j.clientName);
+  sv('jc_category', j.category);
+  sv('jc_location', j.location);
+  sv('jc_maintlevel', j.maintenanceLevel);
+  sv('jc_workstatus', j.workStatus);
+  sv('jc_task', j.taskDescription);
+  sv('jc_parts', j.partsRequested);
+  sv('jc_startdate', j.startDate);
+  sv('jc_enddate', j.endDate);
+  sv('jc_releasedate', j.expectedReleaseDate);
+  sv('jc_duration', j.duration);
+  sv('jc_comment', j.comment);
+
+  // Vehicle SELECT - add option if not in list
+  var vSel = document.getElementById('jc_vehicle');
+  if(vSel) {
+    vSel.value = j.vehicle||'';
+    if(vSel.value==='' && j.vehicle) {
+      var ov=document.createElement('option'); ov.value=j.vehicle; ov.textContent=j.vehicle;
+      vSel.insertBefore(ov, vSel.firstChild); vSel.value=j.vehicle;
+    }
+  }
+
+  // Driver SELECT - add option if not in list
+  var dSel = document.getElementById('jc_driver');
+  if(dSel) {
+    dSel.value = j.driverName||'';
+    if(dSel.value==='' && j.driverName) {
+      var od=document.createElement('option'); od.value=j.driverName; od.textContent=j.driverName;
+      dSel.insertBefore(od, dSel.firstChild); dSel.value=j.driverName;
+    }
+  }
+
+  // Trigger order status change to show/hide client fields correctly
+  onOrderStatusChange();
+
   document.getElementById('jcmodal').classList.remove('hidden');
 }
-
 function saveJobCard() {
   const btn = document.getElementById('jcsavebtn');
   // Validate mandatory fields
@@ -991,9 +1155,9 @@ function saveJobCard() {
     callAPI('updateJobCard', { record: data }).then(() => toast('Job Card updated ✓', 'ok')).catch(() => toast('Sync failed', 'er'));
   } else {
     data.id = Date.now().toString(36) + Math.random().toString(36).slice(2);
-    JOBCARDS.push(data);
+    JOBCARDS.unshift(data);
     closeModal('jcmodal'); updateBadges(); renderJobCards(); toast('Saving...', 'in');
-    callAPI('addJobCard', { record: data }).then(() => toast('Job Card added ✓', 'ok')).catch(() => { toast('Sync failed', 'er'); JOBCARDS = JOBCARDS.filter(j => j.id !== data.id); updateBadges(); renderJobCards(); });
+    callAPI('addJobCard', { record: data }).then(function(){ toast('Job Card added ✓', 'ok'); }).catch(function(){ toast('Sync failed', 'er'); JOBCARDS = JOBCARDS.filter(j => j.id !== data.id); updateBadges(); renderJobCards(); });
   }
   btn.disabled = false; btn.textContent = 'Save Job Card';
 }
@@ -1170,9 +1334,9 @@ function saveDriver() {
     callAPI('updateDriver',{record:data}).then(()=>toast('Driver updated ✓','ok')).catch(()=>toast('Sync failed','er'));
   } else {
     data.id = Date.now().toString(36)+Math.random().toString(36).slice(2);
-    DRIVERS.push(data);
+    DRIVERS.unshift(data);
     closeModal('drvmodal'); updateBadges(); renderDrivers(); toast('Saving...','in');
-    callAPI('addDriver',{record:data}).then(()=>toast('Driver added ✓','ok')).catch(()=>{toast('Sync failed','er');DRIVERS=DRIVERS.filter(d=>d.id!==data.id);updateBadges();renderDrivers();});
+    callAPI('addDriver',{record:data}).then(function(){toast('Driver added ✓','ok');}).catch(function(){toast('Sync failed','er');DRIVERS=DRIVERS.filter(d=>d.id!==data.id);updateBadges();renderDrivers();});
   }
   btn.disabled=false; btn.textContent='Save Driver';
 }
@@ -1315,9 +1479,9 @@ function saveVehicle() {
     callAPI('updateVehicle',{record:data}).then(()=>toast('Vehicle updated ✓','ok')).catch(()=>toast('Sync failed','er'));
   } else {
     data.id = Date.now().toString(36)+Math.random().toString(36).slice(2);
-    VEHICLES.push(data);
+    VEHICLES.unshift(data);
     closeModal('vehmodal'); updateBadges(); renderVehicles(); toast('Saving...','in');
-    callAPI('addVehicle',{record:data}).then(()=>toast('Vehicle added ✓','ok')).catch(()=>{toast('Sync failed','er');VEHICLES=VEHICLES.filter(v=>v.id!==data.id);updateBadges();renderVehicles();});
+    callAPI('addVehicle',{record:data}).then(function(){toast('Vehicle added ✓','ok');}).catch(function(){toast('Sync failed','er');VEHICLES=VEHICLES.filter(v=>v.id!==data.id);updateBadges();renderVehicles();});
   }
   btn.disabled=false; btn.textContent='Save Vehicle';
 }
@@ -1406,7 +1570,7 @@ function populateJCFormDropdowns() {
     VEHICLES.filter(v => v.status !== 'INACTIVE').forEach(v => {
       const o = document.createElement('option');
       o.value = v.plate;
-      o.textContent = v.plate + (v.vehicleType ? ' (' + v.vehicleType + ')' : '') + (v.make ? ' — ' + v.make : '');
+      o.textContent = v.plate + (v.make ? ' — ' + v.make : '');
       o.setAttribute('data-vtype', v.vehicleType || '');
       vSel.appendChild(o);
     });
@@ -1784,14 +1948,41 @@ function attachSigned(id, input) {
 
 function downloadSigned(id) {
   const j = JOBCARDS.find(x => x.id === id);
-  if (!j) return;
-  const url = j.signedPdfUrl || j.signedPdf;
-  if (!url) { toast('No signed PDF found', 'er'); return; }
-  window.open(url, '_blank');
-  toast('Opening signed PDF from Google Drive', 'ok');
+  if (!j || (!j.signedPdfId && !j.signedPdfUrl)) { toast('No signed PDF found', 'er'); return; }
+  toast('Downloading PDF...', 'in');
+  callAPI('getSignedPdf', { fileId: j.signedPdfId || '' })
+    .then(function(res) {
+      if (res && res.data) {
+        var binary = atob(res.data);
+        var bytes = new Uint8Array(binary.length);
+        for (var i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+        var blob = new Blob([bytes], { type: 'application/pdf' });
+        var url = URL.createObjectURL(blob);
+        var a = document.createElement('a');
+        a.href = url;
+        a.download = (j.code || 'jobcard') + '_signed.pdf';
+        a.click();
+        setTimeout(function() { URL.revokeObjectURL(url); }, 5000);
+        toast('Downloaded ✓', 'ok');
+      } else {
+        // Fallback to direct URL
+        var fallback = j.signedPdfUrl || j.signedPdf;
+        if (fallback) { window.open(fallback, '_blank'); toast('Downloaded ✓', 'ok'); }
+        else toast('Download failed', 'er');
+      }
+    })
+    .catch(function() {
+      var fallback = j.signedPdfUrl || j.signedPdf;
+      if (fallback) { window.open(fallback, '_blank'); toast('Opened in Drive ✓', 'ok'); }
+      else toast('Download failed', 'er');
+    });
 }
 
 async function deleteSigned(id) {
+  // Only admin, manager and job card staff can remove signed PDFs
+  if (CURRENT_USER && (CURRENT_USER.role === 'staff' || CURRENT_USER.role === 'viewer')) {
+    toast('You do not have permission to remove signed PDFs', 'er'); return;
+  }
   if (!confirm('Remove the signed PDF from Google Drive?')) return;
   const j = JOBCARDS.find(x => x.id === id);
   if (!j) return;
@@ -1834,12 +2025,15 @@ function renderJCSummary() {
     var j = JOBCARDS[i];
     var jid = j.id;
     var catStyle = j.category === 'WORKSHOP' ? 'background:rgba(79,142,247,.15);color:#4f8ef7' : j.category === 'BREAKDOWN' ? 'background:rgba(249,115,22,.15);color:#f97316' : 'background:var(--s2);color:var(--t2)';
+    var canManageSigned = CURRENT_USER && CURRENT_USER.role !== 'staff' && CURRENT_USER.role !== 'viewer';
     var signedBtns = j.signedPdfUrl
       ? '<button class="actbtn jcs-view" data-id="'+jid+'" style="color:#4ade80;border-color:#4ade80;font-size:11px">👁 View Signed</button>'
         +'<button class="actbtn jcs-dl" data-id="'+jid+'" style="color:#38bdf8;border-color:#38bdf8;font-size:11px">⬇ Download</button>'
-        +'<button class="actbtn jcs-rep" data-id="'+jid+'" style="color:#fbbf24;border-color:#fbbf24;font-size:11px">🔄 Replace</button>'
-        +'<button class="actbtn jcs-del d" data-id="'+jid+'" style="font-size:11px">🗑 Remove</button>'
-      : '<button class="actbtn jcs-att" data-id="'+jid+'" style="color:#fbbf24;border-color:#fbbf24;font-size:11px">📤 Attach Signed PDF</button>';
+        +(canManageSigned ? '<button class="actbtn jcs-rep" data-id="'+jid+'" style="color:#fbbf24;border-color:#fbbf24;font-size:11px">🔄 Replace</button>' : '')
+        +(canRemoveSigned ? '<button class="actbtn jcs-del d" data-id="'+jid+'" style="font-size:11px">🗑 Remove</button>' : '')
+      : (canManageSigned ? '<button class="actbtn jcs-att" data-id="'+jid+'" style="color:#fbbf24;border-color:#fbbf24;font-size:11px">📤 Attach Signed PDF</button>' : '');
+    // Staff (Requisition) cannot remove signed PDFs
+    var canRemoveSigned = !(CURRENT_USER && (CURRENT_USER.role === 'staff' || CURRENT_USER.role === 'viewer'));
     rows += '<tr>'
       +'<td><span class="reqbadge" style="font-size:11px">'+(j.code||'')+'</span></td>'
       +'<td><b style="color:var(--ac)">'+(j.vehicle||'')+'</b> <span style="color:var(--t2);font-size:10px">'+(j.vehicleType||'')+'</span></td>'
@@ -1984,9 +2178,12 @@ function downloadJCPDFById(id) {
 // ── TRIGGER FILE ATTACH ──
 let _attachingId = null;
 function triggerAttach(id) {
+  if (CURRENT_USER && (CURRENT_USER.role === 'staff' || CURRENT_USER.role === 'viewer')) {
+    toast('You do not have permission to attach or replace signed PDFs', 'er'); return;
+  }
   _attachingId = id;
   const inp = document.getElementById('signedpdf_input');
-  inp.value = ''; // reset so same file can be reselected
+  inp.value = '';
   inp.click();
 }
 function handleAttachFile(input) {
@@ -1997,8 +2194,32 @@ function handleAttachFile(input) {
 // ── VIEW SIGNED PDF ──
 function viewSigned(id) {
   const j = JOBCARDS.find(x => x.id === id);
-  if (!j || !j.signedPdfUrl) { toast('No signed PDF attached', 'er'); return; }
-  window.open(j.signedPdfUrl, '_blank');
+  if (!j || (!j.signedPdfId && !j.signedPdfUrl)) { toast('No signed PDF attached', 'er'); return; }
+  toast('Loading PDF...', 'in');
+  callAPI('getSignedPdf', { fileId: j.signedPdfId || '' })
+    .then(function(res) {
+      if (res && res.data) {
+        // Open as blob — Drive URL hidden
+        var binary = atob(res.data);
+        var bytes = new Uint8Array(binary.length);
+        for (var i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+        var blob = new Blob([bytes], { type: 'application/pdf' });
+        var url = URL.createObjectURL(blob);
+        window.open(url, '_blank');
+        setTimeout(function() { URL.revokeObjectURL(url); }, 10000);
+      } else {
+        // Fallback: open Drive URL if blob fails
+        var fallback = j.signedPdfUrl || j.signedPdf;
+        if (fallback) window.open(fallback, '_blank');
+        else toast('Failed to load PDF', 'er');
+      }
+    })
+    .catch(function() {
+      // Fallback on error
+      var fallback = j.signedPdfUrl || j.signedPdf;
+      if (fallback) window.open(fallback, '_blank');
+      else toast('Failed to load PDF', 'er');
+    });
 }
 
 // ── OPEN DRIVE FOLDER ──
@@ -2106,6 +2327,7 @@ function doLogin() {
 
 function doLogout() {
   CURRENT_USER = null;
+  try { sessionStorage.removeItem('ak_user'); } catch(e) {}
   var ov=document.getElementById('aklg'); if(ov) ov.style.display='flex';
   var lu=document.getElementById('aklgu'); if(lu){lu.value='';setTimeout(function(){lu.focus();},100);}
   var lp=document.getElementById('aklgp'); if(lp) lp.value='';
@@ -2570,29 +2792,31 @@ function wireGenericTable() {
 // ── INIT ──
 async function init(){
   showLoad('Connecting to database...');
-  const ok = await loadRecords();
+  var loadSafe = async function(action){
+    try{var r=await callAPI(action);return r.records||[];}catch(e){return[];}
+  };
+  var ok = await loadRecords();
+  if(ok){
+    var results = await Promise.all([
+      loadSafe('getSuppliers'),
+      loadSafe('getSpareParts'),
+      loadSafe('getJobCards'),
+      loadSafe('getDrivers'),
+      loadSafe('getVehicles'),
+      loadSafe('getUsers')
+    ]);
+    SUPPLIERS  = results[0];
+    SPAREPARTS = results[1];
+    JOBCARDS   = results[2];
+    DRIVERS    = results[3];
+    VEHICLES   = results[4];
+    if(results[5] && results[5].length > 0) USERS = results[5];
+  }
   hideLoad();
   if(ok){
-    // Load other data in background
-    (async()=>{
-      try{const r=await callAPI('getSuppliers');SUPPLIERS=r.records||[];}catch(e){}
-      try{const r=await callAPI('getSpareParts');SPAREPARTS=r.records||[];}catch(e){}
-      try{const r=await callAPI('getJobCards');JOBCARDS=r.records||[];}catch(e){}
-      try{const r=await callAPI('getDrivers');DRIVERS=r.records||[];}catch(e){}
-      try{const r=await callAPI('getVehicles');VEHICLES=r.records||[];}catch(e){}
-      try{const r=await callAPI('getUsers');if(r.records&&r.records.length>0)USERS=r.records;}catch(e){}
-      updateBadges();
-      if(currentView==='jobcards')renderJobCards();
-      else if(currentView==='jcsummary')renderJCSummary();
-      else if(currentView==='drivers')renderDrivers();
-      else if(currentView==='vehicles')renderVehicles();
-      else if(currentView==='suppliers')renderSuppliers();
-      else if(currentView==='spareparts')renderSpareParts();
-      else if(currentView==='dashboard')renderDashboard();
-    })();
     updateBadges();buildHeader();applyFilters();
     toast('Connected — '+ALL.length+' records loaded','ok');
-    setInterval(async()=>{
+    setInterval(async function(){
       if(await loadRecords()){
         updateBadges();
         if(currentView==='suppliers')renderSuppliers();
@@ -2631,8 +2855,9 @@ init();
         <select id="f_desc_select" onchange="onDescSelect()" style="margin-bottom:6px"><option value="">&#8212; Select from spare parts list &#8212;</option></select>
         <input type="text" id="f_desc" placeholder="Type description or select from list above">
       </div>
-      <div class="formgroup"><label>Qty <span style="color:#f87171">*</span></label><input type="number" id="f_qty" min="0"></div>
-      <div class="formgroup"><label>Cost <span style="color:#f87171">*</span></label><input type="number" id="f_cost" min="0"></div>
+      <div class="formgroup"><label>Qty <span style="color:#f87171">*</span></label><input type="number" id="f_qty" min="0" oninput="calcTotal()"></div>
+        <div class="formgroup"><label>Unit Price <span style="color:#f87171">*</span></label><input type="text" id="f_unit_price" oninput="calcTotal()" onblur="fmtNum(this)" placeholder="e.g. 100,000.00"></div>
+        <div class="formgroup full"><label>Total Amount <span style="color:#f87171">*</span></label><input type="text" id="f_cost" placeholder="Auto-calculated (Qty × Unit Price)" style="color:var(--ac);font-weight:700;font-size:14px;cursor:not-allowed" readonly></div>
       <div class="formgroup"><label>Supplier</label><select id="f_supplier" onchange="onSupplierSelect()"><option value="">Select supplier...</option></select></div>
       <div class="formgroup"><label>Date Received</label><input type="date" id="f_datercvd"></div>
       <div class="formgroup"><label>Status</label><select id="f_status"><option value="">Select...</option><option>RECEIVED</option><option>RECEIVED NOT PAID</option><option>ON HOLD</option><option>PAID NOT RECEIVED</option><option>NOT RECEIVED</option></select></div>
@@ -2907,19 +3132,53 @@ function doSignIn() {
   document.getElementById('aklg').style.display = 'none';
   window.CURRENT_USER = found;
   if (typeof CURRENT_USER !== 'undefined') CURRENT_USER = found;
+
+  // Persist session so page refresh doesn't log out
+  try { sessionStorage.setItem('ak_user', JSON.stringify(found)); } catch(e) {}
+
   var uw = document.getElementById('usermenu_wrap'); if (uw) uw.style.display = 'inline-block';
   var nw = document.getElementById('newwrap'); if (nw) nw.style.display = 'inline-block';
   var un = document.getElementById('topbar_username'); if (un) un.textContent = found.name || found.username;
   var ul = document.getElementById('usermgmt_link'); if (ul && found.role === 'admin') ul.style.display = 'flex';
+
   if (typeof updateBadges === 'function') updateBadges();
   if (typeof buildHeader === 'function') buildHeader();
   if (typeof applyFilters === 'function') applyFilters();
   if (typeof applyPermissions === 'function') applyPermissions();
   if (typeof toast === 'function') toast('Welcome, ' + (found.name || found.username) + '!', 'ok');
-  // Re-run updateBadges after background data finishes loading
-  setTimeout(function(){ if(typeof updateBadges==='function') updateBadges(); }, 2000);
-  setTimeout(function(){ if(typeof updateBadges==='function') updateBadges(); }, 5000);
+  // Data already fully loaded by init() - just update badges
+  setTimeout(function(){ if(typeof updateBadges==='function') updateBadges(); }, 300);
 }
+
+// Restore session on page refresh
+(function() {
+  try {
+    var saved = sessionStorage.getItem('ak_user');
+    if (!saved) return;
+    var user = JSON.parse(saved);
+    if (!user || !user.username) return;
+    window.CURRENT_USER = user;
+    if (typeof CURRENT_USER !== 'undefined') CURRENT_USER = user;
+    document.getElementById('aklg').style.display = 'none';
+    var uw = document.getElementById('usermenu_wrap'); if (uw) uw.style.display = 'inline-block';
+    var nw = document.getElementById('newwrap'); if (nw) nw.style.display = 'inline-block';
+    var un = document.getElementById('topbar_username'); if (un) un.textContent = user.name || user.username;
+    var ul = document.getElementById('usermgmt_link'); if (ul && user.role === 'admin') ul.style.display = 'flex';
+    // Wait for init() to finish loading all data before updating badges
+    var attempts = 0;
+    var waitForInit = setInterval(function() {
+      attempts++;
+      if (typeof JOBCARDS !== 'undefined' && typeof DRIVERS !== 'undefined') {
+        clearInterval(waitForInit);
+        if (typeof applyPermissions === 'function') applyPermissions();
+        if (typeof updateBadges === 'function') updateBadges();
+        if (typeof buildHeader === 'function') buildHeader();
+        if (typeof applyFilters === 'function') applyFilters();
+      }
+      if (attempts > 40) clearInterval(waitForInit); // give up after 4s
+    }, 100);
+  } catch(e) {}
+})();
 
 document.getElementById('aklgbtn').addEventListener('click', doSignIn);
 document.getElementById('aklgu').addEventListener('keydown', function(e) { if (e.key === 'Enter') doSignIn(); });
