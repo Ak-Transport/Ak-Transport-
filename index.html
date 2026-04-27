@@ -2391,13 +2391,26 @@ async function doChangePwd() {
   const confirm = document.getElementById('cp_confirm').value;
   const errEl = document.getElementById('cp_err');
   errEl.textContent = '';
-  if (current !== CURRENT_USER.password) { errEl.textContent = '❌ Current password is incorrect'; return; }
+
+  // Get actual stored password - check USERS array first, fall back to CURRENT_USER
+  var storedPwd = CURRENT_USER.password || '';
+  if (USERS && USERS.length > 0) {
+    var userRecord = USERS.find(function(u) {
+      return u.id === CURRENT_USER.id || (u.username||'').toLowerCase() === (CURRENT_USER.username||'').toLowerCase();
+    });
+    if (userRecord) storedPwd = userRecord.password || '';
+  }
+
+  if (current !== storedPwd) { errEl.textContent = '❌ Current password is incorrect'; return; }
   if (newPwd.length < 6) { errEl.textContent = '❌ New password must be at least 6 characters'; return; }
   if (newPwd !== confirm) { errEl.textContent = '❌ Passwords do not match'; return; }
-  // Update in USERS array and Google Sheets
-  const i = USERS.findIndex(u => u.id === CURRENT_USER.id);
+
+  // Update in USERS array, CURRENT_USER and sessionStorage
+  var i = USERS.findIndex(function(u){ return u.id === CURRENT_USER.id || (u.username||'').toLowerCase() === (CURRENT_USER.username||'').toLowerCase(); });
   if (i !== -1) USERS[i].password = newPwd;
   CURRENT_USER.password = newPwd;
+  try { sessionStorage.setItem('ak_user', JSON.stringify(CURRENT_USER)); } catch(e) {}
+
   try {
     await callAPI('updateUser', { record: { ...CURRENT_USER, password: newPwd } });
     toast('Password changed successfully ✓', 'ok');
@@ -3103,9 +3116,7 @@ init();
 <script>
 // Ensure default admin is always available
 if (typeof USERS !== 'undefined') {
-  if (!USERS || USERS.length === 0) {
-    USERS = [{id:'admin_default',name:'Administrator',username:'admin',password:'admin123',role:'admin',status:'active',p_req:true,p_jc:true,p_driver:true,p_vehicle:true,p_supplier:true,p_parts:true,p_edit:true,p_delete:true}];
-  }
+  // No hardcoded credentials - users loaded from Google Sheets only
 }
 
 function doSignIn() {
@@ -3120,7 +3131,7 @@ function doSignIn() {
     if ((userList[x].username||'').toLowerCase() === 'admin') { hasAdmin = true; break; }
   }
   if (!hasAdmin) {
-    userList = [{id:'admin_default',name:'Administrator',username:'admin',password:'admin123',role:'admin',status:'active',p_req:true,p_jc:true,p_driver:true,p_vehicle:true,p_supplier:true,p_parts:true,p_edit:true,p_delete:true}].concat(userList);
+    // No fallback admin - must exist in Google Sheets
   }
   var found = null;
   for (var i = 0; i < userList.length; i++) {
