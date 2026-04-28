@@ -590,17 +590,17 @@ function doEdit(r){
 
   // Plain inputs
   setVal('f_req', r.reqNo);
-  setVal('f_date', r.dateRequested);
+  setVal('f_date', toDateInput(r.dateRequested));
   setVal('f_vtype', r.vehicleType);
   setVal('f_priority', r.priority);
   setVal('f_lpo', r.lpoNo);
   setVal('f_qty', r.qty);
-  setVal('f_datercvd', r.dateReceived);
+  setVal('f_datercvd', toDateInput(r.dateReceived));
   setVal('f_status', r.status);
   setVal('f_payment', r.paymentMode);
   setVal('f_category', r.category);
   setVal('f_reqby', r.requestedBy);
-  setVal('f_dateissued', r.dateIssued);
+  setVal('f_dateissued', toDateInput(r.dateIssued));
   setVal('f_remarks', r.remarks);
   setVal('f_unit_price', r.unitPrice);
   setVal('f_cost', r.cost);
@@ -1092,6 +1092,21 @@ document.addEventListener('DOMContentLoaded', function() {
 document.addEventListener('click',function(e){if(e.target.classList&&e.target.classList.contains('overlay')){e.target.classList.add('hidden');pwdCb=null;}});
 function fd(v){if(!v)return'–';const m=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];const d=new Date(v);if(isNaN(d.getTime()))return v;return`${String(d.getDate()).padStart(2,'0')}-${m[d.getMonth()]}-${String(d.getFullYear()).slice(-2)}`;}
 function todayStr(){return new Date().toISOString().split('T')[0];}
+function toDateInput(v){
+  // Convert any date string to yyyy-mm-dd for HTML date inputs
+  if(!v) return '';
+  // Already yyyy-mm-dd
+  if(/^\d{4}-\d{2}-\d{2}$/.test(v)) return v;
+  // Try parsing
+  var d = new Date(v);
+  if(!isNaN(d.getTime())){
+    var yyyy=d.getFullYear();
+    var mm=String(d.getMonth()+1).padStart(2,'0');
+    var dd=String(d.getDate()).padStart(2,'0');
+    return yyyy+'-'+mm+'-'+dd;
+  }
+  return v;
+}
 function toast(msg,type='in'){const icons={ok:'✅',er:'❌',in:'ℹ️'};const el=document.createElement('div');el.className=`toast ${type}`;el.innerHTML=`<span>${icons[type]}</span><span>${msg}</span>`;document.getElementById('toastbox').appendChild(el);setTimeout(()=>el.remove(),3000);}
 function doExport(){const data=filtered.length?filtered:ALL;const hd=['Req No','Date Requested','Truck','Vehicle Type','Driver Name','Priority','Job Card No','LPO No','Description','Qty','Cost','Supplier','Date Received','Status','Payment Mode','Category','Requested By','Remarks','Date Issued'];const ks=['reqNo','dateRequested','truck','vehicleType','driverName','priority','jobCardNo','lpoNo','description','qty','cost','supplier','dateReceived','status','paymentMode','category','requestedBy','remarks','dateIssued'];const rows=[hd,...data.map(r=>ks.map(k=>r[k]||''))];const csv=rows.map(r=>r.map(v=>`"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n');const a=document.createElement('a');a.href='data:text/csv;charset=utf-8,'+encodeURIComponent(csv);a.download=`requisitions_${todayStr()}.csv`;a.click();toast('Exported','ok');}
 function clearSearch(){['SEARCH1','SEARCH2','SEARCH3'].forEach(id=>document.getElementById(id).value='');document.getElementById('STATUSFILTER').value='';document.getElementById('SEARCHFIELD1').value='truck';document.getElementById('SEARCHFIELD2').value='';document.getElementById('SEARCHFIELD3').value='';document.getElementById('SEARCH1').placeholder='e.g. T843DEE';applyFilters();document.getElementById('SEARCH1').focus();}
@@ -1204,9 +1219,9 @@ function editJobCard(id) {
   sv('jc_workstatus', j.workStatus);
   sv('jc_task', j.taskDescription);
   sv('jc_parts', j.partsRequested);
-  sv('jc_startdate', j.startDate);
-  sv('jc_enddate', j.endDate);
-  sv('jc_releasedate', j.expectedReleaseDate);
+  sv('jc_startdate', toDateInput(j.startDate));
+  sv('jc_enddate', toDateInput(j.endDate));
+  sv('jc_releasedate', toDateInput(j.expectedReleaseDate));
   sv('jc_duration', j.duration);
   sv('jc_comment', j.comment);
 
@@ -1976,103 +1991,18 @@ function buildJobCardHTML(j, defects, parts) {
 function downloadJCPDF() {
   const printArea = document.getElementById('jcprintarea');
   if (!printArea) return;
-
   const win = window.open('', '_blank', 'width=900,height=700');
-  win.document.write(`<!DOCTYPE html><html><head>
-    <title>Job Card</title>
-    <style>
-      body{margin:20px;font-family:Arial,sans-serif;color:#000}
-      @media print{body{margin:0}@page{margin:15mm}}
-    </style>
-  </head><body>${printArea.outerHTML}
-  <script>
-    window.onload = function() {
-      window.print();
-      window.onafterprint = function() { window.close(); };
-    };
-  </' + 'script><input type="file" id="signedpdf_input" accept=".pdf" style="display:none" onchange="handleAttachFile(this)">
-
-
-
-<!-- CHANGE PASSWORD MODAL -->
-<div class="overlay hidden" id="changepwdmodal">
-  <div class="modal" style="max-width:380px">
-    <div class="modalhead"><div class="modaltitle">Change Password</div><button class="modalclose" onclick="closeModal('changepwdmodal')">✕</button></div>
-    <div class="modalbody">
-      <div class="formgrid" style="grid-template-columns:1fr">
-        <div class="formgroup"><label>Current Password</label><input type="password" id="cp_current" placeholder="Current password"></div>
-        <div class="formgroup"><label>New Password</label><input type="password" id="cp_new" placeholder="New password (min 6 chars)"></div>
-        <div class="formgroup"><label>Confirm New Password</label><input type="password" id="cp_confirm" placeholder="Confirm new password"></div>
-        <div id="cp_err" style="color:#f87171;font-size:12px;min-height:16px"></div>
-      </div>
-    </div>
-    <div class="modalfoot"><button class="btn bg" onclick="closeModal('changepwdmodal')">Cancel</button><button class="btn bp" onclick="doChangePwd()">Change Password</button></div>
-  </div>
-</div>
-
-<!-- USER MANAGEMENT MODAL -->
-<div class="overlay hidden" id="usermgmtmodal">
-  <div class="modal" style="max-width:800px">
-    <div class="modalhead"><div class="modaltitle">👥 User Management</div><button class="modalclose" onclick="closeModal('usermgmtmodal')">✕</button></div>
-    <div class="modalbody" style="padding:0">
-      <div style="padding:16px 22px;border-bottom:1px solid var(--br);display:flex;justify-content:space-between;align-items:center">
-        <div style="font-size:13px;color:var(--t2)">Manage users and their access roles</div>
-        <button class="btn bp" style="font-size:12px" onclick="openAddUser()">+ Add User</button>
-      </div>
-      <div id="usertable" style="padding:16px 22px;max-height:60vh;overflow-y:auto"></div>
-    </div>
-  </div>
-</div>
-
-<!-- ADD/EDIT USER MODAL -->
-<div class="overlay hidden" id="addusermodal">
-  <div class="modal" style="max-width:500px">
-    <div class="modalhead"><div class="modaltitle" id="addusertitle">Add User</div><button class="modalclose" onclick="closeModal('addusermodal')">✕</button></div>
-    <div class="modalbody">
-      <div class="formgrid">
-        <div class="formgroup"><label>Full Name</label><input type="text" id="u_name" placeholder="Full name"></div>
-        <div class="formgroup"><label>Username</label><input type="text" id="u_username" placeholder="Login username" autocomplete="off"></div>
-        <div class="formgroup"><label>Password</label><input type="password" id="u_password" placeholder="Set password"></div>
-        <div class="formgroup"><label>Role</label>
-          <select id="u_role" onchange="setRolePreset(this.value)">
-            <option value="viewer">Viewer — View only</option>
-            <option value="staff">Staff (Requisition) — Requisitions, Parts &amp; Suppliers</option>
-            <option value="staff_jc">Staff (Job Card) — Job Cards, Drivers &amp; Vehicles</option>
-            <option value="manager">Manager — Full access except user management</option>
-            <option value="admin">Admin — Full access</option>
-          </select>
-        </div>
-        <div class="formgroup full"><label>Permissions</label>
-          <div style="margin-top:8px">
-          <div style="font-size:10px;font-weight:700;color:var(--ac);text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px;padding-bottom:4px;border-bottom:1px solid var(--br)">Requisition Staff Permissions</div>
-          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:5px;margin-bottom:10px">
-            <label style="display:flex;align-items:center;gap:8px;font-size:12px;color:var(--tx);cursor:pointer;font-weight:400;padding:7px 10px;background:var(--s2);border-radius:6px;text-transform:none;letter-spacing:0"><input type="checkbox" id="p_req" style="width:14px;height:14px;accent-color:var(--ac);flex-shrink:0"> Create Requisitions</label>
-            <label style="display:flex;align-items:center;gap:8px;font-size:12px;color:var(--tx);cursor:pointer;font-weight:400;padding:7px 10px;background:var(--s2);border-radius:6px;text-transform:none;letter-spacing:0"><input type="checkbox" id="p_supplier" style="width:14px;height:14px;accent-color:var(--ac);flex-shrink:0"> Add Suppliers</label>
-            <label style="display:flex;align-items:center;gap:8px;font-size:12px;color:var(--tx);cursor:pointer;font-weight:400;padding:7px 10px;background:var(--s2);border-radius:6px;text-transform:none;letter-spacing:0"><input type="checkbox" id="p_parts" style="width:14px;height:14px;accent-color:var(--ac);flex-shrink:0"> Add Spare Parts</label>
-          </div>
-          <div style="font-size:10px;font-weight:700;color:#34d399;text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px;padding-bottom:4px;border-bottom:1px solid var(--br)">Job Card Staff Permissions</div>
-          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:5px;margin-bottom:10px">
-            <label style="display:flex;align-items:center;gap:8px;font-size:12px;color:var(--tx);cursor:pointer;font-weight:400;padding:7px 10px;background:var(--s2);border-radius:6px;text-transform:none;letter-spacing:0"><input type="checkbox" id="p_jc" style="width:14px;height:14px;accent-color:var(--ac);flex-shrink:0"> Create Job Cards</label>
-            <label style="display:flex;align-items:center;gap:8px;font-size:12px;color:var(--tx);cursor:pointer;font-weight:400;padding:7px 10px;background:var(--s2);border-radius:6px;text-transform:none;letter-spacing:0"><input type="checkbox" id="p_driver" style="width:14px;height:14px;accent-color:var(--ac);flex-shrink:0"> Add Drivers</label>
-            <label style="display:flex;align-items:center;gap:8px;font-size:12px;color:var(--tx);cursor:pointer;font-weight:400;padding:7px 10px;background:var(--s2);border-radius:6px;text-transform:none;letter-spacing:0"><input type="checkbox" id="p_vehicle" style="width:14px;height:14px;accent-color:var(--ac);flex-shrink:0"> Add Vehicles</label>
-          </div>
-          <div style="font-size:10px;font-weight:700;color:#fbbf24;text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px;padding-bottom:4px;border-bottom:1px solid var(--br)">Record Actions</div>
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:5px">
-            <label style="display:flex;align-items:center;gap:8px;font-size:12px;color:var(--tx);cursor:pointer;font-weight:400;padding:7px 10px;background:var(--s2);border-radius:6px;text-transform:none;letter-spacing:0"><input type="checkbox" id="p_edit" style="width:14px;height:14px;accent-color:var(--ac);flex-shrink:0"> Edit Records</label>
-            <label style="display:flex;align-items:center;gap:8px;font-size:12px;color:var(--tx);cursor:pointer;font-weight:400;padding:7px 10px;background:var(--s2);border-radius:6px;text-transform:none;letter-spacing:0"><input type="checkbox" id="p_delete" style="width:14px;height:14px;accent-color:var(--ac);flex-shrink:0"> Delete Records</label>
-          </div>
-        </div>
-        </div>
-        <div class="formgroup"><label>Status</label><select id="u_status"><option value="active">Active</option><option value="inactive">Inactive</option></select></div>
-      </div>
-    </div>
-    <div class="modalfoot"><button class="btn bg" onclick="closeModal('addusermodal')">Cancel</button><button class="btn bp" onclick="saveUser()">Save User</button></div>
-  </div>
-</div>
-
-</body></html>`);
+  const html = '<!DOCTYPE html><html><head><title>Job Card</title><style>body{margin:20px;font-family:Arial,sans-serif;color:#000}@media print{body{margin:0}@page{margin:15mm size:A4}}</style></head><body>'
+    + printArea.outerHTML
+    + '<scr' + 'ipt>window.onload=function(){window.print();window.onafterprint=function(){window.close();};};</' + 'script>'
+    + '</body></html>';
+  win.document.write(html);
   win.document.close();
 }
+
+
+
+
 
 function attachSigned(id, input) {
   const file = input.files[0];
@@ -2252,98 +2182,17 @@ function downloadJCPDFById(id) {
     (r.jobCardNo.toUpperCase() === j.code.toUpperCase() ||
      r.jobCardNo.toUpperCase() === (j.jobCardNo||'').toUpperCase())
   );
-  const html = buildJobCardHTML(j, defects, receivedParts);
-  // Open print window directly
+  const jcHtml = buildJobCardHTML(j, defects, receivedParts);
   const win = window.open('', '_blank', 'width=900,height=700');
-  win.document.write(`<!DOCTYPE html><html><head>
-    <title>Job Card ${j.code||''}</title>
-    <style>body{margin:20px;font-family:Arial,sans-serif;color:#000}@media print{body{margin:0}@page{margin:15mm size:A4}}</style>
-  </head><body>${html}
-  <scr'+'ipt>window.onload=function(){window.print();window.onafterprint=function(){window.close();};};</'+'script>
-  <input type="file" id="signedpdf_input" accept=".pdf" style="display:none" onchange="handleAttachFile(this)">
-
-
-
-
-<!-- CHANGE PASSWORD MODAL -->
-<div class="overlay hidden" id="changepwdmodal">
-  <div class="modal" style="max-width:380px">
-    <div class="modalhead"><div class="modaltitle">Change Password</div><button class="modalclose" onclick="closeModal('changepwdmodal')">✕</button></div>
-    <div class="modalbody">
-      <div class="formgrid" style="grid-template-columns:1fr">
-        <div class="formgroup"><label>Current Password</label><input type="password" id="cp_current" placeholder="Current password"></div>
-        <div class="formgroup"><label>New Password</label><input type="password" id="cp_new" placeholder="New password (min 6 chars)"></div>
-        <div class="formgroup"><label>Confirm New Password</label><input type="password" id="cp_confirm" placeholder="Confirm new password"></div>
-        <div id="cp_err" style="color:#f87171;font-size:12px;min-height:16px"></div>
-      </div>
-    </div>
-    <div class="modalfoot"><button class="btn bg" onclick="closeModal('changepwdmodal')">Cancel</button><button class="btn bp" onclick="doChangePwd()">Change Password</button></div>
-  </div>
-</div>
-
-<!-- USER MANAGEMENT MODAL -->
-<div class="overlay hidden" id="usermgmtmodal">
-  <div class="modal" style="max-width:800px">
-    <div class="modalhead"><div class="modaltitle">👥 User Management</div><button class="modalclose" onclick="closeModal('usermgmtmodal')">✕</button></div>
-    <div class="modalbody" style="padding:0">
-      <div style="padding:16px 22px;border-bottom:1px solid var(--br);display:flex;justify-content:space-between;align-items:center">
-        <div style="font-size:13px;color:var(--t2)">Manage users and their access roles</div>
-        <button class="btn bp" style="font-size:12px" onclick="openAddUser()">+ Add User</button>
-      </div>
-      <div id="usertable" style="padding:16px 22px;max-height:60vh;overflow-y:auto"></div>
-    </div>
-  </div>
-</div>
-
-<!-- ADD/EDIT USER MODAL -->
-<div class="overlay hidden" id="addusermodal">
-  <div class="modal" style="max-width:500px">
-    <div class="modalhead"><div class="modaltitle" id="addusertitle">Add User</div><button class="modalclose" onclick="closeModal('addusermodal')">✕</button></div>
-    <div class="modalbody">
-      <div class="formgrid">
-        <div class="formgroup"><label>Full Name</label><input type="text" id="u_name" placeholder="Full name"></div>
-        <div class="formgroup"><label>Username</label><input type="text" id="u_username" placeholder="Login username" autocomplete="off"></div>
-        <div class="formgroup"><label>Password</label><input type="password" id="u_password" placeholder="Set password"></div>
-        <div class="formgroup"><label>Role</label>
-          <select id="u_role" onchange="setRolePreset(this.value)">
-            <option value="viewer">Viewer — View only</option>
-            <option value="staff">Staff (Requisition) — Requisitions, Parts &amp; Suppliers</option>
-            <option value="staff_jc">Staff (Job Card) — Job Cards, Drivers &amp; Vehicles</option>
-            <option value="manager">Manager — Full access except user management</option>
-            <option value="admin">Admin — Full access</option>
-          </select>
-        </div>
-        <div class="formgroup full"><label>Permissions</label>
-          <div style="margin-top:8px">
-          <div style="font-size:10px;font-weight:700;color:var(--ac);text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px;padding-bottom:4px;border-bottom:1px solid var(--br)">Requisition Staff Permissions</div>
-          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:5px;margin-bottom:10px">
-            <label style="display:flex;align-items:center;gap:8px;font-size:12px;color:var(--tx);cursor:pointer;font-weight:400;padding:7px 10px;background:var(--s2);border-radius:6px;text-transform:none;letter-spacing:0"><input type="checkbox" id="p_req" style="width:14px;height:14px;accent-color:var(--ac);flex-shrink:0"> Create Requisitions</label>
-            <label style="display:flex;align-items:center;gap:8px;font-size:12px;color:var(--tx);cursor:pointer;font-weight:400;padding:7px 10px;background:var(--s2);border-radius:6px;text-transform:none;letter-spacing:0"><input type="checkbox" id="p_supplier" style="width:14px;height:14px;accent-color:var(--ac);flex-shrink:0"> Add Suppliers</label>
-            <label style="display:flex;align-items:center;gap:8px;font-size:12px;color:var(--tx);cursor:pointer;font-weight:400;padding:7px 10px;background:var(--s2);border-radius:6px;text-transform:none;letter-spacing:0"><input type="checkbox" id="p_parts" style="width:14px;height:14px;accent-color:var(--ac);flex-shrink:0"> Add Spare Parts</label>
-          </div>
-          <div style="font-size:10px;font-weight:700;color:#34d399;text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px;padding-bottom:4px;border-bottom:1px solid var(--br)">Job Card Staff Permissions</div>
-          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:5px;margin-bottom:10px">
-            <label style="display:flex;align-items:center;gap:8px;font-size:12px;color:var(--tx);cursor:pointer;font-weight:400;padding:7px 10px;background:var(--s2);border-radius:6px;text-transform:none;letter-spacing:0"><input type="checkbox" id="p_jc" style="width:14px;height:14px;accent-color:var(--ac);flex-shrink:0"> Create Job Cards</label>
-            <label style="display:flex;align-items:center;gap:8px;font-size:12px;color:var(--tx);cursor:pointer;font-weight:400;padding:7px 10px;background:var(--s2);border-radius:6px;text-transform:none;letter-spacing:0"><input type="checkbox" id="p_driver" style="width:14px;height:14px;accent-color:var(--ac);flex-shrink:0"> Add Drivers</label>
-            <label style="display:flex;align-items:center;gap:8px;font-size:12px;color:var(--tx);cursor:pointer;font-weight:400;padding:7px 10px;background:var(--s2);border-radius:6px;text-transform:none;letter-spacing:0"><input type="checkbox" id="p_vehicle" style="width:14px;height:14px;accent-color:var(--ac);flex-shrink:0"> Add Vehicles</label>
-          </div>
-          <div style="font-size:10px;font-weight:700;color:#fbbf24;text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px;padding-bottom:4px;border-bottom:1px solid var(--br)">Record Actions</div>
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:5px">
-            <label style="display:flex;align-items:center;gap:8px;font-size:12px;color:var(--tx);cursor:pointer;font-weight:400;padding:7px 10px;background:var(--s2);border-radius:6px;text-transform:none;letter-spacing:0"><input type="checkbox" id="p_edit" style="width:14px;height:14px;accent-color:var(--ac);flex-shrink:0"> Edit Records</label>
-            <label style="display:flex;align-items:center;gap:8px;font-size:12px;color:var(--tx);cursor:pointer;font-weight:400;padding:7px 10px;background:var(--s2);border-radius:6px;text-transform:none;letter-spacing:0"><input type="checkbox" id="p_delete" style="width:14px;height:14px;accent-color:var(--ac);flex-shrink:0"> Delete Records</label>
-          </div>
-        </div>
-        </div>
-        <div class="formgroup"><label>Status</label><select id="u_status"><option value="active">Active</option><option value="inactive">Inactive</option></select></div>
-      </div>
-    </div>
-    <div class="modalfoot"><button class="btn bg" onclick="closeModal('addusermodal')">Cancel</button><button class="btn bp" onclick="saveUser()">Save User</button></div>
-  </div>
-</div>
-
-</body></html>`);
+  const out = '<!DOCTYPE html><html><head><title>Job Card ' + (j.code||'') + '</title>'
+    + '<style>body{margin:20px;font-family:Arial,sans-serif;color:#000}@media print{body{margin:0}@page{margin:15mm size:A4}}</style>'
+    + '</head><body>' + jcHtml
+    + '<scr' + 'ipt>window.onload=function(){window.print();window.onafterprint=function(){window.close();};};</' + 'script>'
+    + '</body></html>';
+  win.document.write(out);
   win.document.close();
 }
+
 
 
 
