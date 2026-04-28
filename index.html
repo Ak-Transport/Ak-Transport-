@@ -3,8 +3,14 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
 <title>AK TRANSPORT WORKSHOP MANAGEMENT SYSTEM</title>
+<!-- v202604271229 -->
 <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Syne:wght@700;800&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<link href="https://cdnjs.cloudflare.com/ajax/libs/tom-select/2.3.1/css/tom-select.min.css" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/tom-select/2.3.1/js/tom-select.complete.min.js"></script>
 <style>
 :root{--bg:#0f1117;--s1:#1a1d27;--s2:#222536;--br:#2e3248;--ac:#4f8ef7;--tx:#e8eaf6;--t2:#8b90b0;--t3:#555a7a}
 *{box-sizing:border-box;margin:0;padding:0}
@@ -117,6 +123,20 @@ select option{background:var(--s2)}textarea{resize:vertical;min-height:56px}inpu
 #aklg button:hover{filter:brightness(1.1)}
 #aklge{color:#f87171;font-size:12px;text-align:center;min-height:18px;margin-bottom:10px}
 ::-webkit-scrollbar{width:5px;height:5px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:var(--br);border-radius:3px}
+/* Tom Select dark theme */
+.ts-wrapper{width:100%}
+.ts-control{background:var(--s2)!important;border:1px solid var(--br)!important;border-radius:7px!important;padding:8px 11px!important;color:var(--tx)!important;font-family:'DM Sans',sans-serif!important;font-size:13px!important;min-height:38px!important;box-shadow:none!important;cursor:pointer!important}
+.ts-wrapper.focus .ts-control{border-color:var(--ac)!important;box-shadow:none!important}
+.ts-dropdown{background:var(--s1)!important;border:1px solid var(--br)!important;border-radius:8px!important;margin-top:3px!important;box-shadow:0 8px 24px rgba(0,0,0,.5)!important;font-family:'DM Sans',sans-serif!important;font-size:13px!important;z-index:9999!important}
+.ts-dropdown .option{padding:9px 12px!important;color:var(--tx)!important;cursor:pointer!important}
+.ts-dropdown .option:hover,.ts-dropdown .option.active{background:var(--s2)!important;color:var(--ac)!important}
+.ts-dropdown .option.selected{background:rgba(79,142,247,.15)!important;color:var(--ac)!important}
+.ts-dropdown-content{max-height:220px!important;overflow-y:auto!important}
+.ts-wrapper .ts-control input{color:var(--tx)!important;font-family:'DM Sans',sans-serif!important;font-size:13px!important;background:transparent!important}
+.ts-wrapper .ts-control input::placeholder{color:var(--t3)!important}
+.ts-dropdown .no-results{color:var(--t2)!important;padding:10px 12px!important;font-size:12px!important}
+.ts-dropdown input.ts-dropdown-search{background:var(--s2)!important;border:1px solid var(--br)!important;border-radius:6px!important;color:var(--tx)!important;padding:7px 10px!important;margin:6px!important;width:calc(100% - 12px)!important;font-size:12px!important;outline:none!important}
+.ts-wrapper.single .ts-control::after{border-color:var(--t2) transparent transparent transparent!important}
 @media(max-width:700px){.sidebar{display:none}.formgrid{grid-template-columns:1fr}.chartgrid{grid-template-columns:1fr}.dgrid{grid-template-columns:1fr 1fr}}
 </style>
 </head>
@@ -172,6 +192,9 @@ select option{background:var(--s2)}textarea{resize:vertical;min-height:56px}inpu
     <div class="navitem" id="nav-suppliers" onclick="switchView('suppliers')"><div class="navdot" style="background:#f97316"></div>Suppliers<span class="navbadge" id="badge-suppliers">0</span></div>
     <div class="navitem" id="nav-spareparts" onclick="switchView('spareparts')"><div class="navdot" style="background:#a78bfa"></div>Spare Parts<span class="navbadge" id="badge-spareparts">0</span></div>
     <div class="navitem" id="nav-dashboard" onclick="switchView('dashboard')"><div class="navdot" style="background:#7c5cfc"></div>Dashboard</div>
+    <div class="divider" id="div-usermgmt" style="display:none"></div>
+    <div class="slbl" id="slbl-usermgmt" style="display:none">System</div>
+    <div class="navitem" id="nav-usermgmt" style="display:none" onclick="switchView('usermgmt')"><div class="navdot" style="background:#f87171"></div>User Management</div>
   </div>
   <div class="main">
     <div id="toolbar" style="padding:14px 20px 0;display:flex;align-items:center;justify-content:space-between;flex-shrink:0">
@@ -241,7 +264,23 @@ window.onerror = function(msg, src, line, col, err) {
   return false;
 };
 
-const API = 'https://script.google.com/macros/s/AKfycbxt0lSJDdxlo3_4MbMmmSu6q26LxWOdJSGCLCiLkQDqlIUq--8nj0jfbLJ1RgDdKuZd_g/exec';
+const API = 'https://script.google.com/macros/s/AKfycbyiXtmTbRUTzhIgLe4IlKc6tHf4fSN2chmETdCbLXazBTtQgR5xiRInSJL44e0NElhOkA/exec';
+const APP_VERSION = '202604271237';
+
+// Auto-detect new version and force reload
+(function(){
+  try {
+    var cached = localStorage.getItem('ak_app_version');
+    if (cached && cached !== APP_VERSION) {
+      localStorage.setItem('ak_app_version', APP_VERSION);
+      // Clear session so user logs in fresh with new version
+      sessionStorage.clear();
+      window.location.reload(true);
+      return;
+    }
+    localStorage.setItem('ak_app_version', APP_VERSION);
+  } catch(e) {}
+})();
 const ADMINPWD = 'akadmin321';
 const PAGESIZE = 100;
 
@@ -272,7 +311,7 @@ const PH = {truck:'e.g. T843DEE',reqNo:'e.g. REQ-001234',description:'e.g. BRAKE
   document.getElementById(id).addEventListener('input', applyFilters);
   document.getElementById(id).addEventListener('keydown', function(e){ if(e.key==='Escape'){this.value='';applyFilters();} });
 });
-document.getElementById('STATUSFILTER').addEventListener('change', applyFilters);
+var _sf = document.getElementById('STATUSFILTER'); if(_sf) _sf.addEventListener('change', applyFilters);
 ['SEARCHFIELD1','SEARCHFIELD2','SEARCHFIELD3'].forEach((id,i) => {
   document.getElementById(id).addEventListener('change', function(){
     const inp = document.getElementById('SEARCH'+(i+1));
@@ -328,7 +367,7 @@ function buildRow(r,isRO){
   const desc=r.description||'';
   const ph=r.priority==="TODAY'S REQUEST"?'<span class="ptbadge">TODAY</span>':`<span style="color:var(--t3);font-size:10px">${r.priority||''}</span>`;
   const canER=canEditReq(),canDR=canDeleteReq();
-  const ac=isRO?'':`<td>${canER?`<button class="actbtn e" onclick="editRecord('${r.id}')">✏</button>`:''} ${canDR?`<button class="actbtn d" onclick="deleteRecord('${r.id}')">🗑</button>`:''} ${r.status==='RECEIVED'?'<span style="font-size:9px;opacity:.4">🔒</span>':''}</td>`;
+  const ac=isRO?'':`<td style="white-space:nowrap;overflow:visible;max-width:none">${canER?`<button class="actbtn e" onclick="editRecord('${r.id}')">✏ Edit</button>`:''} ${canDR?`<button class="actbtn d" onclick="deleteRecord('${r.id}')">🗑</button>`:''} ${r.status==='RECEIVED'?'<span style="font-size:9px;opacity:.4">🔒</span>':''}</td>`;
   return `<tr>
     <td><span class="reqbadge">${r.reqNo||''}</span></td>
     <td>${fd(r.dateRequested)}</td><td><b>${r.truck||''}</b></td>
@@ -338,13 +377,15 @@ function buildRow(r,isRO){
     <td style="color:var(--t2);font-size:10px;font-family:monospace">${r.lpoNo||''}</td>
     <td title="${desc}">${desc.length>28?desc.substring(0,28)+'…':desc}</td>
     <td style="font-family:monospace">${r.qty||''}</td>
-    <td style="font-family:monospace">${r.cost?Number(r.cost).toLocaleString():''}</td>
+    <td style="font-family:monospace">${r.unitPrice?Number(r.unitPrice).toLocaleString():''}</td>
+    <td style="font-family:monospace;color:var(--ac);font-weight:600">${r.cost?Number(r.cost).toLocaleString():''}</td>
     <td>${r.supplier||''}</td><td>${fd(r.dateReceived)}</td>
     <td><span class="sb ${sc[r.status]||''}">${r.status||''}</span></td>
     <td style="color:var(--t2);font-size:10px">${r.paymentMode||''}</td>
     <td style="color:var(--t2);font-size:10px">${r.category||''}</td>
     <td style="color:var(--t2);font-size:10px">${r.requestedBy||''}</td>
     <td style="color:var(--t2);font-size:10px">${fd(r.dateIssued)}</td>
+    <td style="color:var(--t2);font-size:11px;min-width:80px" title="${r.remarks||''}">${(r.remarks||'').length>25?(r.remarks||'').substring(0,25)+'…':(r.remarks||'')}</td>
     ${ac}</tr>`;
 }
 
@@ -364,6 +405,7 @@ function buildHeader(){
     <th onclick="doSort('lpoNo')">LPO No ${si('lpoNo')}</th>
     <th onclick="doSort('description')">Description ${si('description')}</th>
     <th onclick="doSort('qty')">Qty ${si('qty')}</th>
+    <th onclick="doSort('unitPrice')">Unit Price ${si('unitPrice')}</th>
     <th onclick="doSort('cost')">Total Amount ${si('cost')}</th>
     <th onclick="doSort('supplier')">Supplier ${si('supplier')}</th>
     <th onclick="doSort('dateReceived')">Date Rcvd ${si('dateReceived')}</th>
@@ -372,6 +414,7 @@ function buildHeader(){
     <th onclick="doSort('category')">Category ${si('category')}</th>
     <th onclick="doSort('requestedBy')">Req By ${si('requestedBy')}</th>
     <th onclick="doSort('dateIssued')">Date Issued ${si('dateIssued')}</th>
+    <th onclick="doSort('remarks')" style="min-width:80px">Remarks ${si('remarks')}</th>
     ${!isRO?'<th>Actions</th>':''}
   </tr>`;
 }
@@ -410,6 +453,7 @@ function switchView(v){
   if(v==='jcsummary'){renderJCSummary();return;}
   if(v==='drivers'){renderDrivers();return;}
   if(v==='vehicles'){renderVehicles();return;}
+  if(v==='usermgmt'){openUserMgmt();return;}
   buildHeader();
   applyFilters();
 }
@@ -515,12 +559,36 @@ function doEdit(r){
   editingId=r.id;
   document.getElementById('modaltitle').textContent='Edit Requisition';
 
-  // Populate dropdowns first so we can set values
+  // Populate dropdowns first
   populateFormDropdowns();
 
-  // Now set ALL field values after dropdowns are ready
-  // Plain inputs
+  // Helper to set plain input value
   var setVal = function(id, val) { var el=document.getElementById(id); if(el) el.value = val||''; };
+
+  // Helper to set Tom Select value (or plain select fallback)
+  var setSelect = function(id, val) {
+    if (!val) return;
+    var el = document.getElementById(id);
+    if (!el) return;
+    if (el.tomselect) {
+      // Add option if not exists
+      if (!el.tomselect.options[val]) {
+        el.tomselect.addOption({value: val, text: val});
+      }
+      el.tomselect.setValue(val, true);
+    } else {
+      // Plain select fallback
+      el.value = val;
+      if (el.value !== val) {
+        var o = document.createElement('option');
+        o.value = val; o.textContent = val;
+        el.insertBefore(o, el.firstChild);
+        el.value = val;
+      }
+    }
+  };
+
+  // Plain inputs
   setVal('f_req', r.reqNo);
   setVal('f_date', r.dateRequested);
   setVal('f_vtype', r.vehicleType);
@@ -534,59 +602,18 @@ function doEdit(r){
   setVal('f_reqby', r.requestedBy);
   setVal('f_dateissued', r.dateIssued);
   setVal('f_remarks', r.remarks);
-
-  // Unit price and total
   setVal('f_unit_price', r.unitPrice);
   setVal('f_cost', r.cost);
-
-  // Description - always set text input directly
   setVal('f_desc', r.description);
 
-  // SELECT: Truck - add option if not in list
-  var truckSel = document.getElementById('f_truck');
-  if(truckSel) {
-    truckSel.value = r.truck||'';
-    if(truckSel.value === '' && r.truck) {
-      var o=document.createElement('option'); o.value=r.truck; o.textContent=r.truck;
-      truckSel.insertBefore(o, truckSel.firstChild);
-      truckSel.value=r.truck;
-    }
-    // Filter job cards for this truck
-    populateJobCardDropdown(r.truck);
-  }
+  // Tom Select dropdowns
+  setSelect('f_truck', r.truck);
+  setSelect('f_driver', r.driverName);
+  setSelect('f_supplier', r.supplier);
 
-  // SELECT: Driver - add option if not in list
-  var drvSel = document.getElementById('f_driver');
-  if(drvSel) {
-    drvSel.value = r.driverName||'';
-    if(drvSel.value === '' && r.driverName) {
-      var o=document.createElement('option'); o.value=r.driverName; o.textContent=r.driverName;
-      drvSel.insertBefore(o, drvSel.firstChild);
-      drvSel.value=r.driverName;
-    }
-  }
-
-  // SELECT: Job Card - add option if not in list
-  var jcSel = document.getElementById('f_jobcard');
-  if(jcSel) {
-    jcSel.value = r.jobCardNo||'';
-    if(jcSel.value === '' && r.jobCardNo) {
-      var o=document.createElement('option'); o.value=r.jobCardNo; o.textContent=r.jobCardNo;
-      jcSel.insertBefore(o, jcSel.firstChild);
-      jcSel.value=r.jobCardNo;
-    }
-  }
-
-  // SELECT: Supplier - add option if not in list
-  var supSel = document.getElementById('f_supplier');
-  if(supSel) {
-    supSel.value = r.supplier||'';
-    if(supSel.value === '' && r.supplier) {
-      var o=document.createElement('option'); o.value=r.supplier; o.textContent=r.supplier;
-      supSel.insertBefore(o, supSel.firstChild);
-      supSel.value=r.supplier;
-    }
-  }
+  // Job card - filter by truck first then set
+  populateJobCardDropdown(r.truck);
+  setSelect('f_jobcard', r.jobCardNo);
 
   document.getElementById('recmodal').classList.remove('hidden');
 }
@@ -875,6 +902,31 @@ function populateFormDropdowns() {
     jcSel.appendChild(oc);
     if (cur) jcSel.value = cur;
   }
+
+  // Initialize Tom Select on all requisition dropdowns
+  initTomSelect('f_truck');
+  initTomSelect('f_driver');
+  initTomSelect('f_jobcard');
+  initTomSelect('f_supplier');
+}
+
+// Initialize or reinitialize Tom Select on a dropdown
+function initTomSelect(id) {
+  var el = document.getElementById(id);
+  if (!el) return;
+  // Destroy existing instance if any
+  if (el.tomselect) { el.tomselect.destroy(); }
+  new TomSelect(el, {
+    allowEmptyOption: true,
+    placeholder: el.options[0] ? el.options[0].textContent : 'Search...',
+    maxOptions: 500,
+    highlight: true,
+    onChange: function(val) {
+      // Trigger original onchange if it exists
+      if (id === 'f_truck') onTruckSelect();
+      if (id === 'f_supplier') onSupplierSelect();
+    }
+  });
 }
 
 // When truck selected in requisition — auto fill vehicle type
@@ -958,6 +1010,85 @@ function onDescSelect() {
 
 // ── HELPERS ──
 function closeModal(id){document.getElementById(id).classList.add('hidden');}
+
+// ── ROW CONTEXT MENU ──
+var _rowMenuId = null;
+var _rowMenuType = null;
+
+function showRowMenu(e, id, type, label) {
+  e.stopPropagation();
+  _rowMenuId = id;
+  _rowMenuType = type;
+  var menu = document.getElementById('rowmenu');
+  var title = document.getElementById('rowmenu_title');
+  var editBtn = document.getElementById('rowmenu_edit');
+  var delBtn = document.getElementById('rowmenu_delete');
+  title.textContent = label || 'Record';
+
+  // Show/hide edit and delete based on permissions
+  var canEdit = false, canDel = false;
+  if (type === 'req') { canEdit = canEditReq(); canDel = canDeleteReq(); }
+  else if (type === 'jc') { canEdit = canEditJC(); canDel = canDeleteJC(); }
+  else { canEdit = true; canDel = true; }
+
+  editBtn.style.display = canEdit ? 'flex' : 'none';
+  delBtn.style.display = canDel ? 'flex' : 'none';
+
+  // Position menu near click
+  var x = e.clientX, y = e.clientY;
+  var menuW = 180, menuH = 120;
+  if (x + menuW > window.innerWidth) x = window.innerWidth - menuW - 10;
+  if (y + menuH > window.innerHeight) y = window.innerHeight - menuH - 10;
+  menu.style.left = x + 'px';
+  menu.style.top = y + 'px';
+  menu.style.display = 'block';
+}
+
+function closeRowMenu() {
+  document.getElementById('rowmenu').style.display = 'none';
+  _rowMenuId = null;
+}
+
+document.addEventListener('click', function(e) {
+  var menu = document.getElementById('rowmenu');
+  if (menu && !menu.contains(e.target)) closeRowMenu();
+});
+
+function rowMenuEditAction() {
+  if (!_rowMenuId) return;
+  closeRowMenu();
+  if (_rowMenuType === 'req') {
+    var r = ALL.find(function(x){ return x.id === _rowMenuId; });
+    if (r) { if(r.status==='RECEIVED') askPassword(function(){doEdit(r);}); else doEdit(r); }
+  } else if (_rowMenuType === 'jc') {
+    var j = JOBCARDS.find(function(x){ return x.id === _rowMenuId; });
+    if (j) { if(j.workStatus==='COMPLETED') editJobCardProtected(_rowMenuId); else editJobCard(_rowMenuId); }
+  } else if (_rowMenuType === 'driver') { editDriver(_rowMenuId); }
+  else if (_rowMenuType === 'vehicle') { editVehicle(_rowMenuId); }
+  else if (_rowMenuType === 'supplier') { editSupplier(_rowMenuId); }
+  else if (_rowMenuType === 'part') { editSparePart(_rowMenuId); }
+}
+
+function rowMenuDeleteAction() {
+  if (!_rowMenuId) return;
+  closeRowMenu();
+  if (_rowMenuType === 'req') { deleteRecord(_rowMenuId); }
+  else if (_rowMenuType === 'jc') {
+    var j = JOBCARDS.find(function(x){ return x.id === _rowMenuId; });
+    if (j) { if(j.workStatus==='COMPLETED') deleteJobCardProtected(_rowMenuId); else deleteJobCard(_rowMenuId); }
+  } else if (_rowMenuType === 'driver') { deleteDriver(_rowMenuId); }
+  else if (_rowMenuType === 'vehicle') { deleteVehicle(_rowMenuId); }
+  else if (_rowMenuType === 'supplier') { deleteSupplier(_rowMenuId); }
+  else if (_rowMenuType === 'part') { deleteSparePart(_rowMenuId); }
+}
+
+// Wire rowmenu buttons after DOM ready
+document.addEventListener('DOMContentLoaded', function() {
+  var re = document.getElementById('rowmenu_edit');
+  var rd = document.getElementById('rowmenu_delete');
+  if (re) re.addEventListener('click', rowMenuEditAction);
+  if (rd) rd.addEventListener('click', rowMenuDeleteAction);
+});
 document.addEventListener('click',function(e){if(e.target.classList&&e.target.classList.contains('overlay')){e.target.classList.add('hidden');pwdCb=null;}});
 function fd(v){if(!v)return'–';const m=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];const d=new Date(v);if(isNaN(d.getTime()))return v;return`${String(d.getDate()).padStart(2,'0')}-${m[d.getMonth()]}-${String(d.getFullYear()).slice(-2)}`;}
 function todayStr(){return new Date().toISOString().split('T')[0];}
@@ -1038,15 +1169,35 @@ function editJobCard(id) {
   editingJC = id;
   document.getElementById('jctitle').textContent = 'Edit Job Card';
 
-  // Populate dropdowns first so values can be set
+  // Populate dropdowns first
   populateJCFormDropdowns();
 
+  // Helper for plain inputs
   var sv = function(eid, val) { var el=document.getElementById(eid); if(el) el.value=val||''; };
+
+  // Helper for Tom Select dropdowns
+  var setSelect = function(eid, val) {
+    if (!val) return;
+    var el = document.getElementById(eid);
+    if (!el) return;
+    if (el.tomselect) {
+      if (!el.tomselect.options[val]) {
+        el.tomselect.addOption({value: val, text: val});
+      }
+      el.tomselect.setValue(val, true);
+    } else {
+      el.value = val;
+      if (el.value !== val) {
+        var o=document.createElement('option'); o.value=val; o.textContent=val;
+        el.insertBefore(o, el.firstChild); el.value=val;
+      }
+    }
+  };
+
+  // Plain inputs
   sv('jc_no', j.code);
   sv('jc_vtype', j.vehicleType);
   sv('jc_odometer', j.odometer);
-  sv('jc_orderstatus', j.orderStatus);
-  sv('jc_client', j.clientName);
   sv('jc_category', j.category);
   sv('jc_location', j.location);
   sv('jc_maintlevel', j.maintenanceLevel);
@@ -1059,28 +1210,29 @@ function editJobCard(id) {
   sv('jc_duration', j.duration);
   sv('jc_comment', j.comment);
 
-  // Vehicle SELECT - add option if not in list
-  var vSel = document.getElementById('jc_vehicle');
-  if(vSel) {
-    vSel.value = j.vehicle||'';
-    if(vSel.value==='' && j.vehicle) {
-      var ov=document.createElement('option'); ov.value=j.vehicle; ov.textContent=j.vehicle;
-      vSel.insertBefore(ov, vSel.firstChild); vSel.value=j.vehicle;
-    }
-  }
+  // Order status (plain select - not Tom Select)
+  sv('jc_orderstatus', j.orderStatus);
 
-  // Driver SELECT - add option if not in list
-  var dSel = document.getElementById('jc_driver');
-  if(dSel) {
-    dSel.value = j.driverName||'';
-    if(dSel.value==='' && j.driverName) {
-      var od=document.createElement('option'); od.value=j.driverName; od.textContent=j.driverName;
-      dSel.insertBefore(od, dSel.firstChild); dSel.value=j.driverName;
-    }
-  }
+  // Tom Select dropdowns
+  setSelect('jc_vehicle', j.vehicle);
+  setSelect('jc_driver', j.driverName);
 
-  // Trigger order status change to show/hide client fields correctly
+  // Call onOrderStatusChange FIRST to show correct client field
   onOrderStatusChange();
+
+  // Set client value AFTER onOrderStatusChange so it doesn't get wiped
+  var clientBooked = document.getElementById('jc_client_booked');
+  var clientInp = document.getElementById('jc_client');
+  if (j.orderStatus === 'BOOKED' && clientBooked) {
+    clientBooked.value = j.clientName || '';
+    if (clientBooked.value === '' && j.clientName) {
+      var oc=document.createElement('option'); oc.value=j.clientName; oc.textContent=j.clientName;
+      clientBooked.insertBefore(oc, clientBooked.firstChild);
+      clientBooked.value = j.clientName;
+    }
+  } else if (clientInp) {
+    clientInp.value = j.clientName || '';
+  }
 
   document.getElementById('jcmodal').classList.remove('hidden');
 }
@@ -1132,7 +1284,12 @@ function saveJobCard() {
     })()),
     odometer: document.getElementById('jc_odometer').value,
     orderStatus: document.getElementById('jc_orderstatus').value,
-    clientName: U(document.getElementById('jc_client').value),
+    clientName: U((function(){
+      var cb=document.getElementById('jc_client_booked');
+      var ci=document.getElementById('jc_client');
+      if(cb && cb.style.display!=='none' && cb.value) return cb.value;
+      return ci ? ci.value : '';
+    })()),
     category: document.getElementById('jc_category').value,
     location: U(document.getElementById('jc_location').value),
     maintenanceLevel: document.getElementById('jc_maintlevel').value,
@@ -1356,7 +1513,7 @@ function renderDrivers() {
     <th>License No</th><th>License Expiry</th><th>License Class</th>
     <th>Passport No</th><th>Passport Expiry</th><th>National ID</th>
     <th>Date of Birth</th><th>Nationality</th><th>Assigned Vehicle</th>
-    <th>Status</th><th>Actions</th>
+    <th>Status</th>
   </tr>`;
   if (DRIVERS.length===0) {
     document.getElementById('TBODY').innerHTML='';
@@ -1579,6 +1736,10 @@ function populateJCFormDropdowns() {
     vSel.appendChild(oc);
     if (cur) vSel.value = cur;
   }
+
+  // Initialize Tom Select on JC dropdowns
+  initTomSelect('jc_vehicle');
+  initTomSelect('jc_driver');
 }
 
 // When vehicle selected in JC form — auto fill vehicle type
@@ -1917,30 +2078,41 @@ function attachSigned(id, input) {
   const file = input.files[0];
   if (!file) return;
   if (file.type !== 'application/pdf') { toast('Please select a PDF file', 'er'); return; }
-  if (file.size > 10 * 1024 * 1024) { toast('File too large (max 10MB)', 'er'); return; }
+  if (file.size > 5 * 1024 * 1024) { toast('File too large (max 5MB for upload)', 'er'); return; }
   const j = JOBCARDS.find(x => x.id === id);
   if (!j) return;
-  toast('Uploading to Google Drive...', 'in');
+  toast('Uploading... please wait', 'in');
   const reader = new FileReader();
+  reader.onerror = function() { toast('Failed to read file', 'er'); };
   reader.onload = async function(e) {
     try {
-      const res = await callAPI('uploadSignedPdf', {
+      const base64Data = e.target.result;
+      // Validate base64 data exists
+      if (!base64Data || base64Data.length < 100) {
+        toast('File read failed - try again', 'er'); return;
+      }
+      const payload = {
         jobCardId: id,
         jobCardCode: j.code || id,
-        fileName: file.name,
-        fileData: e.target.result
-      });
+        fileName: file.name || (j.code + '_signed.pdf'),
+        fileData: base64Data
+      };
+      const res = await callAPI('uploadSignedPdf', payload);
+      if (!res) throw new Error('No response from server');
       if (res.error) throw new Error(res.error);
+      if (!res.fileId) throw new Error('Upload incomplete - no file ID returned');
       // Update local JOBCARDS array
       const i = JOBCARDS.findIndex(x => x.id === id);
       if (i !== -1) {
         JOBCARDS[i].signedPdfUrl = res.viewUrl;
         JOBCARDS[i].signedPdfId = res.fileId;
       }
-      toast('Signed PDF uploaded to Google Drive ✓', 'ok');
+      toast('Signed PDF uploaded ✓', 'ok');
       renderJCSummary();
     } catch(err) {
-      toast('Upload failed: ' + err.message, 'er');
+      var msg = err.message || 'Unknown error';
+      toast('Upload failed: ' + msg, 'er');
+      console.error('Upload error:', err);
     }
   };
   reader.readAsDataURL(file);
@@ -2361,6 +2533,17 @@ function applyPermissions() {
   else document.body.classList.remove('no-edit');
   if (!can('delete')) document.body.classList.add('no-delete');
   else document.body.classList.remove('no-delete');
+  // Show/hide User Management in dropdown and sidebar based on role
+  var isAdmin = CURRENT_USER.role === 'admin';
+  var ul = document.getElementById('usermgmt_link');
+  if (ul) ul.style.display = isAdmin ? 'flex' : 'none';
+  // Sidebar user management
+  var navUm = document.getElementById('nav-usermgmt');
+  var divUm = document.getElementById('div-usermgmt');
+  var slblUm = document.getElementById('slbl-usermgmt');
+  if (navUm) navUm.style.display = isAdmin ? '' : 'none';
+  if (divUm) divUm.style.display = isAdmin ? '' : 'none';
+  if (slblUm) slblUm.style.display = isAdmin ? '' : 'none';
 }
 
 // ── USER MENU ──
@@ -2422,7 +2605,7 @@ async function doChangePwd() {
 
 // ── USER MANAGEMENT ──
 function openUserMgmt() {
-  if (!can('admin') && CURRENT_USER.role !== 'admin') { toast('Admin access required', 'er'); return; }
+  if (CURRENT_USER.role !== 'admin') { toast('Admin access required', 'er'); return; }
   renderUserTable();
   document.getElementById('usermgmtmodal').classList.remove('hidden');
 }
@@ -2802,9 +2985,32 @@ function wireGenericTable() {
     if (funcs[fn]) funcs[fn](id);
   };
 }
-// ── INIT ──
+// ── INIT — loads users only (fast), rest loads after login ──
 async function init(){
-  showLoad('Connecting to database...');
+  var loadSafe = async function(action){
+    try{var r=await callAPI(action);return r.records||[];}catch(e){return[];}
+  };
+  // Load ONLY users — fast, needed for login
+  try {
+    var r = await callAPI('getUsers');
+    if(r && r.records && r.records.length > 0) USERS = r.records;
+  } catch(e) {}
+  // Update login status
+  var loginStatus = document.getElementById('aklgstatus');
+  if(loginStatus){
+    if(USERS.length > 0){
+      loginStatus.style.color='#4ade80';
+      loginStatus.textContent='✅ Ready — sign in to continue';
+    } else {
+      loginStatus.style.color='#f87171';
+      loginStatus.textContent='⚠️ No users found. Contact admin.';
+    }
+  }
+}
+
+// Load ALL data after login
+async function loadAppData(){
+  showLoad('Loading data...');
   var loadSafe = async function(action){
     try{var r=await callAPI(action);return r.records||[];}catch(e){return[];}
   };
@@ -2815,15 +3021,13 @@ async function init(){
       loadSafe('getSpareParts'),
       loadSafe('getJobCards'),
       loadSafe('getDrivers'),
-      loadSafe('getVehicles'),
-      loadSafe('getUsers')
+      loadSafe('getVehicles')
     ]);
     SUPPLIERS  = results[0];
     SPAREPARTS = results[1];
     JOBCARDS   = results[2];
     DRIVERS    = results[3];
     VEHICLES   = results[4];
-    if(results[5] && results[5].length > 0) USERS = results[5];
   }
   hideLoad();
   if(ok){
@@ -2844,7 +3048,7 @@ async function init(){
     },30000);
   }else{
     document.getElementById('emptystate').style.display='block';
-    document.getElementById('emptystate').innerHTML='<div style="font-size:40px;margin-bottom:10px">⚠️</div><div style="font-size:15px;font-weight:600;color:var(--t2);margin-bottom:5px">Cannot connect to database</div><div style="font-size:13px;margin-bottom:14px">Check your internet connection</div><button class="btn bp" onclick="init()">Try Again</button>';
+    document.getElementById('emptystate').innerHTML='<div style="font-size:40px;margin-bottom:10px">⚠️</div><div style="font-size:15px;font-weight:600;color:var(--t2);margin-bottom:5px">Cannot connect to database</div><div style="font-size:13px;margin-bottom:14px">Check your internet connection</div><button class="btn bp" onclick="loadAppData()">Try Again</button>';
   }
 }
 init();
@@ -3099,6 +3303,13 @@ init();
 
 <input type="file" id="signedpdf_input" accept=".pdf" style="display:none" onchange="handleAttachFile(this)">
 
+<!-- ROW CONTEXT MENU -->
+<div id="rowmenu" style="display:none;position:fixed;background:var(--s1);border:1px solid var(--br);border-radius:10px;min-width:160px;z-index:5000;box-shadow:0 8px 24px rgba(0,0,0,.6);overflow:hidden">
+  <div id="rowmenu_title" style="padding:9px 14px;font-size:11px;font-weight:700;color:var(--t2);border-bottom:1px solid var(--br);text-transform:uppercase;letter-spacing:.06em"></div>
+  <div id="rowmenu_edit" onclick="rowMenuEditAction()" style="padding:11px 16px;cursor:pointer;font-size:13px;color:var(--tx);display:flex;align-items:center;gap:10px" onmouseenter="this.style.background='var(--s2)'" onmouseleave="this.style.background=''">✏️ Edit</div>
+  <div id="rowmenu_delete" onclick="rowMenuDeleteAction()" style="padding:11px 16px;cursor:pointer;font-size:13px;color:#f87171;display:flex;align-items:center;gap:10px" onmouseenter="this.style.background='var(--s2)'" onmouseleave="this.style.background=''">🗑️ Delete</div>
+</div>
+
 <!-- LOGIN OVERLAY -->
 <div id="aklg">
   <div id="aklgb">
@@ -3110,6 +3321,7 @@ init();
     <input type="password" id="aklgp" placeholder="Enter password">
     <div id="aklge"></div>
     <button id="aklgbtn">Sign In</button>
+    <div id="aklgstatus" style="margin-top:12px;font-size:11px;color:var(--t3);text-align:center">Verifying access...</div>
   </div>
 </div>
 
@@ -3125,13 +3337,11 @@ function doSignIn() {
   var errEl = document.getElementById('aklge');
   errEl.textContent = '';
   if (!u || !p) { errEl.textContent = 'Enter username and password'; return; }
-  var userList = (typeof USERS !== 'undefined' && USERS && USERS.length > 0) ? USERS : [];
-  var hasAdmin = false;
-  for (var x = 0; x < userList.length; x++) {
-    if ((userList[x].username||'').toLowerCase() === 'admin') { hasAdmin = true; break; }
-  }
-  if (!hasAdmin) {
-    // No fallback admin - must exist in Google Sheets
+
+  var userList = (typeof USERS !== 'undefined' && USERS) ? USERS : [];
+  if (userList.length === 0) {
+    errEl.textContent = '⚠️ System still loading. Please wait a moment and try again.';
+    return;
   }
   var found = null;
   for (var i = 0; i < userList.length; i++) {
@@ -3151,14 +3361,20 @@ function doSignIn() {
   var nw = document.getElementById('newwrap'); if (nw) nw.style.display = 'inline-block';
   var un = document.getElementById('topbar_username'); if (un) un.textContent = found.name || found.username;
   var ul = document.getElementById('usermgmt_link'); if (ul && found.role === 'admin') ul.style.display = 'flex';
+  // Show sidebar user management for admin
+  var navUm = document.getElementById('nav-usermgmt');
+  var divUm = document.getElementById('div-usermgmt');
+  var slblUm = document.getElementById('slbl-usermgmt');
+  if (found.role === 'admin') {
+    if (navUm) navUm.style.display = '';
+    if (divUm) divUm.style.display = '';
+    if (slblUm) slblUm.style.display = '';
+  }
 
-  if (typeof updateBadges === 'function') updateBadges();
-  if (typeof buildHeader === 'function') buildHeader();
-  if (typeof applyFilters === 'function') applyFilters();
   if (typeof applyPermissions === 'function') applyPermissions();
   if (typeof toast === 'function') toast('Welcome, ' + (found.name || found.username) + '!', 'ok');
-  // Data already fully loaded by init() - just update badges
-  setTimeout(function(){ if(typeof updateBadges==='function') updateBadges(); }, 300);
+  // Load all data now that user is logged in
+  if (typeof loadAppData === 'function') loadAppData();
 }
 
 // Restore session on page refresh
@@ -3175,23 +3391,24 @@ function doSignIn() {
     var nw = document.getElementById('newwrap'); if (nw) nw.style.display = 'inline-block';
     var un = document.getElementById('topbar_username'); if (un) un.textContent = user.name || user.username;
     var ul = document.getElementById('usermgmt_link'); if (ul && user.role === 'admin') ul.style.display = 'flex';
-    // Wait for init() to finish loading all data before updating badges
-    var attempts = 0;
-    var waitForInit = setInterval(function() {
-      attempts++;
-      if (typeof JOBCARDS !== 'undefined' && typeof DRIVERS !== 'undefined') {
-        clearInterval(waitForInit);
-        if (typeof applyPermissions === 'function') applyPermissions();
-        if (typeof updateBadges === 'function') updateBadges();
-        if (typeof buildHeader === 'function') buildHeader();
-        if (typeof applyFilters === 'function') applyFilters();
-      }
-      if (attempts > 40) clearInterval(waitForInit); // give up after 4s
-    }, 100);
+    // Show sidebar user management for admin
+    var navUm2 = document.getElementById('nav-usermgmt');
+    var divUm2 = document.getElementById('div-usermgmt');
+    var slblUm2 = document.getElementById('slbl-usermgmt');
+    if (user.role === 'admin') {
+      if (navUm2) navUm2.style.display = '';
+      if (divUm2) divUm2.style.display = '';
+      if (slblUm2) slblUm2.style.display = '';
+    }
+    // Load all app data for restored session
+    if (typeof applyPermissions === 'function') applyPermissions();
+    if (typeof loadAppData === 'function') loadAppData();
   } catch(e) {}
 })();
 
 document.getElementById('aklgbtn').addEventListener('click', doSignIn);
+
+
 document.getElementById('aklgu').addEventListener('keydown', function(e) { if (e.key === 'Enter') doSignIn(); });
 document.getElementById('aklgp').addEventListener('keydown', function(e) { if (e.key === 'Enter') doSignIn(); });
 window.addEventListener('load', function() {
