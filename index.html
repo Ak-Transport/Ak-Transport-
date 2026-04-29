@@ -180,7 +180,7 @@ select option{background:var(--s2)}textarea{resize:vertical;min-height:56px}inpu
     <div class="navitem" id="nav-RECEIVED NOT PAID" onclick="switchView('RECEIVED NOT PAID')"><div class="navdot" style="background:#fbbf24"></div>Received Not Paid<span class="navbadge" id="badge-RECEIVED NOT PAID">0</span></div>
     <div class="navitem" id="nav-ON HOLD" onclick="switchView('ON HOLD')"><div class="navdot" style="background:#f87171"></div>On Hold<span class="navbadge" id="badge-ON HOLD">0</span></div>
     <div class="navitem" id="nav-PAID NOT RECEIVED" onclick="switchView('PAID NOT RECEIVED')"><div class="navdot" style="background:#60a5fa"></div>Paid Not Received<span class="navbadge" id="badge-PAID NOT RECEIVED">0</span></div>
-    <div class="navitem" id="nav-NOT RECEIVED" onclick="switchView('NOT RECEIVED')"><div class="navdot" style="background:#a0a0c0"></div>Not Received<span class="navbadge" id="badge-NOT RECEIVED">0</span></div>
+    <div class="navitem" id="nav-NOT PAID" onclick="switchView('NOT PAID')"><div class="navdot" style="background:#a0a0c0"></div>Not Paid<span class="navbadge" id="badge-NOT PAID">0</span></div>
     <div class="divider"></div>
     <div class="slbl">Fleet</div>
     <div class="navitem" id="nav-drivers" onclick="switchView('drivers')"><div class="navdot" style="background:#38bdf8"></div>Drivers<span class="navbadge" id="badge-drivers">0</span></div>
@@ -222,7 +222,7 @@ select option{background:var(--s2)}textarea{resize:vertical;min-height:56px}inpu
       </div>
       <div style="display:flex;gap:6px">
         <select id="STATUSFILTER" style="flex:1;background:var(--s1);border:1.5px solid var(--br);border-radius:8px;padding:8px 10px;color:var(--tx);font-size:12px;outline:none;cursor:pointer">
-          <option value="">All Status</option><option>RECEIVED</option><option>RECEIVED NOT PAID</option><option>ON HOLD</option><option>PAID NOT RECEIVED</option><option>NOT RECEIVED</option>
+          <option value="">All Status</option><option>RECEIVED</option><option>RECEIVED NOT PAID</option><option>ON HOLD</option><option>PAID NOT RECEIVED</option><option>NOT PAID</option>
         </select>
         <button class="btn bg" onclick="clearSearch()" style="padding:8px 14px;font-size:12px;white-space:nowrap">&#10005; Clear</button>
       </div>
@@ -327,7 +327,7 @@ function applyFilters() {
   if (['dashboard','suppliers','spareparts','jobcards','jcsummary','drivers','vehicles'].includes(currentView)) return;
   const fs = document.getElementById('STATUSFILTER').value;
   let data = ALL.slice();
-  if (currentView === 'today') data = data.filter(r => r.priority === "TODAY'S REQUEST" && r.status === 'NOT RECEIVED');
+  if (currentView === 'today') data = data.filter(r => r.priority === "TODAY'S REQUEST" && r.status === 'NOT PAID');
   else if (currentView !== 'workshop') data = data.filter(r => r.status === currentView);
   if (fs) data = data.filter(r => r.status === fs);
   [{f:document.getElementById('SEARCHFIELD1').value,v:(document.getElementById('SEARCH1').value||'').trim().toLowerCase()},
@@ -363,7 +363,7 @@ function loadMore(){currentPage++;paintTable(true);}
 
 // ── BUILD ROW ──
 function buildRow(r,isRO){
-  const sc={'RECEIVED':'sR','RECEIVED NOT PAID':'sRNP','ON HOLD':'sOH','PAID NOT RECEIVED':'sPNR','NOT RECEIVED':'sNR'};
+  const sc={'RECEIVED':'sR','RECEIVED NOT PAID':'sRNP','ON HOLD':'sOH','PAID NOT RECEIVED':'sPNR','NOT PAID':'sNR'};
   const desc=r.description||'';
   const ph=r.priority==="TODAY'S REQUEST"?'<span class="ptbadge">TODAY</span>':`<span style="color:var(--t3);font-size:10px">${r.priority||''}</span>`;
   const canER=canEditReq(),canDR=canDeleteReq();
@@ -424,7 +424,7 @@ function switchView(v){
   currentView=v;
   document.querySelectorAll('.navitem').forEach(n=>n.classList.remove('active'));
   const el=document.getElementById('nav-'+v);if(el)el.classList.add('active');
-  const titles={workshop:'Workshop Requisition',today:"Today's Requests",'RECEIVED':'Received','RECEIVED NOT PAID':'Received Not Paid','ON HOLD':'On Hold','PAID NOT RECEIVED':'Paid Not Received','NOT RECEIVED':'Not Received',suppliers:'Suppliers',spareparts:'Spare Parts',jobcards:'Job Cards',jcsummary:'Job Card Summary',drivers:'Drivers',vehicles:'Vehicles',dashboard:'Dashboard'};
+  const titles={workshop:'Workshop Requisition',today:"Today's Requests",'RECEIVED':'Received','RECEIVED NOT PAID':'Received Not Paid','ON HOLD':'On Hold','PAID NOT RECEIVED':'Paid Not Received','NOT PAID':'Not Paid',suppliers:'Suppliers',spareparts:'Spare Parts',jobcards:'Job Cards',jcsummary:'Job Card Summary',drivers:'Drivers',vehicles:'Vehicles',dashboard:'Dashboard'};
   document.getElementById('viewtitle').textContent=titles[v]||v;
   ['SEARCH1','SEARCH2','SEARCH3'].forEach(id=>{document.getElementById(id).value='';});
   document.getElementById('STATUSFILTER').value='';
@@ -461,12 +461,12 @@ function switchView(v){
 // ── DASHBOARD ──
 function renderDashboard(){
   updateBadges();
-  const c={'RECEIVED':0,'RECEIVED NOT PAID':0,'ON HOLD':0,'PAID NOT RECEIVED':0,'NOT RECEIVED':0};
+  const c={'RECEIVED':0,'RECEIVED NOT PAID':0,'ON HOLD':0,'PAID NOT RECEIVED':0,'NOT PAID':0};
   let tod=0,tot=0,rec=0;
-  ALL.forEach(r=>{if(c.hasOwnProperty(r.status))c[r.status]++;if(r.priority==="TODAY'S REQUEST"&&r.status==='NOT RECEIVED')tod++;if(r.cost)tot+=parseFloat(r.cost)||0;if(r.status==='RECEIVED'&&r.cost)rec+=parseFloat(r.cost)||0;});
+  ALL.forEach(r=>{if(c.hasOwnProperty(r.status))c[r.status]++;if(r.priority==="TODAY'S REQUEST"&&r.status==='NOT PAID')tod++;if(r.cost)tot+=parseFloat(r.cost)||0;if(r.status==='RECEIVED'&&r.cost)rec+=parseFloat(r.cost)||0;});
   const n=ALL.length,mx=Math.max(...Object.values(c),1);
-  const col={'RECEIVED':'#4ade80','RECEIVED NOT PAID':'#fbbf24','ON HOLD':'#f87171','PAID NOT RECEIVED':'#60a5fa','NOT RECEIVED':'#a0a0c0'};
-  const bg={'RECEIVED':'linear-gradient(90deg,#166534,#4ade80)','RECEIVED NOT PAID':'linear-gradient(90deg,#92400e,#fbbf24)','ON HOLD':'linear-gradient(90deg,#991b1b,#f87171)','PAID NOT RECEIVED':'linear-gradient(90deg,#1e40af,#60a5fa)','NOT RECEIVED':'linear-gradient(90deg,#3a3a5a,#a0a0c0)'};
+  const col={'RECEIVED':'#4ade80','RECEIVED NOT PAID':'#fbbf24','ON HOLD':'#f87171','PAID NOT RECEIVED':'#60a5fa','NOT PAID':'#a0a0c0'};
+  const bg={'RECEIVED':'linear-gradient(90deg,#166534,#4ade80)','RECEIVED NOT PAID':'linear-gradient(90deg,#92400e,#fbbf24)','ON HOLD':'linear-gradient(90deg,#991b1b,#f87171)','PAID NOT RECEIVED':'linear-gradient(90deg,#1e40af,#60a5fa)','NOT PAID':'linear-gradient(90deg,#3a3a5a,#a0a0c0)'};
   document.getElementById('dashcontent').innerHTML=`
     <div class="dgrid">
       <div class="statcard" onclick="switchView('workshop')"><div class="statlbl">Total Records</div><div class="statval" style="color:var(--ac)">${n.toLocaleString()}</div><div class="statsub">All requisitions</div></div>
@@ -497,10 +497,10 @@ function buildPie(c,col,n){
 // ── BADGES ──
 function updateBadges(){
   const c={};let t=0,p=0;
-  ALL.forEach(r=>{c[r.status]=(c[r.status]||0)+1;if(r.priority==="TODAY'S REQUEST"&&r.status==='NOT RECEIVED')t++;if(r.status==='RECEIVED')p++;});
+  ALL.forEach(r=>{c[r.status]=(c[r.status]||0)+1;if(r.priority==="TODAY'S REQUEST"&&r.status==='NOT PAID')t++;if(r.status==='RECEIVED')p++;});
   document.getElementById('badge-workshop').textContent=ALL.length;
   document.getElementById('badge-today').textContent=t;
-  ['RECEIVED','RECEIVED NOT PAID','ON HOLD','PAID NOT RECEIVED','NOT RECEIVED'].forEach(s=>{const el=document.getElementById('badge-'+s);if(el)el.textContent=c[s]||0;});
+  ['RECEIVED','RECEIVED NOT PAID','ON HOLD','PAID NOT RECEIVED','NOT PAID'].forEach(s=>{const el=document.getElementById('badge-'+s);if(el)el.textContent=c[s]||0;});
   document.getElementById('badge-suppliers').textContent=SUPPLIERS.length;
   document.getElementById('badge-spareparts').textContent=SPAREPARTS.length;
   const bjc=document.getElementById('badge-jobcards');if(bjc)bjc.textContent=JOBCARDS.length;
@@ -532,6 +532,29 @@ function showLoad(t){document.getElementById('loadtext').textContent=t;document.
 function hideLoad(){document.getElementById('loading').classList.add('hidden');}
 
 // ── REQUISITION CRUD ──
+function onStatusChange() {
+  var status = document.getElementById('f_status').value;
+  var receivedFields = ['f_date','f_vtype','f_priority','f_lpo','f_datercvd','f_payment','f_reqby','f_dateissued','f_remarks'];
+  receivedFields.forEach(function(id) {
+    var el = document.getElementById(id);
+    if (!el) return;
+    var lbl = el.closest('.formgroup') ? el.closest('.formgroup').querySelector('label') : null;
+    if (status === 'RECEIVED') {
+      el.style.borderColor = el.value ? '' : '#f87171';
+      if (lbl && !lbl.querySelector('.req-star')) {
+        var star = document.createElement('span');
+        star.className = 'req-star';
+        star.style.color = '#f87171';
+        star.textContent = ' *';
+        lbl.appendChild(star);
+      }
+    } else {
+      el.style.borderColor = '';
+      if (lbl) { var s = lbl.querySelector('.req-star'); if(s) s.remove(); }
+    }
+  });
+}
+
 function calcTotal() {
   var qty = parseFloat(document.getElementById('f_qty').value) || 0;
   var unitEl = document.getElementById('f_unit_price');
@@ -551,7 +574,16 @@ function fmtNum(el) {
 function nextReqNo(){let max=0;ALL.forEach(r=>{const n=parseInt((r.reqNo||'').replace('REQ-',''),10);if(!isNaN(n)&&n>max)max=n;});return'REQ-'+String(max+1).padStart(6,'0');}
 function openAdd(){
   if (!can('req')) { toast('You do not have permission to create requisitions', 'er'); return; }
-  editingId=null;document.getElementById('modaltitle').textContent='New Requisition';clearForm();document.getElementById('f_req').value=nextReqNo();document.getElementById('f_date').value=todayStr();populateFormDropdowns();document.getElementById('recmodal').classList.remove('hidden');}
+  editingId=null;
+  document.getElementById('modaltitle').textContent='New Requisition';
+  clearForm();
+  document.getElementById('f_req').value=nextReqNo();
+  document.getElementById('f_date').value=todayStr();
+  populateFormDropdowns();
+  // Job card shows only "Other" until truck is selected
+  populateJobCardDropdown('');
+  document.getElementById('recmodal').classList.remove('hidden');
+}
 function editRecord(id){
   if (!canEditReq()) { toast('You do not have permission to edit requisitions', 'er'); return; }
   const r=ALL.find(x=>x.id===id);if(!r)return;if(r.status==='RECEIVED')askPassword(()=>doEdit(r));else doEdit(r);}
@@ -651,6 +683,14 @@ async function saveRecord(){
     if (!document.getElementById('f_datercvd').value) missing.push('Date Received');
     if (!document.getElementById('f_payment').value) missing.push('Payment Mode');
     if (!document.getElementById('f_reqby').value) missing.push('Requested By');
+    if (!document.getElementById('f_dateissued').value) missing.push('Date Issued');
+    if (!document.getElementById('f_remarks').value.trim()) missing.push('Remarks');
+    // Also ensure supplier is filled
+    var supVal = document.getElementById('f_supplier') ? document.getElementById('f_supplier').value : '';
+    if (!supVal || supVal === '__custom__') {
+      var supCustom = document.getElementById('f_supplier_custom');
+      if (!supCustom || !supCustom.value.trim()) missing.push('Supplier');
+    }
   }
   if (!status) missing.push('Status');
   if (missing.length > 0) {
@@ -908,6 +948,7 @@ function populateFormDropdowns() {
   initTomSelect('f_driver');
   initTomSelect('f_jobcard');
   initTomSelect('f_supplier');
+  initTomSelect('f_desc_select');
 }
 
 // Initialize or reinitialize Tom Select on a dropdown
@@ -935,17 +976,17 @@ function onTruckSelect() {
   if (!sel) return;
   const vtEl = document.getElementById('f_vtype');
   if (!vtEl) return;
-  const plate = sel.value;
+  // Get value from Tom Select if initialized
+  const plate = sel.tomselect ? sel.tomselect.getValue() : sel.value;
   if (!plate || plate === '__custom__') {
     vtEl.value = '';
-    // Reset job card dropdown to show all
     populateJobCardDropdown('');
     return;
   }
-  const opt = sel.options[sel.selectedIndex];
-  const vtype = opt ? opt.getAttribute('data-vtype') : '';
-  vtEl.value = vtype || '';
-  // Filter job cards to only show ones matching this truck
+  // Get vehicle type from VEHICLES array
+  const v = VEHICLES.find(x => (x.plate||'').toUpperCase() === plate.toUpperCase());
+  vtEl.value = v ? (v.vehicleType || '') : '';
+  // Filter job cards for this truck only
   populateJobCardDropdown(plate);
 }
 
@@ -953,29 +994,80 @@ function populateJobCardDropdown(plate) {
   const jcSel = document.getElementById('f_jobcard');
   if (!jcSel) return;
   const cur = jcSel.value;
+
+  // Destroy Tom Select instance if exists
+  if (jcSel.tomselect) { jcSel.tomselect.destroy(); }
+
+  // Clear and rebuild options
   jcSel.innerHTML = '<option value="">Select job card...</option>';
-  // Filter job cards by vehicle plate if plate is provided
-  const filtered = plate
-    ? JOBCARDS.filter(j => j.workStatus !== 'COMPLETED' && (j.vehicle||'').toUpperCase() === plate.toUpperCase())
-    : JOBCARDS.filter(j => j.workStatus !== 'COMPLETED');
-  filtered.forEach(j => {
-    const o = document.createElement('option');
-    o.value = j.code;
-    o.textContent = j.code + (j.vehicle ? ' — ' + j.vehicle : '');
-    jcSel.appendChild(o);
-  });
-  // Add OTHER option always
+
+  if (plate) {
+    // Show job cards for this truck only
+    const filtered = JOBCARDS.filter(j =>
+      j.workStatus !== 'COMPLETED' &&
+      (j.vehicle||'').toUpperCase() === plate.toUpperCase()
+    );
+    filtered.forEach(j => {
+      const o = document.createElement('option');
+      o.value = j.code;
+      o.textContent = j.code + (j.vehicle ? ' — ' + j.vehicle : '');
+      jcSel.appendChild(o);
+    });
+    if (filtered.length === 0) {
+      const o = document.createElement('option');
+      o.value = ''; o.textContent = '— No open job cards for this truck —';
+      o.disabled = true;
+      jcSel.insertBefore(o, jcSel.children[1]);
+    }
+  }
+  // Always show "Other" option
   const oc = document.createElement('option');
-  oc.value = 'OTHER'; oc.textContent = 'Other';
+  oc.value = 'OTHER'; oc.textContent = '✏ Other (type manually)';
   jcSel.appendChild(oc);
-  // Restore previous value if it still exists
-  if (cur) jcSel.value = cur;
-  // Show count hint
-  if (plate && filtered.length === 0) {
-    const o = document.createElement('option');
-    o.value = ''; o.textContent = '— No open job cards for this truck —';
-    o.disabled = true;
-    jcSel.insertBefore(o, jcSel.children[1]);
+
+  // Reinitialize Tom Select with onchange to auto-fill driver/category
+  new TomSelect(jcSel, {
+    allowEmptyOption: true,
+    placeholder: 'Select job card...',
+    maxOptions: 500,
+    highlight: true,
+    onChange: function(val) {
+      onJobCardSelect(val);
+    }
+  });
+
+  // Restore previous value
+  if (cur && jcSel.tomselect) {
+    if (!jcSel.tomselect.options[cur]) {
+      jcSel.tomselect.addOption({value: cur, text: cur});
+    }
+    jcSel.tomselect.setValue(cur, true);
+  }
+}
+
+// Auto-fill driver and category when job card is selected
+function onJobCardSelect(jcCode) {
+  if (!jcCode || jcCode === 'OTHER') return;
+  const j = JOBCARDS.find(x => x.code === jcCode);
+  if (!j) return;
+
+  // Auto-fill driver
+  if (j.driverName) {
+    var drvSel = document.getElementById('f_driver');
+    if (drvSel && drvSel.tomselect) {
+      if (!drvSel.tomselect.options[j.driverName]) {
+        drvSel.tomselect.addOption({value: j.driverName, text: j.driverName});
+      }
+      drvSel.tomselect.setValue(j.driverName, true);
+    } else if (drvSel) {
+      drvSel.value = j.driverName;
+    }
+  }
+
+  // Auto-fill category
+  if (j.category) {
+    var catEl = document.getElementById('f_category');
+    if (catEl) catEl.value = j.category;
   }
 }
 
@@ -2913,9 +3005,9 @@ init();
       <div class="formgroup"><label>Date Requested</label><input type="date" id="f_date"></div>
       <div class="formgroup"><label>Truck / Vehicle No <span style="color:#f87171">*</span></label><select id="f_truck" onchange="onTruckSelect()"><option value="">Select vehicle...</option></select></div>
       <div class="formgroup"><label>Vehicle Type</label><input type="text" id="f_vtype" readonly style="opacity:.7;cursor:not-allowed;color:var(--ac);font-weight:600"></div>
+      <div class="formgroup"><label>Job Card No <span style="color:#f87171">*</span></label><select id="f_jobcard"><option value="">Select job card...</option></select></div>
       <div class="formgroup"><label>Driver Name <span style="color:#f87171">*</span></label><select id="f_driver"><option value="">Select driver...</option></select></div>
       <div class="formgroup"><label>Priority</label><select id="f_priority"><option value="">Select...</option><option>TODAY'S REQUEST</option><option>NORMAL</option></select></div>
-      <div class="formgroup"><label>Job Card No <span style="color:#f87171">*</span></label><select id="f_jobcard"><option value="">Select job card...</option></select></div>
       <div class="formgroup"><label>LPO No</label><input type="text" id="f_lpo"></div>
       <div class="formgroup full"><label>Description / Spare Part <span style="color:#f87171">*</span></label>
         <select id="f_desc_select" onchange="onDescSelect()" style="margin-bottom:6px"><option value="">&#8212; Select from spare parts list &#8212;</option></select>
@@ -2926,7 +3018,7 @@ init();
         <div class="formgroup full"><label>Total Amount <span style="color:#f87171">*</span></label><input type="text" id="f_cost" placeholder="Auto-calculated (Qty × Unit Price)" style="color:var(--ac);font-weight:700;font-size:14px;cursor:not-allowed" readonly></div>
       <div class="formgroup"><label>Supplier</label><select id="f_supplier" onchange="onSupplierSelect()"><option value="">Select supplier...</option></select></div>
       <div class="formgroup"><label>Date Received</label><input type="date" id="f_datercvd"></div>
-      <div class="formgroup"><label>Status</label><select id="f_status"><option value="">Select...</option><option>RECEIVED</option><option>RECEIVED NOT PAID</option><option>ON HOLD</option><option>PAID NOT RECEIVED</option><option>NOT RECEIVED</option></select></div>
+      <div class="formgroup"><label>Status</label><select id="f_status" onchange="onStatusChange()"><option value="">Select...</option><option>RECEIVED</option><option>RECEIVED NOT PAID</option><option>ON HOLD</option><option>PAID NOT RECEIVED</option><option>NOT PAID</option></select></div>
       <div class="formgroup"><label>Payment Mode</label><select id="f_payment"><option value="">Select...</option><option>CASH</option><option>CREDIT</option><option>STORE</option></select></div>
       <div class="formgroup"><label>Category <span style="color:#f87171">*</span></label><select id="f_category"><option value="">Select...</option><option>WORKSHOP</option><option>BREAKDOWN</option></select></div>
       <div class="formgroup"><label>Requested By</label><input type="text" id="f_reqby"></div>
