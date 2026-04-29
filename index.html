@@ -177,7 +177,7 @@ select option{background:var(--s2)}textarea{resize:vertical;min-height:56px}inpu
     <div class="divider"></div>
     <div class="slbl">Status Sheets</div>
     <div class="navitem" id="nav-RECEIVED" onclick="switchView('RECEIVED')"><div class="navdot" style="background:#4ade80"></div>Received<span class="navbadge" id="badge-RECEIVED">0</span></div>
-    <div class="navitem" id="nav-RECEIVED NOT PAID" onclick="switchView('RECEIVED NOT PAID')"><div class="navdot" style="background:#fbbf24"></div>Received Not Paid<span class="navbadge" id="badge-RECEIVED NOT PAID">0</span></div>
+    <div class="navitem" id="nav-RECEIVED NOT ISSUED" onclick="switchView('RECEIVED NOT ISSUED')"><div class="navdot" style="background:#fbbf24"></div>Received Not Issued<span class="navbadge" id="badge-RECEIVED NOT ISSUED">0</span></div>
     <div class="navitem" id="nav-ON HOLD" onclick="switchView('ON HOLD')"><div class="navdot" style="background:#f87171"></div>On Hold<span class="navbadge" id="badge-ON HOLD">0</span></div>
     <div class="navitem" id="nav-PAID NOT RECEIVED" onclick="switchView('PAID NOT RECEIVED')"><div class="navdot" style="background:#60a5fa"></div>Paid Not Received<span class="navbadge" id="badge-PAID NOT RECEIVED">0</span></div>
     <div class="navitem" id="nav-NOT PAID" onclick="switchView('NOT PAID')"><div class="navdot" style="background:#a0a0c0"></div>Not Paid<span class="navbadge" id="badge-NOT PAID">0</span></div>
@@ -222,7 +222,7 @@ select option{background:var(--s2)}textarea{resize:vertical;min-height:56px}inpu
       </div>
       <div style="display:flex;gap:6px">
         <select id="STATUSFILTER" style="flex:1;background:var(--s1);border:1.5px solid var(--br);border-radius:8px;padding:8px 10px;color:var(--tx);font-size:12px;outline:none;cursor:pointer">
-          <option value="">All Status</option><option>RECEIVED</option><option>RECEIVED NOT PAID</option><option>ON HOLD</option><option>PAID NOT RECEIVED</option><option>NOT PAID</option>
+          <option value="">All Status</option><option>RECEIVED</option><option>RECEIVED NOT ISSUED</option><option>ON HOLD</option><option>PAID NOT RECEIVED</option><option>NOT PAID</option>
         </select>
         <button class="btn bg" onclick="clearSearch()" style="padding:8px 14px;font-size:12px;white-space:nowrap">&#10005; Clear</button>
       </div>
@@ -363,7 +363,7 @@ function loadMore(){currentPage++;paintTable(true);}
 
 // ── BUILD ROW ──
 function buildRow(r,isRO){
-  const sc={'RECEIVED':'sR','RECEIVED NOT PAID':'sRNP','ON HOLD':'sOH','PAID NOT RECEIVED':'sPNR','NOT PAID':'sNR'};
+  const sc={'RECEIVED':'sR','RECEIVED NOT ISSUED':'sRNP','ON HOLD':'sOH','PAID NOT RECEIVED':'sPNR','NOT PAID':'sNR'};
   const desc=r.description||'';
   const ph=r.priority==="TODAY'S REQUEST"?'<span class="ptbadge">TODAY</span>':`<span style="color:var(--t3);font-size:10px">${r.priority||''}</span>`;
   const canER=canEditReq(),canDR=canDeleteReq();
@@ -424,7 +424,7 @@ function switchView(v){
   currentView=v;
   document.querySelectorAll('.navitem').forEach(n=>n.classList.remove('active'));
   const el=document.getElementById('nav-'+v);if(el)el.classList.add('active');
-  const titles={workshop:'Workshop Requisition',today:"Today's Requests",'RECEIVED':'Received','RECEIVED NOT PAID':'Received Not Paid','ON HOLD':'On Hold','PAID NOT RECEIVED':'Paid Not Received','NOT PAID':'Not Paid',suppliers:'Suppliers',spareparts:'Spare Parts',jobcards:'Job Cards',jcsummary:'Job Card Summary',drivers:'Drivers',vehicles:'Vehicles',dashboard:'Dashboard'};
+  const titles={workshop:'Workshop Requisition',today:"Today's Requests",'RECEIVED':'Received','RECEIVED NOT ISSUED':'Received Not Issued','ON HOLD':'On Hold','PAID NOT RECEIVED':'Paid Not Received','NOT PAID':'Not Paid',suppliers:'Suppliers',spareparts:'Spare Parts',jobcards:'Job Cards',jcsummary:'Job Card Summary',drivers:'Drivers',vehicles:'Vehicles',dashboard:'Dashboard'};
   document.getElementById('viewtitle').textContent=titles[v]||v;
   ['SEARCH1','SEARCH2','SEARCH3'].forEach(id=>{document.getElementById(id).value='';});
   document.getElementById('STATUSFILTER').value='';
@@ -461,12 +461,12 @@ function switchView(v){
 // ── DASHBOARD ──
 function renderDashboard(){
   updateBadges();
-  const c={'RECEIVED':0,'RECEIVED NOT PAID':0,'ON HOLD':0,'PAID NOT RECEIVED':0,'NOT PAID':0};
+  const c={'RECEIVED':0,'RECEIVED NOT ISSUED':0,'ON HOLD':0,'PAID NOT RECEIVED':0,'NOT PAID':0};
   let tod=0,tot=0,rec=0;
   ALL.forEach(r=>{if(c.hasOwnProperty(r.status))c[r.status]++;if(r.priority==="TODAY'S REQUEST"&&r.status==='NOT PAID')tod++;if(r.cost)tot+=parseFloat(r.cost)||0;if(r.status==='RECEIVED'&&r.cost)rec+=parseFloat(r.cost)||0;});
   const n=ALL.length,mx=Math.max(...Object.values(c),1);
-  const col={'RECEIVED':'#4ade80','RECEIVED NOT PAID':'#fbbf24','ON HOLD':'#f87171','PAID NOT RECEIVED':'#60a5fa','NOT PAID':'#a0a0c0'};
-  const bg={'RECEIVED':'linear-gradient(90deg,#166534,#4ade80)','RECEIVED NOT PAID':'linear-gradient(90deg,#92400e,#fbbf24)','ON HOLD':'linear-gradient(90deg,#991b1b,#f87171)','PAID NOT RECEIVED':'linear-gradient(90deg,#1e40af,#60a5fa)','NOT PAID':'linear-gradient(90deg,#3a3a5a,#a0a0c0)'};
+  const col={'RECEIVED':'#4ade80','RECEIVED NOT ISSUED':'#fbbf24','ON HOLD':'#f87171','PAID NOT RECEIVED':'#60a5fa','NOT PAID':'#a0a0c0'};
+  const bg={'RECEIVED':'linear-gradient(90deg,#166534,#4ade80)','RECEIVED NOT ISSUED':'linear-gradient(90deg,#92400e,#fbbf24)','ON HOLD':'linear-gradient(90deg,#991b1b,#f87171)','PAID NOT RECEIVED':'linear-gradient(90deg,#1e40af,#60a5fa)','NOT PAID':'linear-gradient(90deg,#3a3a5a,#a0a0c0)'};
   document.getElementById('dashcontent').innerHTML=`
     <div class="dgrid">
       <div class="statcard" onclick="switchView('workshop')"><div class="statlbl">Total Records</div><div class="statval" style="color:var(--ac)">${n.toLocaleString()}</div><div class="statsub">All requisitions</div></div>
@@ -500,7 +500,7 @@ function updateBadges(){
   ALL.forEach(r=>{c[r.status]=(c[r.status]||0)+1;if(r.priority==="TODAY'S REQUEST"&&r.status==='NOT PAID')t++;if(r.status==='RECEIVED')p++;});
   document.getElementById('badge-workshop').textContent=ALL.length;
   document.getElementById('badge-today').textContent=t;
-  ['RECEIVED','RECEIVED NOT PAID','ON HOLD','PAID NOT RECEIVED','NOT PAID'].forEach(s=>{const el=document.getElementById('badge-'+s);if(el)el.textContent=c[s]||0;});
+  ['RECEIVED','RECEIVED NOT ISSUED','ON HOLD','PAID NOT RECEIVED','NOT PAID'].forEach(s=>{const el=document.getElementById('badge-'+s);if(el)el.textContent=c[s]||0;});
   document.getElementById('badge-suppliers').textContent=SUPPLIERS.length;
   document.getElementById('badge-spareparts').textContent=SPAREPARTS.length;
   const bjc=document.getElementById('badge-jobcards');if(bjc)bjc.textContent=JOBCARDS.length;
@@ -3018,7 +3018,7 @@ init();
         <div class="formgroup full"><label>Total Amount <span style="color:#f87171">*</span></label><input type="text" id="f_cost" placeholder="Auto-calculated (Qty × Unit Price)" style="color:var(--ac);font-weight:700;font-size:14px;cursor:not-allowed" readonly></div>
       <div class="formgroup"><label>Supplier</label><select id="f_supplier" onchange="onSupplierSelect()"><option value="">Select supplier...</option></select></div>
       <div class="formgroup"><label>Date Received</label><input type="date" id="f_datercvd"></div>
-      <div class="formgroup"><label>Status</label><select id="f_status" onchange="onStatusChange()"><option value="">Select...</option><option>RECEIVED</option><option>RECEIVED NOT PAID</option><option>ON HOLD</option><option>PAID NOT RECEIVED</option><option>NOT PAID</option></select></div>
+      <div class="formgroup"><label>Status</label><select id="f_status" onchange="onStatusChange()"><option value="">Select...</option><option>RECEIVED</option><option>RECEIVED NOT ISSUED</option><option>ON HOLD</option><option>PAID NOT RECEIVED</option><option>NOT PAID</option></select></div>
       <div class="formgroup"><label>Payment Mode</label><select id="f_payment"><option value="">Select...</option><option>CASH</option><option>CREDIT</option><option>STORE</option></select></div>
       <div class="formgroup"><label>Category <span style="color:#f87171">*</span></label><select id="f_category"><option value="">Select...</option><option>WORKSHOP</option><option>BREAKDOWN</option></select></div>
       <div class="formgroup"><label>Requested By</label><input type="text" id="f_reqby"></div>
