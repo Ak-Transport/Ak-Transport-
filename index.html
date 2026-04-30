@@ -204,19 +204,19 @@ select option{background:var(--s2)}textarea{resize:vertical;min-height:56px}inpu
     <div id="searchrow" style="padding:8px 20px;display:grid;grid-template-columns:1fr 1fr;gap:8px;flex-shrink:0">
       <div style="display:flex;gap:6px">
         <select id="SEARCHFIELD1" style="background:var(--s1);border:1.5px solid var(--ac);border-radius:8px;padding:8px 10px;color:var(--ac);font-size:12px;font-weight:600;outline:none;cursor:pointer;width:148px;flex-shrink:0">
-          <option value="truck">&#128667; Truck No</option><option value="reqNo">&#128290; REQ No</option><option value="description">&#128295; Spare Part</option><option value="supplier">&#127978; Supplier</option><option value="driverName">&#128100; Driver</option><option value="jobCardNo">&#128203; Job Card</option><option value="lpoNo">&#128196; LPO No</option>
+          <option value="truck">🚛 Truck No</option><option value="reqNo">🔢 REQ No</option><option value="description">🔧 Spare Part</option><option value="supplier">🏪 Supplier</option><option value="driverName">👤 Driver</option><option value="jobCardNo">📋 Job Card</option><option value="lpoNo">📄 LPO No</option><option value="priority">⚡ Priority</option><option value="paymentMode">💳 Payment Mode</option><option value="category">🏷 Category</option><option value="requestedBy">👤 Requested By</option><option value="dateRequested">📅 Date Requested</option><option value="dateReceived">📅 Date Received</option><option value="dateIssued">📅 Date Issued</option>
         </select>
         <input type="text" id="SEARCH1" placeholder="e.g. T843DEE" autocomplete="off" spellcheck="false" style="flex:1;min-width:0">
       </div>
       <div style="display:flex;gap:6px">
         <select id="SEARCHFIELD2" style="background:var(--s1);border:1.5px solid var(--ac);border-radius:8px;padding:8px 10px;color:var(--ac);font-size:12px;font-weight:600;outline:none;cursor:pointer;width:148px;flex-shrink:0">
-          <option value="">&#8212; Filter 2 &#8212;</option><option value="truck">&#128667; Truck No</option><option value="reqNo">&#128290; REQ No</option><option value="description">&#128295; Spare Part</option><option value="supplier">&#127978; Supplier</option><option value="driverName">&#128100; Driver</option><option value="jobCardNo">&#128203; Job Card</option><option value="lpoNo">&#128196; LPO No</option>
+          <option value="">— Filter 2 —</option><option value="truck">🚛 Truck No</option><option value="reqNo">🔢 REQ No</option><option value="description">🔧 Spare Part</option><option value="supplier">🏪 Supplier</option><option value="driverName">👤 Driver</option><option value="jobCardNo">📋 Job Card</option><option value="lpoNo">📄 LPO No</option><option value="priority">⚡ Priority</option><option value="paymentMode">💳 Payment Mode</option><option value="category">🏷 Category</option><option value="requestedBy">👤 Requested By</option><option value="dateRequested">📅 Date Requested</option><option value="dateReceived">📅 Date Received</option><option value="dateIssued">📅 Date Issued</option>
         </select>
         <input type="text" id="SEARCH2" placeholder="Optional..." autocomplete="off" spellcheck="false" style="flex:1;min-width:0">
       </div>
       <div style="display:flex;gap:6px">
         <select id="SEARCHFIELD3" style="background:var(--s1);border:1.5px solid var(--ac);border-radius:8px;padding:8px 10px;color:var(--ac);font-size:12px;font-weight:600;outline:none;cursor:pointer;width:148px;flex-shrink:0">
-          <option value="">&#8212; Filter 3 &#8212;</option><option value="truck">&#128667; Truck No</option><option value="reqNo">&#128290; REQ No</option><option value="description">&#128295; Spare Part</option><option value="supplier">&#127978; Supplier</option><option value="driverName">&#128100; Driver</option><option value="jobCardNo">&#128203; Job Card</option><option value="lpoNo">&#128196; LPO No</option>
+          <option value="">— Filter 3 —</option><option value="truck">🚛 Truck No</option><option value="reqNo">🔢 REQ No</option><option value="description">🔧 Spare Part</option><option value="supplier">🏪 Supplier</option><option value="driverName">👤 Driver</option><option value="jobCardNo">📋 Job Card</option><option value="lpoNo">📄 LPO No</option><option value="priority">⚡ Priority</option><option value="paymentMode">💳 Payment Mode</option><option value="category">🏷 Category</option><option value="requestedBy">👤 Requested By</option><option value="dateRequested">📅 Date Requested</option><option value="dateReceived">📅 Date Received</option><option value="dateIssued">📅 Date Issued</option>
         </select>
         <input type="text" id="SEARCH3" placeholder="Optional..." autocomplete="off" spellcheck="false" style="flex:1;min-width:0">
       </div>
@@ -224,7 +224,18 @@ select option{background:var(--s2)}textarea{resize:vertical;min-height:56px}inpu
         <select id="STATUSFILTER" style="flex:1;background:var(--s1);border:1.5px solid var(--br);border-radius:8px;padding:8px 10px;color:var(--tx);font-size:12px;outline:none;cursor:pointer">
           <option value="">All Status</option><option>RECEIVED</option><option>RECEIVED NOT ISSUED</option><option>ON HOLD</option><option>PAID NOT RECEIVED</option><option>NOT PAID</option>
         </select>
-        <button class="btn bg" onclick="clearSearch()" style="padding:8px 14px;font-size:12px;white-space:nowrap">&#10005; Clear</button>
+        <button class="btn bg" onclick="clearSearch()" style="padding:8px 14px;font-size:12px;white-space:nowrap">✕ Clear</button>
+      </div>
+      <!-- Date range row - shown when a date field is selected -->
+      <div id="daterangerow" style="display:none;grid-column:1/-1">
+        <div style="display:flex;gap:8px;align-items:center;background:rgba(79,142,247,.07);border:1px solid rgba(79,142,247,.2);border-radius:8px;padding:8px 12px">
+          <span style="font-size:11px;font-weight:700;color:var(--ac);white-space:nowrap">📅 Date Range:</span>
+          <input type="date" id="DATE_FROM" style="background:var(--s1);border:1.5px solid var(--br);border-radius:7px;padding:6px 10px;color:var(--tx);font-size:12px;outline:none;width:150px" onchange="applyFilters()" title="From date">
+          <span style="color:var(--t2);font-size:12px">to</span>
+          <input type="date" id="DATE_TO" style="background:var(--s1);border:1.5px solid var(--br);border-radius:7px;padding:6px 10px;color:var(--tx);font-size:12px;outline:none;width:150px" onchange="applyFilters()" title="To date">
+          <span id="daterange_field_label" style="font-size:11px;color:var(--t3);margin-left:4px"></span>
+          <button class="btn bg" onclick="clearDateRange()" style="padding:5px 10px;font-size:11px;margin-left:auto">✕ Clear Dates</button>
+        </div>
       </div>
     </div>
     <!-- Generic filter row for Drivers/Vehicles/JobCards/Suppliers/SpareParts -->
@@ -247,7 +258,7 @@ select option{background:var(--s2)}textarea{resize:vertical;min-height:56px}inpu
     <div id="jcfilterrow" style="display:none;padding:0 20px 8px;flex-shrink:0">
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
         <div style="display:flex;gap:6px">
-          <select id="JCF1_FIELD" style="background:var(--s1);border:1.5px solid var(--ac);border-radius:8px;padding:8px 10px;color:var(--ac);font-size:12px;font-weight:600;outline:none;cursor:pointer;width:148px;flex-shrink:0" onchange="applyJCFilter()">
+          <select id="JCF1_FIELD" style="background:var(--s1);border:1.5px solid var(--ac);border-radius:8px;padding:8px 10px;color:var(--ac);font-size:12px;font-weight:600;outline:none;cursor:pointer;width:148px;flex-shrink:0" onchange="onJCFieldChange()">
             <option value="vehicle">🚛 Vehicle No</option>
             <option value="vehicleType">🏷 Type</option>
             <option value="driverName">👤 Driver</option>
@@ -262,7 +273,7 @@ select option{background:var(--s2)}textarea{resize:vertical;min-height:56px}inpu
             oninput="applyJCFilter()">
         </div>
         <div style="display:flex;gap:6px">
-          <select id="JCF2_FIELD" style="background:var(--s1);border:1.5px solid var(--ac);border-radius:8px;padding:8px 10px;color:var(--ac);font-size:12px;font-weight:600;outline:none;cursor:pointer;width:148px;flex-shrink:0" onchange="applyJCFilter()">
+          <select id="JCF2_FIELD" style="background:var(--s1);border:1.5px solid var(--ac);border-radius:8px;padding:8px 10px;color:var(--ac);font-size:12px;font-weight:600;outline:none;cursor:pointer;width:148px;flex-shrink:0" onchange="onJCFieldChange()">
             <option value="">— Filter 2 —</option>
             <option value="vehicle">🚛 Vehicle No</option>
             <option value="vehicleType">🏷 Type</option>
@@ -278,7 +289,7 @@ select option{background:var(--s2)}textarea{resize:vertical;min-height:56px}inpu
             oninput="applyJCFilter()">
         </div>
         <div style="display:flex;gap:6px">
-          <select id="JCF3_FIELD" style="background:var(--s1);border:1.5px solid var(--ac);border-radius:8px;padding:8px 10px;color:var(--ac);font-size:12px;font-weight:600;outline:none;cursor:pointer;width:148px;flex-shrink:0" onchange="applyJCFilter()">
+          <select id="JCF3_FIELD" style="background:var(--s1);border:1.5px solid var(--ac);border-radius:8px;padding:8px 10px;color:var(--ac);font-size:12px;font-weight:600;outline:none;cursor:pointer;width:148px;flex-shrink:0" onchange="onJCFieldChange()">
             <option value="">— Filter 3 —</option>
             <option value="startDate">📅 Start Date</option>
             <option value="endDate">📅 End Date</option>
@@ -291,7 +302,7 @@ select option{background:var(--s2)}textarea{resize:vertical;min-height:56px}inpu
             oninput="applyJCFilter()">
         </div>
         <div style="display:flex;gap:6px">
-          <select id="JCF4_FIELD" style="background:var(--s1);border:1.5px solid var(--ac);border-radius:8px;padding:8px 10px;color:var(--ac);font-size:12px;font-weight:600;outline:none;cursor:pointer;width:148px;flex-shrink:0" onchange="applyJCFilter()">
+          <select id="JCF4_FIELD" style="background:var(--s1);border:1.5px solid var(--ac);border-radius:8px;padding:8px 10px;color:var(--ac);font-size:12px;font-weight:600;outline:none;cursor:pointer;width:148px;flex-shrink:0" onchange="onJCFieldChange()">
             <option value="">— Filter 4 —</option>
             <option value="startDate">📅 Start Date</option>
             <option value="endDate">📅 End Date</option>
@@ -304,13 +315,26 @@ select option{background:var(--s2)}textarea{resize:vertical;min-height:56px}inpu
           <button class="btn bg" onclick="clearJCFilter()" style="padding:8px 14px;font-size:12px;white-space:nowrap">✕ Clear</button>
         </div>
       </div>
+      <!-- JC Date range row -->
+      <div id="jcdaterangerow" style="display:none;margin-top:8px">
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;background:rgba(79,142,247,.07);border:1px solid rgba(79,142,247,.2);border-radius:8px;padding:10px 14px">
+          <span style="font-size:11px;font-weight:700;color:var(--ac);white-space:nowrap">📅 Date Range:</span>
+          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+            <input type="date" id="JC_DATE_FROM" style="background:var(--s1);border:1.5px solid var(--br);border-radius:7px;padding:7px 10px;color:var(--tx);font-size:13px;outline:none;min-width:160px" onchange="applyJCFilter()">
+            <span style="color:var(--t2);font-size:12px;font-weight:600">→</span>
+            <input type="date" id="JC_DATE_TO" style="background:var(--s1);border:1.5px solid var(--br);border-radius:7px;padding:7px 10px;color:var(--tx);font-size:13px;outline:none;min-width:160px" onchange="applyJCFilter()">
+          </div>
+          <span id="jc_daterange_label" style="font-size:11px;color:var(--t3)"></span>
+          <button class="btn bg" onclick="clearJCDateRange()" style="padding:6px 12px;font-size:12px;margin-left:auto;white-space:nowrap">✕ Clear Dates</button>
+        </div>
+      </div>
     </div>
 
     <!-- JC Summary dedicated 4-filter row -->
     <div id="jcsfilterrow" style="display:none;padding:0 20px 8px;flex-shrink:0">
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
         <div style="display:flex;gap:6px">
-          <select id="JF1_FIELD" style="background:var(--s1);border:1.5px solid var(--ac);border-radius:8px;padding:8px 10px;color:var(--ac);font-size:12px;font-weight:600;outline:none;cursor:pointer;width:148px;flex-shrink:0" onchange="applyJCSFilter()">
+          <select id="JF1_FIELD" style="background:var(--s1);border:1.5px solid var(--ac);border-radius:8px;padding:8px 10px;color:var(--ac);font-size:12px;font-weight:600;outline:none;cursor:pointer;width:148px;flex-shrink:0" onchange="onJCSFieldChange()">
             <option value="vehicle">🚛 Truck No</option>
             <option value="driverName">👤 Driver</option>
             <option value="code">📋 JC Number</option>
@@ -322,7 +346,7 @@ select option{background:var(--s2)}textarea{resize:vertical;min-height:56px}inpu
             oninput="applyJCSFilter()">
         </div>
         <div style="display:flex;gap:6px">
-          <select id="JF2_FIELD" style="background:var(--s1);border:1.5px solid var(--ac);border-radius:8px;padding:8px 10px;color:var(--ac);font-size:12px;font-weight:600;outline:none;cursor:pointer;width:148px;flex-shrink:0" onchange="applyJCSFilter()">
+          <select id="JF2_FIELD" style="background:var(--s1);border:1.5px solid var(--ac);border-radius:8px;padding:8px 10px;color:var(--ac);font-size:12px;font-weight:600;outline:none;cursor:pointer;width:148px;flex-shrink:0" onchange="onJCSFieldChange()">
             <option value="">— Filter 2 —</option>
             <option value="vehicle">🚛 Truck No</option>
             <option value="driverName">👤 Driver</option>
@@ -335,7 +359,7 @@ select option{background:var(--s2)}textarea{resize:vertical;min-height:56px}inpu
             oninput="applyJCSFilter()">
         </div>
         <div style="display:flex;gap:6px">
-          <select id="JF3_FIELD" style="background:var(--s1);border:1.5px solid var(--ac);border-radius:8px;padding:8px 10px;color:var(--ac);font-size:12px;font-weight:600;outline:none;cursor:pointer;width:148px;flex-shrink:0" onchange="applyJCSFilter()">
+          <select id="JF3_FIELD" style="background:var(--s1);border:1.5px solid var(--ac);border-radius:8px;padding:8px 10px;color:var(--ac);font-size:12px;font-weight:600;outline:none;cursor:pointer;width:148px;flex-shrink:0" onchange="onJCSFieldChange()">
             <option value="">— Filter 3 —</option>
             <option value="startDate">📅 Start Date</option>
             <option value="endDate">📅 End Date</option>
@@ -348,7 +372,7 @@ select option{background:var(--s2)}textarea{resize:vertical;min-height:56px}inpu
             oninput="applyJCSFilter()">
         </div>
         <div style="display:flex;gap:6px">
-          <select id="JF4_FIELD" style="background:var(--s1);border:1.5px solid var(--ac);border-radius:8px;padding:8px 10px;color:var(--ac);font-size:12px;font-weight:600;outline:none;cursor:pointer;width:148px;flex-shrink:0" onchange="applyJCSFilter()">
+          <select id="JF4_FIELD" style="background:var(--s1);border:1.5px solid var(--ac);border-radius:8px;padding:8px 10px;color:var(--ac);font-size:12px;font-weight:600;outline:none;cursor:pointer;width:148px;flex-shrink:0" onchange="onJCSFieldChange()">
             <option value="">— Filter 4 —</option>
             <option value="startDate">📅 Start Date</option>
             <option value="endDate">📅 End Date</option>
@@ -359,6 +383,18 @@ select option{background:var(--s2)}textarea{resize:vertical;min-height:56px}inpu
             style="flex:1;min-width:0;background:var(--s1);border:1.5px solid var(--br);border-radius:8px;padding:8px 12px;color:var(--tx);font-family:'Inter',sans-serif;font-size:13px;outline:none"
             oninput="applyJCSFilter()">
           <button class="btn bg" onclick="clearJCSFilter()" style="padding:8px 14px;font-size:12px;white-space:nowrap">✕ Clear</button>
+        </div>
+      </div>
+      <div id="jcsdaterangerow" style="display:none;margin-top:8px">
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;background:rgba(79,142,247,.07);border:1px solid rgba(79,142,247,.2);border-radius:8px;padding:10px 14px">
+          <span style="font-size:11px;font-weight:700;color:var(--ac);white-space:nowrap">📅 Date Range:</span>
+          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+            <input type="date" id="JCS_DATE_FROM" style="background:var(--s1);border:1.5px solid var(--br);border-radius:7px;padding:7px 10px;color:var(--tx);font-size:13px;outline:none;min-width:160px" onchange="applyJCSFilter()">
+            <span style="color:var(--t2);font-size:12px;font-weight:600">→</span>
+            <input type="date" id="JCS_DATE_TO" style="background:var(--s1);border:1.5px solid var(--br);border-radius:7px;padding:7px 10px;color:var(--tx);font-size:13px;outline:none;min-width:160px" onchange="applyJCSFilter()">
+          </div>
+          <span id="jcs_daterange_label" style="font-size:11px;color:var(--t3)"></span>
+          <button class="btn bg" onclick="clearJCSDateRange()" style="padding:6px 12px;font-size:12px;margin-left:auto;white-space:nowrap">✕ Clear Dates</button>
         </div>
       </div>
     </div>
@@ -470,7 +506,7 @@ function closeDrop() { document.getElementById('newdrop').style.display = 'none'
 document.addEventListener('click', e => { if (!document.getElementById('newwrap').contains(e.target)) closeDrop(); });
 
 // ── SEARCH — wired ONCE at page load ──
-const PH = {truck:'e.g. T843DEE',reqNo:'e.g. REQ-001234',description:'e.g. BRAKE PAD',supplier:'e.g. GUPTA',driverName:'e.g. RAMADHAN',jobCardNo:'e.g. TN/AKT/WO-001',lpoNo:'e.g. LPO-001'};
+const PH = {truck:'e.g. T843DEE',reqNo:'e.g. REQ-001234',description:'e.g. BRAKE PAD',supplier:'e.g. GUPTA',driverName:'e.g. RAMADHAN',jobCardNo:'e.g. JN/AK00001',lpoNo:'e.g. PO-001234',priority:"e.g. TODAY'S REQUEST",paymentMode:'e.g. CASH',category:'e.g. WORKSHOP',requestedBy:'e.g. SABRI',dateRequested:'e.g. 2026-04-27',dateReceived:'e.g. 2026-04-28',dateIssued:'e.g. 2026-04-29'};
 ['SEARCH1','SEARCH2','SEARCH3'].forEach(id => {
   document.getElementById(id).addEventListener('input', applyFilters);
   document.getElementById(id).addEventListener('keydown', function(e){ if(e.key==='Escape'){this.value='';applyFilters();} });
@@ -481,7 +517,7 @@ var _sf = document.getElementById('STATUSFILTER'); if(_sf) _sf.addEventListener(
     const inp = document.getElementById('SEARCH'+(i+1));
     inp.placeholder = this.value && PH[this.value] ? PH[this.value] : 'Optional...';
     inp.value = '';
-    applyFilters();
+    onSearchFieldChange();
   });
 });
 
@@ -498,6 +534,19 @@ function applyFilters() {
    {f:document.getElementById('SEARCHFIELD2').value,v:(document.getElementById('SEARCH2').value||'').trim().toLowerCase()},
    {f:document.getElementById('SEARCHFIELD3').value,v:(document.getElementById('SEARCH3').value||'').trim().toLowerCase()}
   ].forEach(s => { if(s.f&&s.v) data = data.filter(r => (r[s.f]||'').toLowerCase().includes(s.v)); });
+  // Date range filter
+  var dateFrom = document.getElementById('DATE_FROM') ? document.getElementById('DATE_FROM').value : '';
+  var dateTo   = document.getElementById('DATE_TO')   ? document.getElementById('DATE_TO').value   : '';
+  var dateField = getActiveDateField();
+  if (dateField && (dateFrom || dateTo)) {
+    data = data.filter(function(r) {
+      var val = (r[dateField]||'').substring(0,10);
+      if (!val) return false;
+      if (dateFrom && val < dateFrom) return false;
+      if (dateTo   && val > dateTo)   return false;
+      return true;
+    });
+  }
   data.sort((a,b) => {
     let va=a[sortColumn]||'',vb=b[sortColumn]||'';
     if(sortColumn==='qty'||sortColumn==='cost'){va=parseFloat(va)||0;vb=parseFloat(vb)||0;}
@@ -676,8 +725,7 @@ function renderDashboard(){
       <div class="chartcard"><div class="charttitle">Distribution</div>
         <svg viewBox="0 0 200 200" width="100%" style="max-width:180px;display:block;margin:0 auto">${buildPie(c,col,n)}</svg>
         <div class="pielegend">${Object.entries(c).map(([s,v])=>`<div class="pielegenditem"><div style="width:9px;height:9px;border-radius:50%;background:${col[s]};flex-shrink:0"></div>${s}<span class="pielegendval">${v}</span></div>`).join('')}</div>
-      </div>
-    </div>`;
+      </div>`;
   document.getElementById('viewsub').textContent=n.toLocaleString()+' total records';
 }
 function buildPie(c,col,n){
@@ -812,6 +860,15 @@ function calcDurationDays(startDate, endDate, workStatus) {
   return '<span style="font-weight:700;color:'+color+'">'+label+'</span>'+badge;
 }
 
+function validateLPO(el) {
+  if (!el.value) { el.style.borderColor = ''; return true; }
+  var val = el.value.toUpperCase();
+  el.value = val;
+  var valid = /^PO-/.test(val);
+  el.style.borderColor = valid ? '' : '#f87171';
+  return valid;
+}
+
 function calcTotal() {
   var qty = parseFloat(document.getElementById('f_qty').value) || 0;
   var unitEl = document.getElementById('f_unit_price');
@@ -925,13 +982,31 @@ async function saveRecord(){
   const category = document.getElementById('f_category').value;
   const status = document.getElementById('f_status').value;
   const missing = [];
+  var priority = document.getElementById('f_priority').value;
+  var payment  = document.getElementById('f_payment').value;
+  var reqby    = document.getElementById('f_reqby').value;
+  var supVal   = (()=>{ var c=document.getElementById('f_supplier_custom'); if(c&&c.value) return c.value; var s=document.getElementById('f_supplier'); return s?s.value:''; })();
+
   if (!truck) missing.push('Truck / Vehicle No');
   if (!driver) missing.push('Driver Name');
   if (!jobcard) missing.push('Job Card No');
   if (!desc) missing.push('Spare Part / Description');
   if (!qty) missing.push('Qty');
-  if (!cost) missing.push('Cost');
+  if (!cost) missing.push('Total Amount');
   if (!category) missing.push('Category');
+  if (!priority) missing.push('Priority');
+  if (!supVal || supVal === '__custom__') missing.push('Supplier');
+  if (!payment) missing.push('Payment Mode');
+  if (!status) missing.push('Status');
+  if (!reqby) missing.push('Requested By');
+  // Validate LPO format if filled
+  var lpoVal = (document.getElementById('f_lpo').value||'').trim().toUpperCase();
+  if (lpoVal && !/^PO-/.test(lpoVal)) {
+    alert('LPO No must start with PO- (e.g. PO-001234). Please correct the LPO No field.');
+    document.getElementById('f_lpo').style.borderColor = '#f87171';
+    document.getElementById('f_lpo').focus();
+    return;
+  }
   // If status is RECEIVED, ALL fields are required
   if (status === 'RECEIVED') {
     if (!document.getElementById('f_date').value) missing.push('Date Requested');
@@ -950,7 +1025,7 @@ async function saveRecord(){
       if (!supCustom || !supCustom.value.trim()) missing.push('Supplier');
     }
   }
-  if (!status) missing.push('Status');
+  
   if (missing.length > 0) {
     alert('Please fill in the following required fields:\n\n• ' + missing.join('\n• '));
     return;
@@ -1549,12 +1624,85 @@ function exportSpareParts(){
   var a=document.createElement('a'); a.href='data:text/csv;charset=utf-8,'+encodeURIComponent(csv);
   a.download='spare_parts_'+todayStr()+'.csv'; a.click(); toast('Exported ✓','ok');
 }
-function clearSearch(){['SEARCH1','SEARCH2','SEARCH3'].forEach(id=>document.getElementById(id).value='');document.getElementById('STATUSFILTER').value='';document.getElementById('SEARCHFIELD1').value='truck';document.getElementById('SEARCHFIELD2').value='';document.getElementById('SEARCHFIELD3').value='';document.getElementById('SEARCH1').placeholder='e.g. T843DEE';applyFilters();document.getElementById('SEARCH1').focus();}
+function clearSearch(){
+  ['SEARCH1','SEARCH2','SEARCH3'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('STATUSFILTER').value='';
+  document.getElementById('SEARCHFIELD1').value='truck';
+  document.getElementById('SEARCHFIELD2').value='';
+  document.getElementById('SEARCHFIELD3').value='';
+  document.getElementById('SEARCH1').placeholder='e.g. T843DEE';
+  clearDateRange();
+  applyFilters();
+  document.getElementById('SEARCH1').focus();
+}
+
+function clearDateRange() {
+  var df = document.getElementById('DATE_FROM'); if(df) df.value='';
+  var dt = document.getElementById('DATE_TO');   if(dt) dt.value='';
+  document.getElementById('daterangerow').style.display='none';
+  applyFilters();
+}
+
+function getActiveDateField() {
+  var dateFields = ['dateRequested','dateReceived','dateIssued'];
+  var fields = [
+    document.getElementById('SEARCHFIELD1').value,
+    document.getElementById('SEARCHFIELD2').value,
+    document.getElementById('SEARCHFIELD3').value
+  ];
+  for (var i=0; i<fields.length; i++) {
+    if (dateFields.includes(fields[i])) return fields[i];
+  }
+  return null;
+}
+
+function onSearchFieldChange() {
+  var dateFields = ['dateRequested','dateReceived','dateIssued'];
+  var labels = {dateRequested:'Date Requested',dateReceived:'Date Received',dateIssued:'Date Issued'};
+  var activeField = getActiveDateField();
+  var drRow = document.getElementById('daterangerow');
+  var lbl   = document.getElementById('daterange_field_label');
+  if (activeField) {
+    drRow.style.display = 'block';
+    if (lbl) lbl.textContent = 'Filtering by: ' + labels[activeField];
+    // Clear text input for date fields - use date range instead
+    var fields = ['SEARCHFIELD1','SEARCHFIELD2','SEARCHFIELD3'];
+    fields.forEach(function(fid, idx) {
+      if (document.getElementById(fid).value === activeField) {
+        var inp = document.getElementById('SEARCH'+(idx+1));
+        if (inp) { inp.value=''; inp.disabled=true; inp.placeholder='Use date pickers above'; }
+      }
+    });
+  } else {
+    drRow.style.display = 'none';
+    // Re-enable all search inputs
+    ['SEARCH1','SEARCH2','SEARCH3'].forEach(function(id){
+      var el=document.getElementById(id); if(el){el.disabled=false; el.placeholder='Optional...';}
+    });
+    document.getElementById('SEARCH1').placeholder='e.g. T843DEE';
+  }
+  applyFilters();
+}
 
 
 // ════════════════════════════════════════════════
 // JOB CARDS
 // ════════════════════════════════════════════════
+function updateTaskCount(el) {
+  var len = (el.value || '').length;
+  var counter = document.getElementById('jc_task_count');
+  if (!counter) return;
+  if (len < 100) {
+    counter.textContent = len + ' / 100 min';
+    counter.style.color = len > 80 ? '#fbbf24' : '#f87171';
+    el.style.borderColor = '#f87171';
+  } else {
+    counter.textContent = len + ' characters ✓';
+    counter.style.color = '#4ade80';
+    el.style.borderColor = '#4ade80';
+  }
+}
+
 function calcDuration() {
   const s = document.getElementById('jc_startdate').value;
   const e = document.getElementById('jc_enddate').value;
@@ -1598,8 +1746,7 @@ function openAddJobCard() {
   const jcd=document.getElementById('jc_driver');if(jcd){jcd.style.display='';jcd.value='';}
   const jcdt=document.getElementById('jc_driver_txt');if(jcdt)jcdt.remove();
   // Reset client field
-  const cb=document.getElementById('jc_client_booked');if(cb){cb.style.display='none';cb.value='';}
-  const ci=document.getElementById('jc_client');if(ci){ci.style.display='';ci.value='';}
+  const ci=document.getElementById('jc_client');if(ci){ci.value='';}
   document.getElementById('jc_no').value = nextJCCode();
   document.getElementById('jc_startdate').value = todayStr();
   populateJCFormDropdowns();
@@ -1672,21 +1819,15 @@ function editJobCard(id) {
   setSelect('jc_vehicle', j.vehicle);
   setSelect('jc_driver', j.driverName);
 
-  // Call onOrderStatusChange FIRST to show correct client field
-  onOrderStatusChange();
-
-  // Set client value AFTER onOrderStatusChange so it doesn't get wiped
-  var clientBooked = document.getElementById('jc_client_booked');
-  var clientInp = document.getElementById('jc_client');
-  if (j.orderStatus === 'BOOKED' && clientBooked) {
-    clientBooked.value = j.clientName || '';
-    if (clientBooked.value === '' && j.clientName) {
+  // Set client as simple dropdown
+  var clientSel = document.getElementById('jc_client');
+  if (clientSel) {
+    clientSel.value = j.clientName || '';
+    if (clientSel.value === '' && j.clientName) {
       var oc=document.createElement('option'); oc.value=j.clientName; oc.textContent=j.clientName;
-      clientBooked.insertBefore(oc, clientBooked.firstChild);
-      clientBooked.value = j.clientName;
+      clientSel.insertBefore(oc, clientSel.firstChild);
+      clientSel.value = j.clientName;
     }
-  } else if (clientInp) {
-    clientInp.value = j.clientName || '';
   }
 
   document.getElementById('jcmodal').classList.remove('hidden');
@@ -1719,6 +1860,11 @@ function saveJobCard() {
     if (!document.getElementById('jc_client').value.trim()) missing.push('Client Name');
   }
   if (!workStatus) missing.push('Work Status');
+  // Validate task description minimum 100 characters
+  var taskVal = document.getElementById('jc_task').value || '';
+  if (taskVal.length < 100) {
+    missing.push('Task Description (minimum 100 characters, currently ' + taskVal.length + ')');
+  }
   if (missing.length > 0) {
     alert('Please fill in the following required fields:\n\n• ' + missing.join('\n• '));
     return;
@@ -1739,12 +1885,7 @@ function saveJobCard() {
     })()),
     odometer: document.getElementById('jc_odometer').value,
     orderStatus: document.getElementById('jc_orderstatus').value,
-    clientName: U((function(){
-      var cb=document.getElementById('jc_client_booked');
-      var ci=document.getElementById('jc_client');
-      if(cb && cb.style.display!=='none' && cb.value) return cb.value;
-      return ci ? ci.value : '';
-    })()),
+    clientName: U(document.getElementById('jc_client') ? document.getElementById('jc_client').value : ''),
     category: document.getElementById('jc_category').value,
     location: U(document.getElementById('jc_location').value),
     maintenanceLevel: document.getElementById('jc_maintlevel').value,
@@ -2217,30 +2358,7 @@ function onJCVehicleSelect() {
 }
 
 function onOrderStatusChange() {
-  const os = document.getElementById('jc_orderstatus').value;
-  const clientBooked = document.getElementById('jc_client_booked');
-  const clientInp = document.getElementById('jc_client');
-  if (!clientBooked || !clientInp) return;
-
-  if (os === 'BOOKED') {
-    clientBooked.style.display = 'block';
-    clientInp.style.display = 'none';
-    clientInp.value = '';
-    clientBooked.value = '';
-    clientBooked.onchange = function() {
-      if (this.value === '__other__') {
-        this.style.display = 'none';
-        clientInp.style.display = 'block';
-        clientInp.value = '';
-        clientInp.focus();
-      } else if (this.value) {
-        clientInp.value = this.value;
-      }
-    };
-  } else {
-    clientBooked.style.display = 'none';
-    clientInp.style.display = 'block';
-  }
+  // Client field is now independent - no action needed
 }
 
 // ── DRIVER SELECT HANDLER ──
@@ -3176,6 +3294,43 @@ function clearGenericFilter() {
   applyGenericFilter();
 }
 
+function getActiveJCDateField() {
+  var dateFields = ['startDate','endDate'];
+  var fields = ['JCF1_FIELD','JCF2_FIELD','JCF3_FIELD','JCF4_FIELD'].map(function(id){ return document.getElementById(id) ? document.getElementById(id).value : ''; });
+  for (var i=0; i<fields.length; i++) { if (dateFields.includes(fields[i])) return fields[i]; }
+  return null;
+}
+
+function onJCFieldChange() {
+  var dateFields = ['startDate','endDate'];
+  var labels = {startDate:'Start Date', endDate:'End Date'};
+  var activeField = getActiveJCDateField();
+  var drRow = document.getElementById('jcdaterangerow');
+  var lbl = document.getElementById('jc_daterange_label');
+  if (activeField) {
+    if(drRow) drRow.style.display = 'block';
+    if(lbl) lbl.textContent = 'Filtering by: ' + labels[activeField];
+    ['JCF1_FIELD','JCF2_FIELD','JCF3_FIELD','JCF4_FIELD'].forEach(function(fid, idx) {
+      var el = document.getElementById(fid);
+      if (el && el.value === activeField) {
+        var inp = document.getElementById('JCF'+(idx+1));
+        if (inp) { inp.value=''; inp.disabled=true; inp.placeholder='Use date pickers'; }
+      }
+    });
+  } else {
+    if(drRow) drRow.style.display = 'none';
+    ['JCF1','JCF2','JCF3','JCF4'].forEach(function(id){ var el=document.getElementById(id); if(el){el.disabled=false;} });
+  }
+  applyJCFilter();
+}
+
+function clearJCDateRange() {
+  var df=document.getElementById('JC_DATE_FROM'); if(df) df.value='';
+  var dt=document.getElementById('JC_DATE_TO'); if(dt) dt.value='';
+  var drRow=document.getElementById('jcdaterangerow'); if(drRow) drRow.style.display='none';
+  applyJCFilter();
+}
+
 function applyJCFilter() {
   var filters = [
     {field: document.getElementById('JCF1_FIELD').value, val: (document.getElementById('JCF1').value||'').trim().toLowerCase()},
@@ -3187,70 +3342,95 @@ function applyJCFilter() {
   var hasFilter = filters.some(function(f){ return f.field && f.val; });
   filters.forEach(function(f) {
     if (f.field && f.val) {
-      data = data.filter(function(j) {
-        return (j[f.field]||'').toLowerCase().includes(f.val);
-      });
+      data = data.filter(function(j) { return (j[f.field]||'').toLowerCase().includes(f.val); });
     }
   });
+  // Date range filter
+  var dateFrom = document.getElementById('JC_DATE_FROM') ? document.getElementById('JC_DATE_FROM').value : '';
+  var dateTo   = document.getElementById('JC_DATE_TO')   ? document.getElementById('JC_DATE_TO').value   : '';
+  var dateField = getActiveJCDateField();
+  if (dateField && (dateFrom || dateTo)) {
+    hasFilter = true;
+    data = data.filter(function(j) {
+      var val = (j[dateField]||'').substring(0,10);
+      if (!val) return false;
+      if (dateFrom && val < dateFrom) return false;
+      if (dateTo   && val > dateTo)   return false;
+      return true;
+    });
+  }
   document.getElementById('viewsub').textContent = data.length + ' job card' + (data.length!==1?'s':'');
   renderJCStats(hasFilter ? data : JOBCARDS);
   renderFilteredJobCards(data);
 }
 
 function clearJCFilter() {
-  ['JCF1','JCF2','JCF3','JCF4'].forEach(function(id){ var el=document.getElementById(id); if(el) el.value=''; });
+  ['JCF1','JCF2','JCF3','JCF4'].forEach(function(id){ var el=document.getElementById(id); if(el){ el.value=''; el.disabled=false; } });
   ['JCF2_FIELD','JCF3_FIELD','JCF4_FIELD'].forEach(function(id){ var el=document.getElementById(id); if(el) el.value=''; });
+  clearJCDateRange();
   renderJobCards();
 }
 
+function getActiveJCSDateField() {
+  var dateFields = ['startDate','endDate'];
+  var fields = ['JF1_FIELD','JF2_FIELD','JF3_FIELD','JF4_FIELD'].map(function(id){ return document.getElementById(id) ? document.getElementById(id).value : ''; });
+  for (var i=0; i<fields.length; i++) { if (dateFields.includes(fields[i])) return fields[i]; }
+  return null;
+}
+function onJCSFieldChange() {
+  var labels = {startDate:'Start Date', endDate:'End Date'};
+  var activeField = getActiveJCSDateField();
+  var drRow = document.getElementById('jcsdaterangerow');
+  if (activeField) {
+    if(drRow) drRow.style.display='block';
+    var lbl=document.getElementById('jcs_daterange_label'); if(lbl) lbl.textContent='Filtering by: '+(labels[activeField]||activeField);
+    ['JF1_FIELD','JF2_FIELD','JF3_FIELD','JF4_FIELD'].forEach(function(fid,idx){
+      var el=document.getElementById(fid);
+      if(el&&el.value===activeField){ var inp=document.getElementById('JF'+(idx+1)); if(inp){inp.value='';inp.disabled=true;inp.placeholder='Use date pickers';} }
+    });
+  } else {
+    if(drRow) drRow.style.display='none';
+    ['JF1','JF2','JF3','JF4'].forEach(function(id){ var el=document.getElementById(id); if(el) el.disabled=false; });
+  }
+  applyJCSFilter();
+}
+function clearJCSDateRange() {
+  var df=document.getElementById('JCS_DATE_FROM'); if(df) df.value='';
+  var dt=document.getElementById('JCS_DATE_TO'); if(dt) dt.value='';
+  var dr=document.getElementById('jcsdaterangerow'); if(dr) dr.style.display='none';
+  applyJCSFilter();
+}
 function applyJCSFilter() {
   var filters = [
-    {field: document.getElementById('JF1_FIELD').value, val: (document.getElementById('JF1').value||'').trim().toLowerCase()},
-    {field: document.getElementById('JF2_FIELD').value, val: (document.getElementById('JF2').value||'').trim().toLowerCase()},
-    {field: document.getElementById('JF3_FIELD').value, val: (document.getElementById('JF3').value||'').trim().toLowerCase()},
-    {field: document.getElementById('JF4_FIELD').value, val: (document.getElementById('JF4').value||'').trim().toLowerCase()}
+    {field: (document.getElementById('JF1_FIELD')||{}).value||'', val: ((document.getElementById('JF1')||{}).value||'').trim().toLowerCase()},
+    {field: (document.getElementById('JF2_FIELD')||{}).value||'', val: ((document.getElementById('JF2')||{}).value||'').trim().toLowerCase()},
+    {field: (document.getElementById('JF3_FIELD')||{}).value||'', val: ((document.getElementById('JF3')||{}).value||'').trim().toLowerCase()},
+    {field: (document.getElementById('JF4_FIELD')||{}).value||'', val: ((document.getElementById('JF4')||{}).value||'').trim().toLowerCase()}
   ];
   var data = JOBCARDS.slice();
   var hasFilter = filters.some(function(f){ return f.field && f.val; });
-  filters.forEach(function(f) {
-    if (f.field && f.val) {
-      data = data.filter(function(j) {
-        return (j[f.field]||'').toLowerCase().includes(f.val);
-      });
-    }
-  });
-  document.getElementById('viewsub').textContent = data.length + ' job card' + (data.length!==1?'s':'');
-  // Update stats based on filtered data if filter active, else show all
+  filters.forEach(function(f){ if(f.field&&f.val) data=data.filter(function(j){ return (j[f.field]||'').toLowerCase().includes(f.val); }); });
+  var dateFrom = (document.getElementById('JCS_DATE_FROM')||{}).value||'';
+  var dateTo   = (document.getElementById('JCS_DATE_TO')||{}).value||'';
+  var dateField = getActiveJCSDateField();
+  if (dateField && (dateFrom || dateTo)) {
+    hasFilter = true;
+    data = data.filter(function(j) {
+      var val=(j[dateField]||'').substring(0,10);
+      if(!val) return false;
+      if(dateFrom && val<dateFrom) return false;
+      if(dateTo   && val>dateTo)   return false;
+      return true;
+    });
+  }
+  document.getElementById('viewsub').textContent = data.length+' job card'+(data.length!==1?'s':'');
   renderJCStats(hasFilter ? data : JOBCARDS);
   renderFilteredJCSummary(data);
 }
-
-function exportJCSummary() {
-  var headers = ['Job Card No','Vehicle','Vehicle Type','Driver','Category','Location','Start Date','End Date','Duration (days)','Work Status','Total Amount'];
-  var rows = [headers];
-  JOBCARDS.forEach(function(j) {
-    var start = j.startDate ? new Date(j.startDate) : null;
-    var end = j.endDate ? new Date(j.endDate) : new Date();
-    var days = start ? Math.ceil((end - start)/(1000*60*60*24)) : 0;
-    var amt = 0;
-    ALL.forEach(function(r){
-      if(r.status==='RECEIVED'&&r.jobCardNo&&j.code&&r.jobCardNo.toUpperCase()===j.code.toUpperCase()){
-        amt += parseFloat(r.cost)||0;
-      }
-    });
-    rows.push([j.code||'',j.vehicle||'',j.vehicleType||'',j.driverName||'',j.category||'',j.location||'',j.startDate||'',j.endDate||'',days,j.workStatus||'',amt]);
-  });
-  var csv = rows.map(function(r){ return r.map(function(v){ return '"'+String(v).replace(/"/g,'""')+'"'; }).join(','); }).join('\n');
-  var a = document.createElement('a');
-  a.href = 'data:text/csv;charset=utf-8,' + encodeURIComponent(csv);
-  a.download = 'job_card_summary_' + new Date().toISOString().split('T')[0] + '.csv';
-  a.click();
-  toast('Exported ✓', 'ok');
-}
-
 function clearJCSFilter() {
-  ['JF1','JF2','JF3','JF4'].forEach(function(id){ var el=document.getElementById(id); if(el) el.value=''; });
+  ['JF1','JF2','JF3','JF4'].forEach(function(id){ var el=document.getElementById(id); if(el){el.value='';el.disabled=false;} });
   ['JF2_FIELD','JF3_FIELD','JF4_FIELD'].forEach(function(id){ var el=document.getElementById(id); if(el) el.value=''; });
+  clearJCSDateRange();
   renderJCSummary();
 }
 
@@ -3335,7 +3515,7 @@ function renderFilteredJobCards(data) {
   if (data.length===0){document.getElementById('TBODY').innerHTML='';document.getElementById('emptystate').style.display='block';return;}
   document.getElementById('emptystate').style.display='none';
   var wsColors={'IN PROGRESS':'sPNR','COMPLETED':'sR','STALLED':'sOH','PENDING':'sRNP','TO BE REPAIRED AFTER LOADING':'sNR'};
-  document.getElementById('TBODY').innerHTML=data.map(function(j){return'<tr class="'+(j.workStatus==="COMPLETED"?"jc-completed":"")+'"><td><span class="reqbadge">'+(j.code||'')+'</span></td><td><b>'+(j.vehicle||'')+'</b></td><td style="color:var(--t2);font-size:10px">'+(j.vehicleType||'')+'</td><td>'+(j.driverName||'')+'</td><td style="font-family:monospace;font-size:10px">'+(j.odometer?Number(j.odometer).toLocaleString()+' km':'')+'</td><td><span style="font-size:10px;font-weight:600;color:'+(j.orderStatus==="BOOKED"?"#4ade80":"#f97316")+'">'+(j.orderStatus||'')+'</span></td><td style="color:var(--t2)">'+(j.clientName||'')+'</td><td><span style="background:'+(j.category==="WORKSHOP"?"rgba(79,142,247,.15)":"rgba(249,115,22,.15)")+';color:'+(j.category==="WORKSHOP"?"#4f8ef7":"#f97316")+';padding:2px 7px;border-radius:5px;font-size:10px;font-weight:700">'+(j.category||'')+'</span></td><td style="color:var(--t2);font-size:10px">'+(j.location||'')+'</td><td style="color:var(--t2);font-size:10px">'+(j.maintenanceLevel||'')+'</td><td><span style="font-family:monospace;font-size:10px;color:var(--ac)">'+(j.jobCardNo||'')+'</span></td><td title="'+(j.taskDescription||'')+'">'+(j.taskDescription||'').substring(0,25)+((j.taskDescription||'').length>25?"…":"")+'</td><td title="'+(j.partsRequested||'')+'" style="color:var(--t2);font-size:10px">'+(j.partsRequested||'').substring(0,20)+((j.partsRequested||'').length>20?"…":"")+'</td><td>'+fd(j.startDate)+'</td><td>'+fd(j.endDate)+'</td><td>'+fd(j.expectedReleaseDate)+'</td><td style="font-family:monospace;text-align:center">'+calcDurationDays(j.startDate,j.endDate,j.workStatus)+'</td><td><span class="sb '+(wsColors[j.workStatus]||'sNR')+'">'+(j.workStatus||'')+'</span></td><td style="color:var(--t2);font-size:10px" title="'+(j.comment||'')+'">'+(j.comment||'').substring(0,20)+((j.comment||'').length>20?"…":"")+'</td><td style="font-family:monospace;font-weight:700;color:var(--ac)">'+(function(){ var fa=0; ALL.forEach(function(r){ if(r.status==='RECEIVED'&&r.jobCardNo&&j.code&&r.jobCardNo.toUpperCase()===j.code.toUpperCase()) fa+=parseFloat(r.cost)||0; }); return fa>0?fa.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}):'—'; })()+'</td><td><button class="actbtn jcr-edit" data-id="'+j.id+'" data-done="'+(j.workStatus==="COMPLETED"?"1":"")+'" style="'+(j.workStatus==="COMPLETED"?"color:#fbbf24;border-color:#fbbf24":"")+'">'+(j.workStatus==="COMPLETED"?"🔒 Edit":"✏ Edit")+'</button><button class="actbtn d jcr-del" data-id="'+j.id+'" data-done="'+(j.workStatus==="COMPLETED"?"1":"")+'">🗑</button></td></tr>';}).join('');
+  document.getElementById('TBODY').innerHTML=data.map(function(j){return'<tr class="'+(j.workStatus==="COMPLETED"?"jc-completed":"")+'"><td><span class="reqbadge">'+(j.code||'')+'</span></td><td><b>'+(j.vehicle||'')+'</b></td><td style="color:var(--t2);font-size:10px">'+(j.vehicleType||'')+'</td><td>'+(j.driverName||'')+'</td><td style="font-family:monospace;font-size:10px">'+(j.odometer?Number(j.odometer).toLocaleString()+' km':'')+'</td><td><span style="font-size:10px;font-weight:600;color:'+(j.orderStatus==="LOADED"?"#4ade80":j.orderStatus==="EMPTY"?"#60a5fa":"#f97316")+'">'+(j.orderStatus||'')+'</span></td><td style="color:var(--t2)">'+(j.clientName||'')+'</td><td><span style="background:'+(j.category==="WORKSHOP"?"rgba(79,142,247,.15)":"rgba(249,115,22,.15)")+';color:'+(j.category==="WORKSHOP"?"#4f8ef7":"#f97316")+';padding:2px 7px;border-radius:5px;font-size:10px;font-weight:700">'+(j.category||'')+'</span></td><td style="color:var(--t2);font-size:10px">'+(j.location||'')+'</td><td style="color:var(--t2);font-size:10px">'+(j.maintenanceLevel||'')+'</td><td><span style="font-family:monospace;font-size:10px;color:var(--ac)">'+(j.jobCardNo||'')+'</span></td><td title="'+(j.taskDescription||'')+'">'+(j.taskDescription||'').substring(0,25)+((j.taskDescription||'').length>25?"…":"")+'</td><td title="'+(j.partsRequested||'')+'" style="color:var(--t2);font-size:10px">'+(j.partsRequested||'').substring(0,20)+((j.partsRequested||'').length>20?"…":"")+'</td><td>'+fd(j.startDate)+'</td><td>'+fd(j.endDate)+'</td><td>'+fd(j.expectedReleaseDate)+'</td><td style="font-family:monospace;text-align:center">'+calcDurationDays(j.startDate,j.endDate,j.workStatus)+'</td><td><span class="sb '+(wsColors[j.workStatus]||'sNR')+'">'+(j.workStatus||'')+'</span></td><td style="color:var(--t2);font-size:10px" title="'+(j.comment||'')+'">'+(j.comment||'').substring(0,20)+((j.comment||'').length>20?"…":"")+'</td><td style="font-family:monospace;font-weight:700;color:var(--ac)">'+(function(){ var fa=0; ALL.forEach(function(r){ if(r.status==='RECEIVED'&&r.jobCardNo&&j.code&&r.jobCardNo.toUpperCase()===j.code.toUpperCase()) fa+=parseFloat(r.cost)||0; }); return fa>0?fa.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}):'—'; })()+'</td><td><button class="actbtn jcr-edit" data-id="'+j.id+'" data-done="'+(j.workStatus==="COMPLETED"?"1":"")+'" style="'+(j.workStatus==="COMPLETED"?"color:#fbbf24;border-color:#fbbf24":"")+'">'+(j.workStatus==="COMPLETED"?"🔒 Edit":"✏ Edit")+'</button><button class="actbtn d jcr-del" data-id="'+j.id+'" data-done="'+(j.workStatus==="COMPLETED"?"1":"")+'">🗑</button></td></tr>';}).join('');
   // Re-wire event delegation
   document.getElementById('TBODY').onclick = function(e) {
     var btn = e.target.closest('button'); if (!btn) return;
@@ -3482,8 +3662,22 @@ async function loadAppData(){
         updateBadges();
         if(currentView==='suppliers')renderSuppliers();
         else if(currentView==='spareparts')renderSpareParts();
-        else if(currentView==='jobcards')renderJobCards();
-        else if(currentView==='jcsummary')renderJCSummary();
+        else if(currentView==='jobcards'){
+          // Re-apply JC filters if active, else full render
+          var jcHasFilter = ['JCF1','JCF2','JCF3','JCF4'].some(function(id){
+            var el=document.getElementById(id); return el && el.value.trim();
+          }) || (document.getElementById('JC_DATE_FROM') && document.getElementById('JC_DATE_FROM').value)
+            || (document.getElementById('JC_DATE_TO') && document.getElementById('JC_DATE_TO').value);
+          if(jcHasFilter) applyJCFilter(); else renderJobCards();
+        }
+        else if(currentView==='jcsummary'){
+          // Re-apply JCS filters if active, else full render
+          var jcsHasFilter = ['JF1','JF2','JF3','JF4'].some(function(id){
+            var el=document.getElementById(id); return el && el.value.trim();
+          }) || (document.getElementById('JCS_DATE_FROM') && document.getElementById('JCS_DATE_FROM').value)
+            || (document.getElementById('JCS_DATE_TO') && document.getElementById('JCS_DATE_TO').value);
+          if(jcsHasFilter) applyJCSFilter(); else renderJCSummary();
+        }
         else if(currentView==='drivers')renderDrivers();
         else if(currentView==='vehicles')renderVehicles();
         else if(currentView==='dashboard')renderDashboard();
@@ -3510,8 +3704,8 @@ init();
       <div class="formgroup"><label>Vehicle Type</label><input type="text" id="f_vtype" readonly style="opacity:.7;cursor:not-allowed;color:var(--ac);font-weight:600"></div>
       <div class="formgroup"><label>Job Card No <span style="color:#f87171">*</span></label><select id="f_jobcard"><option value="">Select job card...</option></select></div>
       <div class="formgroup"><label>Driver Name <span style="color:#f87171">*</span></label><select id="f_driver"><option value="">Select driver...</option></select></div>
-      <div class="formgroup"><label>Priority</label><select id="f_priority"><option value="">Select...</option><option>TODAY'S REQUEST</option><option>NORMAL</option></select></div>
-      <div class="formgroup"><label>LPO No</label><input type="text" id="f_lpo"></div>
+      <div class="formgroup"><label>Priority <span style="color:#f87171">*</span></label><select id="f_priority"><option value="">Select...</option><option>TODAY'S REQUEST</option><option>NORMAL</option></select></div>
+      <div class="formgroup"><label>LPO No</label><input type="text" id="f_lpo" placeholder="e.g. PO-001234" oninput="validateLPO(this)" style="text-transform:uppercase"></div>
       <div class="formgroup full"><label>Description / Spare Part <span style="color:#f87171">*</span></label>
         <select id="f_desc_select" onchange="onDescSelect()" style="margin-bottom:6px"><option value="">&#8212; Select from spare parts list &#8212;</option></select>
         <input type="text" id="f_desc" placeholder="Type description or select from list above">
@@ -3519,12 +3713,12 @@ init();
       <div class="formgroup"><label>Qty <span style="color:#f87171">*</span></label><input type="number" id="f_qty" min="0" oninput="calcTotal()"></div>
         <div class="formgroup"><label>Unit Price <span style="color:#f87171">*</span></label><input type="text" id="f_unit_price" oninput="calcTotal()" onblur="fmtNum(this)" placeholder="e.g. 100,000.00"></div>
         <div class="formgroup full"><label>Total Amount <span style="color:#f87171">*</span></label><input type="text" id="f_cost" placeholder="Auto-calculated (Qty × Unit Price)" style="color:var(--ac);font-weight:700;font-size:14px;cursor:not-allowed" readonly></div>
-      <div class="formgroup"><label>Supplier</label><select id="f_supplier" onchange="onSupplierSelect()"><option value="">Select supplier...</option></select></div>
+      <div class="formgroup"><label>Supplier <span style="color:#f87171">*</span></label><select id="f_supplier" onchange="onSupplierSelect()"><option value="">Select supplier...</option></select></div>
       <div class="formgroup"><label>Date Received</label><input type="date" id="f_datercvd"></div>
-      <div class="formgroup"><label>Status</label><select id="f_status" onchange="onStatusChange()"><option value="">Select...</option><option>RECEIVED</option><option>RECEIVED NOT ISSUED</option><option>ON HOLD</option><option>PAID NOT RECEIVED</option><option>NOT PAID</option></select></div>
-      <div class="formgroup"><label>Payment Mode</label><select id="f_payment"><option value="">Select...</option><option>CASH</option><option>CREDIT</option><option>STORE</option></select></div>
+      <div class="formgroup"><label>Status <span style="color:#f87171">*</span></label><select id="f_status" onchange="onStatusChange()"><option value="">Select...</option><option>RECEIVED</option><option>RECEIVED NOT ISSUED</option><option>ON HOLD</option><option>PAID NOT RECEIVED</option><option>NOT PAID</option></select></div>
+      <div class="formgroup"><label>Payment Mode <span style="color:#f87171">*</span></label><select id="f_payment"><option value="">Select...</option><option>CASH</option><option>CREDIT</option><option>STORE</option></select></div>
       <div class="formgroup"><label>Category <span style="color:#f87171">*</span></label><select id="f_category"><option value="">Select...</option><option>WORKSHOP</option><option>BREAKDOWN</option></select></div>
-      <div class="formgroup"><label>Requested By</label><input type="text" id="f_reqby"></div>
+      <div class="formgroup"><label>Requested By <span style="color:#f87171">*</span></label><select id="f_reqby"><option value="">Select...</option><option>SABRI ABRI</option><option>RAMADHAN LUDEGE</option><option>MUSTAKIM RAMADHAN</option><option>MOHAMED AL JABRY</option></select></div>
       <div class="formgroup"><label>Date Issued</label><input type="date" id="f_dateissued"></div>
       <div class="formgroup full"><label>Remarks</label><textarea id="f_remarks"></textarea></div>
     </div></div>
@@ -3593,16 +3787,15 @@ init();
       <div class="formgroup"><label>Vehicle Type</label><input type="text" id="jc_vtype" readonly style="opacity:.7;cursor:not-allowed;color:var(--ac);font-weight:600"></div>
       <div class="formgroup"><label>Driver Name <span style="color:#f87171">*</span></label><select id="jc_driver"><option value="">Select driver...</option></select></div>
       <div class="formgroup"><label>Odometer (KM) <span style="color:#f87171">*</span></label><input type="number" id="jc_odometer" min="0"></div>
-      <div class="formgroup"><label>Order Status <span style="color:#f87171">*</span></label><select id="jc_orderstatus" onchange="onOrderStatusChange()"><option value="">Select...</option><option>BOOKED</option><option>NOT BOOKED</option></select></div>
+      <div class="formgroup"><label>Order Status <span style="color:#f87171">*</span></label><select id="jc_orderstatus"><option value="">Select...</option><option>LOADED</option><option>EMPTY</option></select></div>
       <div class="formgroup"><label>Client Name</label>
-        <select id="jc_client_booked" style="display:none"><option value="">Select client...</option><option>TOTAL ENERGIES</option><option>KEMEXON</option><option>GLENCORE</option><option value="__other__">Other...</option></select>
-        <input type="text" id="jc_client" placeholder="Client name">
+        <select id="jc_client"><option value="">Select...</option><option>KEMEXON</option><option>TOTAL ENERGIES</option><option>GLENCORE</option><option>NOT BOOKED</option></select>
       </div>
       <div class="formgroup"><label>Category <span style="color:#f87171">*</span></label><select id="jc_category"><option value="">Select...</option><option>WORKSHOP</option><option>BREAKDOWN</option></select></div>
       <div class="formgroup"><label>Location <span style="color:#f87171">*</span></label><input type="text" id="jc_location"></div>
       <div class="formgroup"><label>Maintenance Level <span style="color:#f87171">*</span></label><select id="jc_maintlevel"><option value="">Select...</option><option>MINOR MAINTENANCE</option><option>MAJOR MAINTENANCE</option><option>ACCIDENT REPAIR</option><option>SERVICE</option></select></div>
-      <div class="formgroup"><label>Work Status</label><select id="jc_workstatus"><option value="">Select...</option><option>IN PROGRESS</option><option>COMPLETED</option><option>STALLED</option><option>PENDING</option><option>TO BE REPAIRED AFTER LOADING</option></select></div>
-      <div class="formgroup full"><label>Task Description</label><textarea id="jc_task" style="min-height:80px"></textarea></div>
+      <div class="formgroup"><label>Work Status <span style="color:#f87171">*</span></label><select id="jc_workstatus"><option value="">Select...</option><option>IN PROGRESS</option><option>COMPLETED</option><option>STALLED</option><option>PENDING</option><option>TO BE REPAIRED AFTER LOADING</option></select></div>
+      <div class="formgroup full"><label>Task Description <span style="color:#f87171">*</span> <span style="color:var(--t3);font-weight:400;font-size:10px">(min 100 characters)</span></label><textarea id="jc_task" style="min-height:80px" oninput="updateTaskCount(this)" placeholder="Describe the task in detail (minimum 100 characters including spaces)..."></textarea><div id="jc_task_count" style="font-size:10px;color:var(--t3);text-align:right;margin-top:3px">0 / 100 min</div></div>
       <div class="formgroup full"><label>Parts Requested</label><textarea id="jc_parts" style="min-height:60px"></textarea></div>
       <div class="formgroup"><label>Start Date</label><input type="date" id="jc_startdate" onchange="calcDuration()"></div>
       <div class="formgroup"><label>End Date</label><input type="date" id="jc_enddate" onchange="calcDuration()"></div>
@@ -3676,9 +3869,9 @@ init();
         <button class="btn bp" onclick="downloadJCPDF()" style="font-size:12px">&#8659; Download PDF</button>
         <button class="modalclose" onclick="closeModal('jcpdfmodal')">&#10005;</button>
       </div>
-    </div>
     <div id="jcpdfcontent" style="padding:20px;overflow-y:auto;max-height:80vh;background:#fff;color:#000"></div>
   </div>
+</div>
 </div>
 
 <!-- CHANGE PASSWORD MODAL -->
@@ -3859,5 +4052,6 @@ window.addEventListener('load', function() {
   var el = document.getElementById('aklgu'); if (el) el.focus();
 });
 </script>
+</div>
 </body>
 </html>
