@@ -8,32 +8,32 @@
 <meta http-equiv="Expires" content="0">
 <title>AK TRANSPORT WORKSHOP MANAGEMENT SYSTEM</title>
 <!-- v202604271229 -->
-<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Syne:wght@700;800&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Outfit:wght@600;700;800;900&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link href="https://cdnjs.cloudflare.com/ajax/libs/tom-select/2.3.1/css/tom-select.min.css" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/tom-select/2.3.1/js/tom-select.complete.min.js"></script>
 <style>
 :root{--bg:#0f1117;--s1:#1a1d27;--s2:#222536;--br:#2e3248;--ac:#4f8ef7;--tx:#e8eaf6;--t2:#8b90b0;--t3:#555a7a}
 *{box-sizing:border-box;margin:0;padding:0}
-body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--tx);height:100vh;display:flex;flex-direction:column;overflow:hidden}
+body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--tx);height:100vh;display:flex;flex-direction:column;overflow:hidden}
 .topbar{display:flex;align-items:center;justify-content:space-between;padding:0 20px;height:54px;background:var(--s1);border-bottom:1px solid var(--br);flex-shrink:0}
-.logo{font-family:'Syne',sans-serif;font-size:15px;font-weight:800;color:var(--ac)}.logo span{color:var(--t2);font-weight:700}
+.logo{font-family:'Outfit',sans-serif;font-size:15px;font-weight:800;color:var(--ac)}.logo span{color:var(--t2);font-weight:700}
 .ta{display:flex;gap:8px;align-items:center}
 .syncbadge{font-size:11px;color:var(--t3);display:flex;align-items:center;gap:5px}
 .dot{width:6px;height:6px;border-radius:50%;background:var(--t3)}.dot.on{background:#4ade80;box-shadow:0 0 5px #4ade80}.dot.sy{background:#fbbf24;animation:pu .7s infinite}.dot.er{background:#f87171}
 @keyframes pu{0%,100%{opacity:1}50%{opacity:.2}}
-.btn{padding:7px 14px;border-radius:7px;border:none;cursor:pointer;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:500}
+.btn{padding:7px 14px;border-radius:7px;border:none;cursor:pointer;font-family:'Inter',sans-serif;font-size:13px;font-weight:500}
 .bp{background:var(--ac);color:#fff}.bp:hover{filter:brightness(1.1)}.bg{background:transparent;color:var(--t2);border:1px solid var(--br)}.bg:hover{background:var(--s2);color:var(--tx)}.btn:disabled{opacity:.5;cursor:not-allowed}
 .layout{display:flex;flex:1;overflow:hidden}
 .sidebar{width:210px;background:var(--s1);border-right:1px solid var(--br);padding:10px 0;flex-shrink:0;overflow-y:auto}
-.slbl{font-size:9px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.12em;padding:10px 20px 3px}
-.navitem{display:flex;align-items:center;gap:8px;padding:8px 10px 8px 20px;cursor:pointer;font-size:13px;color:var(--t2);border-radius:8px;margin:1px 8px;transition:all .1s}
+.slbl{font-size:9px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.15em;padding:10px 20px 3px;font-family:'Inter',sans-serif}
+.navitem{display:flex;align-items:center;gap:8px;padding:8px 10px 8px 20px;cursor:pointer;font-size:13px;color:var(--t2);font-family:'Inter',sans-serif;border-radius:8px;margin:1px 8px;transition:all .1s}
 .navitem:hover{background:var(--s2);color:var(--tx)}.navitem.active{background:rgba(79,142,247,.14);color:var(--ac)}
 .navdot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
 .navbadge{margin-left:auto;background:var(--s2);color:var(--t3);font-size:10px;padding:1px 6px;border-radius:8px;font-family:monospace}
 .divider{height:1px;background:var(--br);margin:6px 14px}
 .main{flex:1;display:flex;flex-direction:column;overflow:hidden}
-.vtitle{font-family:'DM Sans',sans-serif;font-size:22px;font-weight:700;letter-spacing:-.3px}.vsub{font-size:12px;color:var(--t2);margin-top:2px}
-#searchrow input{flex:1;background:var(--s1);border:1.5px solid var(--br);border-radius:8px;padding:8px 12px;color:var(--tx);font-family:'DM Sans',sans-serif;font-size:13px;outline:none;min-width:0}
+.vtitle{font-family:'Inter',sans-serif;font-size:22px;font-weight:700;letter-spacing:-.3px}.vsub{font-size:12px;color:var(--t2);margin-top:2px}
+#searchrow input{flex:1;background:var(--s1);border:1.5px solid var(--br);border-radius:8px;padding:8px 12px;color:var(--tx);font-family:'Inter',sans-serif;font-size:13px;outline:none;min-width:0}
 #searchrow input:focus{border-color:var(--ac)}#searchrow input::placeholder{color:var(--t3)}
 #searchrow select{background:var(--s1);border:1.5px solid var(--br);border-radius:8px;padding:8px 10px;color:var(--tx);font-size:12px;outline:none;cursor:pointer}
 #searchrow select option{background:var(--s2)}
@@ -58,10 +58,10 @@ tr:hover td{background:rgba(255,255,255,.02)}
 .dgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:14px;padding:0 20px 16px}
 .statcard{background:var(--s1);border:1px solid var(--br);border-radius:10px;padding:18px;cursor:pointer;transition:border-color .12s}.statcard:hover{border-color:var(--ac)}
 .statlbl{font-size:10px;font-weight:700;color:var(--t2);text-transform:uppercase;letter-spacing:.06em;margin-bottom:7px}
-.statval{font-family:'Syne',sans-serif;font-size:30px;font-weight:800;line-height:1}.statsub{font-size:11px;color:var(--t3);margin-top:3px}
+.statval{font-family:'Outfit',sans-serif;font-size:30px;font-weight:800;line-height:1}.statsub{font-size:11px;color:var(--t3);margin-top:3px}
 .chartgrid{padding:0 20px 20px;display:grid;grid-template-columns:1fr 1fr;gap:14px}
 .chartcard{background:var(--s1);border:1px solid var(--br);border-radius:10px;padding:18px}
-.charttitle{font-family:'Syne',sans-serif;font-size:13px;font-weight:800;margin-bottom:14px}
+.charttitle{font-family:'Outfit',sans-serif;font-size:13px;font-weight:800;margin-bottom:14px}
 .barchart{display:flex;flex-direction:column;gap:9px}.barrow{display:flex;align-items:center;gap:9px}
 .barlabel{font-size:10px;color:var(--t2);width:140px;flex-shrink:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .bartrack{flex:1;background:var(--s2);border-radius:3px;height:18px;overflow:hidden}
@@ -76,13 +76,13 @@ tr:hover td{background:rgba(255,255,255,.02)}
 .overlay{position:fixed;inset:0;background:rgba(0,0,0,.72);display:flex;align-items:center;justify-content:center;z-index:1000;padding:16px;backdrop-filter:blur(3px)}
 .modal{background:var(--s1);border:1px solid var(--br);border-radius:14px;width:100%;max-width:700px;max-height:92vh;overflow-y:auto}
 .modalhead{padding:18px 22px 14px;border-bottom:1px solid var(--br);display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;background:var(--s1);z-index:2}
-.modaltitle{font-family:'Syne',sans-serif;font-size:17px;font-weight:800}
+.modaltitle{font-family:'Outfit',sans-serif;font-size:17px;font-weight:800}
 .modalclose{background:none;border:none;color:var(--t2);cursor:pointer;font-size:18px;padding:3px 7px;border-radius:5px}.modalclose:hover{background:var(--s2)}
 .modalbody{padding:18px 22px}
 .formgrid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
 .formgroup{display:flex;flex-direction:column;gap:5px}.formgroup.full{grid-column:1/-1}
 label{font-size:10px;font-weight:700;color:var(--t2);text-transform:uppercase;letter-spacing:.06em}
-input,select,textarea{background:var(--s2);border:1px solid var(--br);border-radius:7px;padding:9px 11px;color:var(--tx);font-family:'DM Sans',sans-serif;font-size:13px;outline:none;width:100%;transition:border-color .12s}
+input,select,textarea{background:var(--s2);border:1px solid var(--br);border-radius:7px;padding:9px 11px;color:var(--tx);font-family:'Inter',sans-serif;font-size:13px;outline:none;width:100%;transition:border-color .12s}
 input:focus,select:focus,textarea:focus{border-color:var(--ac)}
 input::placeholder,textarea::placeholder{color:var(--t3)}
 select option{background:var(--s2)}textarea{resize:vertical;min-height:56px}input[readonly]{opacity:.55;cursor:not-allowed}
@@ -112,27 +112,27 @@ select option{background:var(--s2)}textarea{resize:vertical;min-height:56px}inpu
 .perm-item input[type=checkbox]{width:16px;height:16px;min-width:16px;accent-color:var(--ac);cursor:pointer;margin:0}
 .perm-item span{font-size:12px;font-weight:500;color:var(--tx);text-transform:none;letter-spacing:0;line-height:1.2}
 /* Login overlay */
-#aklg{position:fixed;inset:0;background:#0f1117;z-index:999999;display:flex;align-items:center;justify-content:center;font-family:'DM Sans',sans-serif}
+#aklg{position:fixed;inset:0;background:#0f1117;z-index:999999;display:flex;align-items:center;justify-content:center;font-family:'Inter',sans-serif}
 #aklgb{background:#1a1d27;border:1px solid #2e3248;border-radius:14px;padding:40px;width:360px;box-shadow:0 20px 60px rgba(0,0,0,.6)}
-#aklgb h2{font-family:'Syne',sans-serif;color:#4f8ef7;margin:0 0 4px;font-size:22px;font-weight:800}
+#aklgb h2{font-family:'Outfit',sans-serif;color:#4f8ef7;margin:0 0 4px;font-size:22px;font-weight:800}
 #aklgb p{color:#8b90b0;font-size:13px;margin:0 0 28px}
 .aklf{display:block;font-size:10px;font-weight:700;color:#8b90b0;text-transform:uppercase;letter-spacing:.06em;margin-bottom:5px}
 #aklg input[type=text],#aklg input[type=password]{width:100%;padding:11px 14px;background:#222536;border:1px solid #2e3248;border-radius:8px;color:#e8eaf6;font-size:14px;outline:none;margin-bottom:14px;box-sizing:border-box;transition:border-color .15s}
 #aklg input:focus{border-color:#4f8ef7}
-#aklg button{width:100%;padding:12px;background:#4f8ef7;color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;transition:filter .15s}
+#aklg button{width:100%;padding:12px;background:#4f8ef7;color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;font-family:'Inter',sans-serif;transition:filter .15s}
 #aklg button:hover{filter:brightness(1.1)}
 #aklge{color:#f87171;font-size:12px;text-align:center;min-height:18px;margin-bottom:10px}
 ::-webkit-scrollbar{width:5px;height:5px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:var(--br);border-radius:3px}
 /* Tom Select dark theme */
 .ts-wrapper{width:100%}
-.ts-control{background:var(--s2)!important;border:1px solid var(--br)!important;border-radius:7px!important;padding:8px 11px!important;color:var(--tx)!important;font-family:'DM Sans',sans-serif!important;font-size:13px!important;min-height:38px!important;box-shadow:none!important;cursor:pointer!important}
+.ts-control{background:var(--s2)!important;border:1px solid var(--br)!important;border-radius:7px!important;padding:8px 11px!important;color:var(--tx)!important;font-family:'Inter',sans-serif!important;font-size:13px!important;min-height:38px!important;box-shadow:none!important;cursor:pointer!important}
 .ts-wrapper.focus .ts-control{border-color:var(--ac)!important;box-shadow:none!important}
-.ts-dropdown{background:var(--s1)!important;border:1px solid var(--br)!important;border-radius:8px!important;margin-top:3px!important;box-shadow:0 8px 24px rgba(0,0,0,.5)!important;font-family:'DM Sans',sans-serif!important;font-size:13px!important;z-index:9999!important}
+.ts-dropdown{background:var(--s1)!important;border:1px solid var(--br)!important;border-radius:8px!important;margin-top:3px!important;box-shadow:0 8px 24px rgba(0,0,0,.5)!important;font-family:'Inter',sans-serif!important;font-size:13px!important;z-index:9999!important}
 .ts-dropdown .option{padding:9px 12px!important;color:var(--tx)!important;cursor:pointer!important}
 .ts-dropdown .option:hover,.ts-dropdown .option.active{background:var(--s2)!important;color:var(--ac)!important}
 .ts-dropdown .option.selected{background:rgba(79,142,247,.15)!important;color:var(--ac)!important}
 .ts-dropdown-content{max-height:220px!important;overflow-y:auto!important}
-.ts-wrapper .ts-control input{color:var(--tx)!important;font-family:'DM Sans',sans-serif!important;font-size:13px!important;background:transparent!important}
+.ts-wrapper .ts-control input{color:var(--tx)!important;font-family:'Inter',sans-serif!important;font-size:13px!important;background:transparent!important}
 .ts-wrapper .ts-control input::placeholder{color:var(--t3)!important}
 .ts-dropdown .no-results{color:var(--t2)!important;padding:10px 12px!important;font-size:12px!important}
 .ts-dropdown input.ts-dropdown-search{background:var(--s2)!important;border:1px solid var(--br)!important;border-radius:6px!important;color:var(--tx)!important;padding:7px 10px!important;margin:6px!important;width:calc(100% - 12px)!important;font-size:12px!important;outline:none!important}
@@ -231,17 +231,181 @@ select option{background:var(--s2)}textarea{resize:vertical;min-height:56px}inpu
     <div id="filterrow" style="display:none;padding:0 20px 8px;flex-shrink:0">
       <div style="display:flex;gap:8px">
         <input type="text" id="FR1" placeholder="Search..." autocomplete="off" spellcheck="false"
-          style="flex:1;background:var(--s1);border:1.5px solid var(--br);border-radius:8px;padding:8px 12px;color:var(--tx);font-family:'DM Sans',sans-serif;font-size:13px;outline:none"
+          style="flex:1;background:var(--s1);border:1.5px solid var(--br);border-radius:8px;padding:8px 12px;color:var(--tx);font-family:'Inter',sans-serif;font-size:13px;outline:none"
           oninput="applyGenericFilter()">
         <input type="text" id="FR2" placeholder="Filter 2..." autocomplete="off" spellcheck="false"
-          style="flex:1;background:var(--s1);border:1.5px solid var(--br);border-radius:8px;padding:8px 12px;color:var(--tx);font-family:'DM Sans',sans-serif;font-size:13px;outline:none"
+          style="flex:1;background:var(--s1);border:1.5px solid var(--br);border-radius:8px;padding:8px 12px;color:var(--tx);font-family:'Inter',sans-serif;font-size:13px;outline:none"
           oninput="applyGenericFilter()">
         <input type="text" id="FR3" placeholder="Filter 3..." autocomplete="off" spellcheck="false"
-          style="flex:1;background:var(--s1);border:1.5px solid var(--br);border-radius:8px;padding:8px 12px;color:var(--tx);font-family:'DM Sans',sans-serif;font-size:13px;outline:none"
+          style="flex:1;background:var(--s1);border:1.5px solid var(--br);border-radius:8px;padding:8px 12px;color:var(--tx);font-family:'Inter',sans-serif;font-size:13px;outline:none"
           oninput="applyGenericFilter()">
         <button class="btn bg" onclick="clearGenericFilter()" style="padding:8px 14px;font-size:12px;white-space:nowrap">✕ Clear</button>
       </div>
     </div>
+
+    <!-- Job Cards dedicated 4-filter row -->
+    <div id="jcfilterrow" style="display:none;padding:0 20px 8px;flex-shrink:0">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+        <div style="display:flex;gap:6px">
+          <select id="JCF1_FIELD" style="background:var(--s1);border:1.5px solid var(--ac);border-radius:8px;padding:8px 10px;color:var(--ac);font-size:12px;font-weight:600;outline:none;cursor:pointer;width:148px;flex-shrink:0" onchange="applyJCFilter()">
+            <option value="vehicle">🚛 Vehicle No</option>
+            <option value="vehicleType">🏷 Type</option>
+            <option value="driverName">👤 Driver</option>
+            <option value="orderStatus">📋 Order Status</option>
+            <option value="clientName">🏢 Client</option>
+            <option value="category">🏷 Category</option>
+            <option value="code">📋 Job Card No</option>
+            <option value="workStatus">⚙ Work Status</option>
+          </select>
+          <input type="text" id="JCF1" placeholder="e.g. T843DEE" autocomplete="off" spellcheck="false"
+            style="flex:1;min-width:0;background:var(--s1);border:1.5px solid var(--br);border-radius:8px;padding:8px 12px;color:var(--tx);font-family:'Inter',sans-serif;font-size:13px;outline:none"
+            oninput="applyJCFilter()">
+        </div>
+        <div style="display:flex;gap:6px">
+          <select id="JCF2_FIELD" style="background:var(--s1);border:1.5px solid var(--ac);border-radius:8px;padding:8px 10px;color:var(--ac);font-size:12px;font-weight:600;outline:none;cursor:pointer;width:148px;flex-shrink:0" onchange="applyJCFilter()">
+            <option value="">— Filter 2 —</option>
+            <option value="vehicle">🚛 Vehicle No</option>
+            <option value="vehicleType">🏷 Type</option>
+            <option value="driverName">👤 Driver</option>
+            <option value="orderStatus">📋 Order Status</option>
+            <option value="clientName">🏢 Client</option>
+            <option value="category">🏷 Category</option>
+            <option value="code">📋 Job Card No</option>
+            <option value="workStatus">⚙ Work Status</option>
+          </select>
+          <input type="text" id="JCF2" placeholder="Optional..." autocomplete="off" spellcheck="false"
+            style="flex:1;min-width:0;background:var(--s1);border:1.5px solid var(--br);border-radius:8px;padding:8px 12px;color:var(--tx);font-family:'Inter',sans-serif;font-size:13px;outline:none"
+            oninput="applyJCFilter()">
+        </div>
+        <div style="display:flex;gap:6px">
+          <select id="JCF3_FIELD" style="background:var(--s1);border:1.5px solid var(--ac);border-radius:8px;padding:8px 10px;color:var(--ac);font-size:12px;font-weight:600;outline:none;cursor:pointer;width:148px;flex-shrink:0" onchange="applyJCFilter()">
+            <option value="">— Filter 3 —</option>
+            <option value="startDate">📅 Start Date</option>
+            <option value="endDate">📅 End Date</option>
+            <option value="vehicle">🚛 Vehicle No</option>
+            <option value="driverName">👤 Driver</option>
+            <option value="category">🏷 Category</option>
+          </select>
+          <input type="text" id="JCF3" placeholder="Optional..." autocomplete="off" spellcheck="false"
+            style="flex:1;min-width:0;background:var(--s1);border:1.5px solid var(--br);border-radius:8px;padding:8px 12px;color:var(--tx);font-family:'Inter',sans-serif;font-size:13px;outline:none"
+            oninput="applyJCFilter()">
+        </div>
+        <div style="display:flex;gap:6px">
+          <select id="JCF4_FIELD" style="background:var(--s1);border:1.5px solid var(--ac);border-radius:8px;padding:8px 10px;color:var(--ac);font-size:12px;font-weight:600;outline:none;cursor:pointer;width:148px;flex-shrink:0" onchange="applyJCFilter()">
+            <option value="">— Filter 4 —</option>
+            <option value="startDate">📅 Start Date</option>
+            <option value="endDate">📅 End Date</option>
+            <option value="workStatus">⚙ Work Status</option>
+            <option value="category">🏷 Category</option>
+          </select>
+          <input type="text" id="JCF4" placeholder="Optional..." autocomplete="off" spellcheck="false"
+            style="flex:1;min-width:0;background:var(--s1);border:1.5px solid var(--br);border-radius:8px;padding:8px 12px;color:var(--tx);font-family:'Inter',sans-serif;font-size:13px;outline:none"
+            oninput="applyJCFilter()">
+          <button class="btn bg" onclick="clearJCFilter()" style="padding:8px 14px;font-size:12px;white-space:nowrap">✕ Clear</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- JC Summary dedicated 4-filter row -->
+    <div id="jcsfilterrow" style="display:none;padding:0 20px 8px;flex-shrink:0">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+        <div style="display:flex;gap:6px">
+          <select id="JF1_FIELD" style="background:var(--s1);border:1.5px solid var(--ac);border-radius:8px;padding:8px 10px;color:var(--ac);font-size:12px;font-weight:600;outline:none;cursor:pointer;width:148px;flex-shrink:0" onchange="applyJCSFilter()">
+            <option value="vehicle">🚛 Truck No</option>
+            <option value="driverName">👤 Driver</option>
+            <option value="code">📋 JC Number</option>
+            <option value="category">🏷 Category</option>
+            <option value="workStatus">⚙ Work Status</option>
+          </select>
+          <input type="text" id="JF1" placeholder="e.g. T843DEE" autocomplete="off" spellcheck="false"
+            style="flex:1;min-width:0;background:var(--s1);border:1.5px solid var(--br);border-radius:8px;padding:8px 12px;color:var(--tx);font-family:'Inter',sans-serif;font-size:13px;outline:none"
+            oninput="applyJCSFilter()">
+        </div>
+        <div style="display:flex;gap:6px">
+          <select id="JF2_FIELD" style="background:var(--s1);border:1.5px solid var(--ac);border-radius:8px;padding:8px 10px;color:var(--ac);font-size:12px;font-weight:600;outline:none;cursor:pointer;width:148px;flex-shrink:0" onchange="applyJCSFilter()">
+            <option value="">— Filter 2 —</option>
+            <option value="vehicle">🚛 Truck No</option>
+            <option value="driverName">👤 Driver</option>
+            <option value="code">📋 JC Number</option>
+            <option value="category">🏷 Category</option>
+            <option value="workStatus">⚙ Work Status</option>
+          </select>
+          <input type="text" id="JF2" placeholder="Optional..." autocomplete="off" spellcheck="false"
+            style="flex:1;min-width:0;background:var(--s1);border:1.5px solid var(--br);border-radius:8px;padding:8px 12px;color:var(--tx);font-family:'Inter',sans-serif;font-size:13px;outline:none"
+            oninput="applyJCSFilter()">
+        </div>
+        <div style="display:flex;gap:6px">
+          <select id="JF3_FIELD" style="background:var(--s1);border:1.5px solid var(--ac);border-radius:8px;padding:8px 10px;color:var(--ac);font-size:12px;font-weight:600;outline:none;cursor:pointer;width:148px;flex-shrink:0" onchange="applyJCSFilter()">
+            <option value="">— Filter 3 —</option>
+            <option value="startDate">📅 Start Date</option>
+            <option value="endDate">📅 End Date</option>
+            <option value="vehicle">🚛 Truck No</option>
+            <option value="driverName">👤 Driver</option>
+            <option value="code">📋 JC Number</option>
+          </select>
+          <input type="text" id="JF3" placeholder="Optional..." autocomplete="off" spellcheck="false"
+            style="flex:1;min-width:0;background:var(--s1);border:1.5px solid var(--br);border-radius:8px;padding:8px 12px;color:var(--tx);font-family:'Inter',sans-serif;font-size:13px;outline:none"
+            oninput="applyJCSFilter()">
+        </div>
+        <div style="display:flex;gap:6px">
+          <select id="JF4_FIELD" style="background:var(--s1);border:1.5px solid var(--ac);border-radius:8px;padding:8px 10px;color:var(--ac);font-size:12px;font-weight:600;outline:none;cursor:pointer;width:148px;flex-shrink:0" onchange="applyJCSFilter()">
+            <option value="">— Filter 4 —</option>
+            <option value="startDate">📅 Start Date</option>
+            <option value="endDate">📅 End Date</option>
+            <option value="category">🏷 Category</option>
+            <option value="workStatus">⚙ Work Status</option>
+          </select>
+          <input type="text" id="JF4" placeholder="Optional..." autocomplete="off" spellcheck="false"
+            style="flex:1;min-width:0;background:var(--s1);border:1.5px solid var(--br);border-radius:8px;padding:8px 12px;color:var(--tx);font-family:'Inter',sans-serif;font-size:13px;outline:none"
+            oninput="applyJCSFilter()">
+          <button class="btn bg" onclick="clearJCSFilter()" style="padding:8px 14px;font-size:12px;white-space:nowrap">✕ Clear</button>
+        </div>
+      </div>
+    </div>
+    <!-- JC Stats Summary Bar - shown on jobcards and jcsummary views -->
+    <div id="jcstatsbar" style="display:none;padding:0 20px 12px;flex-shrink:0">
+      <!-- Total badges row -->
+      <div style="display:flex;gap:10px;margin-bottom:10px;align-items:center;flex-wrap:wrap">
+        <div id="jcs_total_ws" style="background:rgba(79,142,247,.15);color:#4f8ef7;border:1px solid #4f8ef7;padding:5px 12px;border-radius:6px;font-size:12px;font-weight:700"></div>
+        <div id="jcs_total_bd" style="background:rgba(249,115,22,.15);color:#f97316;border:1px solid #f97316;padding:5px 12px;border-radius:6px;font-size:12px;font-weight:700"></div>
+        <div style="margin-left:auto;display:flex;gap:8px">
+          <div style="background:var(--s2);border:1px solid var(--br);padding:5px 12px;border-radius:6px;font-size:12px;color:var(--t2)">Workshop Spent: <span id="jcs_top_ws_amt" style="color:#4ade80;font-weight:700;font-family:monospace">0</span></div>
+          <div style="background:var(--s2);border:1px solid var(--br);padding:5px 12px;border-radius:6px;font-size:12px;color:var(--t2)">Breakdown Spent: <span id="jcs_top_bd_amt" style="color:#4ade80;font-weight:700;font-family:monospace">0</span></div>
+        </div>
+      </div>
+      <!-- Two column summary -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+        <!-- Workshop -->
+        <div style="background:var(--s1);border:1px solid #4f8ef7;border-radius:10px;padding:14px">
+          <div style="font-family:'Outfit',sans-serif;font-size:13px;font-weight:800;color:#4f8ef7;margin-bottom:10px;display:flex;align-items:center;gap:6px">🏭 Workshop Summary</div>
+          <div style="display:flex;flex-direction:column;gap:7px;font-size:12px">
+            <div style="display:flex;justify-content:space-between"><span style="color:var(--t2)">Total Job Cards</span><span id="jcs_ws_total" style="font-weight:700;color:var(--tx)">0</span></div>
+            <div style="display:flex;justify-content:space-between"><span style="color:var(--t2)">Open (No Signed Doc)</span><span id="jcs_ws_open" style="font-weight:700;color:#fbbf24">0</span></div>
+            <div style="display:flex;justify-content:space-between"><span style="color:var(--t2)">Active (Not Completed)</span><span id="jcs_ws_active" style="font-weight:700;color:#f87171">0</span></div>
+            <div style="height:1px;background:var(--br);margin:2px 0"></div>
+            <div style="display:flex;justify-content:space-between"><span style="color:var(--t2)">— Minor Maintenance</span><span id="jcs_ws_minor" style="font-weight:700;color:var(--t2)">0</span></div>
+            <div style="display:flex;justify-content:space-between"><span style="color:var(--t2)">— Major Maintenance</span><span id="jcs_ws_major" style="font-weight:700;color:var(--t2)">0</span></div>
+            <div style="height:1px;background:var(--br);margin:2px 0"></div>
+            <div style="display:flex;justify-content:space-between"><span style="color:var(--t2)">Total Amount Spent</span><span id="jcs_ws_amt" style="font-weight:700;color:#4ade80;font-family:monospace">0</span></div>
+          </div>
+        </div>
+        <!-- Breakdown -->
+        <div style="background:var(--s1);border:1px solid #f97316;border-radius:10px;padding:14px">
+          <div style="font-family:'Outfit',sans-serif;font-size:13px;font-weight:800;color:#f97316;margin-bottom:10px;display:flex;align-items:center;gap:6px">🔧 Breakdown Summary</div>
+          <div style="display:flex;flex-direction:column;gap:7px;font-size:12px">
+            <div style="display:flex;justify-content:space-between"><span style="color:var(--t2)">Total Job Cards</span><span id="jcs_bd_total" style="font-weight:700;color:var(--tx)">0</span></div>
+            <div style="display:flex;justify-content:space-between"><span style="color:var(--t2)">Open (No Signed Doc)</span><span id="jcs_bd_open" style="font-weight:700;color:#fbbf24">0</span></div>
+            <div style="display:flex;justify-content:space-between"><span style="color:var(--t2)">Active (Not Completed)</span><span id="jcs_bd_active" style="font-weight:700;color:#f87171">0</span></div>
+            <div style="height:1px;background:var(--br);margin:2px 0"></div>
+            <div style="display:flex;justify-content:space-between"><span style="color:var(--t2)">— Minor Maintenance</span><span id="jcs_bd_minor" style="font-weight:700;color:var(--t2)">0</span></div>
+            <div style="display:flex;justify-content:space-between"><span style="color:var(--t2)">— Major Maintenance</span><span id="jcs_bd_major" style="font-weight:700;color:var(--t2)">0</span></div>
+            <div style="height:1px;background:var(--br);margin:2px 0"></div>
+            <div style="display:flex;justify-content:space-between"><span style="color:var(--t2)">Total Amount Spent</span><span id="jcs_bd_amt" style="font-weight:700;color:#4ade80;font-family:monospace">0</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <div id="tablearea" style="flex:1;overflow:auto;padding:0 20px 20px">
       <table><thead id="tablehead"></thead><tbody id="TBODY"></tbody></table>
       <div id="loadmorediv" style="text-align:center;padding:14px;display:none"><button class="btn bg" onclick="loadMore()">Load more</button><span id="morelabel" style="font-size:12px;color:var(--t3);margin-left:8px"></span></div>
@@ -366,7 +530,7 @@ function buildRow(r,isRO){
   const sc={'RECEIVED':'sR','RECEIVED NOT ISSUED':'sRNP','ON HOLD':'sOH','PAID NOT RECEIVED':'sPNR','NOT PAID':'sNR'};
   const desc=r.description||'';
   const ph=r.priority==="TODAY'S REQUEST"?'<span class="ptbadge">TODAY</span>':`<span style="color:var(--t3);font-size:10px">${r.priority||''}</span>`;
-  const canER=canEditReq(),canDR=canDeleteReq();
+  const canER=canEditReq(r),canDR=canDeleteReq(r);
   const ac=isRO?'':`<td style="white-space:nowrap;overflow:visible;max-width:none">${canER?`<button class="actbtn e" onclick="editRecord('${r.id}')">✏ Edit</button>`:''} ${canDR?`<button class="actbtn d" onclick="deleteRecord('${r.id}')">🗑</button>`:''} ${r.status==='RECEIVED'?'<span style="font-size:9px;opacity:.4">🔒</span>':''}</td>`;
   return `<tr>
     <td><span class="reqbadge">${r.reqNo||''}</span></td>
@@ -436,9 +600,16 @@ function switchView(v){
   const isRO=!['workshop','today'].includes(v);
   document.getElementById('searchrow').style.display=isTable?'grid':'none';
   // Show generic filter for fleet/reports views
-  var genericViews = ['drivers','vehicles','jobcards','jcsummary','suppliers','spareparts'];
+  var genericViews = ['drivers','vehicles','suppliers','spareparts'];
   var frEl = document.getElementById('filterrow');
   if (frEl) frEl.style.display = genericViews.includes(v) ? 'block' : 'none';
+  var jcEl = document.getElementById('jcfilterrow');
+  if (jcEl) jcEl.style.display = v === 'jobcards' ? 'block' : 'none';
+  var jcsEl = document.getElementById('jcsfilterrow');
+  if (jcsEl) jcsEl.style.display = v === 'jcsummary' ? 'block' : 'none';
+  var statsBar = document.getElementById('jcstatsbar');
+  if (statsBar) statsBar.style.display = (v === 'jobcards' || v === 'jcsummary') ? 'block' : 'none';
+  if (v === 'jobcards' || v === 'jcsummary') renderJCStats(JOBCARDS);
   // Clear generic filters on view switch
   ['FR1','FR2','FR3'].forEach(function(id){ var el=document.getElementById(id); if(el) el.value=''; });
   if (typeof updateFilterPlaceholders === 'function') updateFilterPlaceholders();
@@ -450,7 +621,10 @@ function switchView(v){
   if(v==='suppliers'){renderSuppliers();return;}
   if(v==='spareparts'){renderSpareParts();return;}
   if(v==='jobcards'){renderJobCards();return;}
-  if(v==='jcsummary'){renderJCSummary();return;}
+  if(v==='jcsummary'){
+    document.getElementById('toolbaractions').innerHTML='<button class="btn bg" onclick="exportJCSummary()" style="font-size:12px">↓ Export CSV</button>';
+    renderJCSummary();return;
+  }
   if(v==='drivers'){renderDrivers();return;}
   if(v==='vehicles'){renderVehicles();return;}
   if(v==='usermgmt'){openUserMgmt();return;}
@@ -475,6 +649,25 @@ function renderDashboard(){
       <div class="statcard" onclick="switchView('ON HOLD')"><div class="statlbl">On Hold</div><div class="statval" style="color:#f87171">${c['ON HOLD'].toLocaleString()}</div><div class="statsub">Needs attention</div></div>
       <div class="statcard"><div class="statlbl">Total Cost</div><div class="statval" style="color:var(--ac);font-size:20px">${tot.toLocaleString()}</div><div class="statsub">All items</div></div>
       <div class="statcard"><div class="statlbl">Received Cost</div><div class="statval" style="color:#4ade80;font-size:20px">${rec.toLocaleString()}</div><div class="statsub">Parts purchased</div></div>
+    </div>
+    <div style="padding:0 20px 8px;font-size:10px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.1em">Job Cards Overview</div>
+    <div class="dgrid" style="padding:0 20px 16px">
+      ${(function(){
+        var jcTotal=JOBCARDS.length;
+        var jcDone=JOBCARDS.filter(function(j){return j.workStatus==='COMPLETED';}).length;
+        var jcProg=JOBCARDS.filter(function(j){return j.workStatus==='IN PROGRESS';}).length;
+        var jcStall=JOBCARDS.filter(function(j){return j.workStatus==='STALLED';}).length;
+        var jcOver=JOBCARDS.filter(function(j){
+          if(j.workStatus==='COMPLETED'||!j.startDate)return false;
+          return Math.ceil((new Date()-new Date(j.startDate))/(864e5))>7;
+        }).length;
+        var jcAmt=0; JOBCARDS.forEach(function(j){ALL.forEach(function(r){if(r.status==='RECEIVED'&&r.jobCardNo&&j.code&&r.jobCardNo.toUpperCase()===j.code.toUpperCase())jcAmt+=parseFloat(r.cost)||0;});});
+        return '<div class="statcard" onclick="switchView(\'jcsummary\')"><div class="statlbl">Total Job Cards</div><div class="statval" style="color:#34d399">'+jcTotal+'</div><div class="statsub">All job cards</div></div>'
+          +'<div class="statcard"><div class="statlbl">Completed</div><div class="statval" style="color:#4ade80">'+jcDone+'</div><div class="statsub">Finished jobs</div></div>'
+          +'<div class="statcard"><div class="statlbl">In Progress</div><div class="statval" style="color:#60a5fa">'+jcProg+'</div><div class="statsub">Active jobs</div></div>'
+          +(jcOver>0?'<div class="statcard" style="border-color:#f87171"><div class="statlbl" style="color:#f87171">⚠ Overdue</div><div class="statval" style="color:#f87171">'+jcOver+'</div><div class="statsub">Over 7 days</div></div>':'')
+          +'<div class="statcard"><div class="statlbl">Workshop Spend</div><div class="statval" style="color:var(--ac);font-size:18px">'+jcAmt.toLocaleString()+'</div><div class="statsub">Received parts</div></div>';
+      })()}
     </div>
     <div class="chartgrid">
       <div class="chartcard"><div class="charttitle">Status Breakdown</div><div class="barchart">
@@ -555,6 +748,70 @@ function onStatusChange() {
   });
 }
 
+function renderJCStats(jcList) {
+  var bar = document.getElementById('jcstatsbar');
+  if (!bar) return;
+  var ws = jcList.filter(function(j){ return (j.category||'').toUpperCase() === 'WORKSHOP'; });
+  var bd = jcList.filter(function(j){ return (j.category||'').toUpperCase() === 'BREAKDOWN'; });
+  function calcAmt(list) {
+    var total = 0;
+    list.forEach(function(j) {
+      ALL.forEach(function(r) {
+        if (r.status === 'RECEIVED' && r.jobCardNo && j.code &&
+            r.jobCardNo.toUpperCase() === j.code.toUpperCase()) {
+          total += parseFloat(r.cost) || 0;
+        }
+      });
+    });
+    return total;
+  }
+  function fmt(n) { return n.toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2}); }
+  var wsOpen   = ws.filter(function(j){ return !j.signedPdfUrl && !j.signedPdfId; }).length;
+  var wsActive = ws.filter(function(j){ return (j.workStatus||'').toUpperCase() !== 'COMPLETED'; }).length;
+  var wsMinor  = ws.filter(function(j){ return (j.maintenanceLevel||'').toUpperCase().includes('MINOR') && (j.workStatus||'').toUpperCase() !== 'COMPLETED'; }).length;
+  var wsMajor  = ws.filter(function(j){ return (j.maintenanceLevel||'').toUpperCase().includes('MAJOR') && (j.workStatus||'').toUpperCase() !== 'COMPLETED'; }).length;
+  var wsAmt    = calcAmt(ws);
+  var bdOpen   = bd.filter(function(j){ return !j.signedPdfUrl && !j.signedPdfId; }).length;
+  var bdActive = bd.filter(function(j){ return (j.workStatus||'').toUpperCase() !== 'COMPLETED'; }).length;
+  var bdMinor  = bd.filter(function(j){ return (j.maintenanceLevel||'').toUpperCase().includes('MINOR') && (j.workStatus||'').toUpperCase() !== 'COMPLETED'; }).length;
+  var bdMajor  = bd.filter(function(j){ return (j.maintenanceLevel||'').toUpperCase().includes('MAJOR') && (j.workStatus||'').toUpperCase() !== 'COMPLETED'; }).length;
+  var bdAmt    = calcAmt(bd);
+  var s = function(id, val) { var el=document.getElementById(id); if(el) el.textContent=val; };
+  s('jcs_total_ws', ws.length + ' Workshop Job Cards');
+  s('jcs_total_bd', bd.length + ' Breakdown Job Cards');
+  s('jcs_top_ws_amt', fmt(wsAmt));
+  s('jcs_top_bd_amt', fmt(bdAmt));
+  s('jcs_ws_total', ws.length);
+  s('jcs_ws_open',  wsOpen);
+  s('jcs_ws_active', wsActive);
+  s('jcs_ws_minor', wsMinor);
+  s('jcs_ws_major', wsMajor);
+  s('jcs_ws_amt',   fmt(wsAmt));
+  s('jcs_bd_total', bd.length);
+  s('jcs_bd_open',  bdOpen);
+  s('jcs_bd_active', bdActive);
+  s('jcs_bd_minor', bdMinor);
+  s('jcs_bd_major', bdMajor);
+  s('jcs_bd_amt',   fmt(bdAmt));
+}
+
+function calcDurationDays(startDate, endDate, workStatus) {
+  if (!startDate) return '<span style="color:var(--t3)">—</span>';
+  var start = new Date(startDate);
+  if (isNaN(start.getTime())) return '<span style="color:var(--t3)">—</span>';
+  var isOngoing = !endDate && workStatus !== 'COMPLETED';
+  var end = endDate ? new Date(endDate) : new Date();
+  if (isNaN(end.getTime())) end = new Date();
+  var days = Math.ceil((end - start) / (1000 * 60 * 60 * 24));
+  if (days < 0) days = 0;
+  // Color code: green<3, yellow 3-7, orange 7-14, red>14
+  var color = days < 3 ? '#4ade80' : days < 7 ? '#fbbf24' : days < 14 ? '#f97316' : '#f87171';
+  var overdue = isOngoing && days > 7;
+  var label = days + ' d' + (isOngoing ? ' <span style="font-size:9px;opacity:.7">(ongoing)</span>' : '');
+  var badge = overdue ? ' <span style="background:#f87171;color:#fff;font-size:9px;padding:1px 5px;border-radius:4px;font-weight:700">OVERDUE</span>' : '';
+  return '<span style="font-weight:700;color:'+color+'">'+label+'</span>'+badge;
+}
+
 function calcTotal() {
   var qty = parseFloat(document.getElementById('f_qty').value) || 0;
   var unitEl = document.getElementById('f_unit_price');
@@ -585,8 +842,9 @@ function openAdd(){
   document.getElementById('recmodal').classList.remove('hidden');
 }
 function editRecord(id){
-  if (!canEditReq()) { toast('You do not have permission to edit requisitions', 'er'); return; }
-  const r=ALL.find(x=>x.id===id);if(!r)return;if(r.status==='RECEIVED')askPassword(()=>doEdit(r));else doEdit(r);}
+  const r=ALL.find(x=>x.id===id);if(!r)return;
+  if (!canEditReq(r)) { toast('You do not have permission to edit this requisition', 'er'); return; }
+  if(r.status==='RECEIVED')askPassword(()=>doEdit(r));else doEdit(r);}
 function doEdit(r){
   editingId=r.id;
   document.getElementById('modaltitle').textContent='Edit Requisition';
@@ -697,6 +955,14 @@ async function saveRecord(){
     alert('Please fill in the following required fields:\n\n• ' + missing.join('\n• '));
     return;
   }
+  // staff_jc can only save BREAKDOWN requisitions
+  if (CURRENT_USER && CURRENT_USER.role === 'staff_jc') {
+    if ((category||'').toUpperCase() !== 'BREAKDOWN') {
+      alert('You can only create Breakdown requisitions. Please select BREAKDOWN as the category.');
+      return;
+    }
+  }
+
   const btn=document.getElementById('savebtn');btn.disabled=true;btn.textContent='Saving...';
   const U=s=>(s||'').toUpperCase();
   const data={reqNo:document.getElementById('f_req').value,dateRequested:document.getElementById('f_date').value,truck:U(document.getElementById('f_truck').value),vehicleType:document.getElementById('f_vtype').value,driverName:U(document.getElementById('f_driver').value),priority:document.getElementById('f_priority').value,jobCardNo:U(document.getElementById('f_jobcard').value),lpoNo:U(document.getElementById('f_lpo').value),description:U(document.getElementById('f_desc').value),qty:document.getElementById('f_qty').value,unitPrice:document.getElementById('f_unit_price')?(document.getElementById('f_unit_price').value.replace(/,/g,'')):'' ,cost:(document.getElementById('f_cost').value||'').replace(/,/g,''),supplier:U((()=>{
@@ -748,8 +1014,9 @@ async function saveRecord(){
   finally{btn.disabled=false;btn.textContent='Save Record';}
 }
 function deleteRecord(id){
-  if (!canDeleteReq()) { toast('You do not have permission to delete requisitions', 'er'); return; }
-  const r=ALL.find(x=>x.id===id);if(!r)return;if(r.status==='RECEIVED')askPassword(()=>doDelete(id));else doDelete(id);}
+  const r=ALL.find(x=>x.id===id);if(!r)return;
+  if (!canDeleteReq(r)) { toast('You do not have permission to delete this requisition', 'er'); return; }
+  if(r.status==='RECEIVED')askPassword(()=>doDelete(id));else doDelete(id);}
 async function doDelete(id){
   if(!confirm('Delete this record? Cannot be undone.'))return;
   const bk=ALL.find(r=>r.id===id);ALL=ALL.filter(r=>r.id!==id);updateBadges();applyFilters();toast('Deleting...','in');
@@ -1069,6 +1336,22 @@ function onJobCardSelect(jcCode) {
     var catEl = document.getElementById('f_category');
     if (catEl) catEl.value = j.category;
   }
+
+  // If staff_jc, warn if category is not BREAKDOWN
+  if (CURRENT_USER && CURRENT_USER.role === 'staff_jc') {
+    if ((j.category||'').toUpperCase() !== 'BREAKDOWN') {
+      toast('⚠️ This job card is not a Breakdown. You can only raise requisitions for Breakdown job cards.', 'er');
+      // Clear job card selection
+      var jcSel = document.getElementById('f_jobcard');
+      if (jcSel && jcSel.tomselect) jcSel.tomselect.setValue('', true);
+      // Clear category
+      var catEl2 = document.getElementById('f_category');
+      if (catEl2) catEl2.value = '';
+      // Clear driver
+      var drvSel2 = document.getElementById('f_driver');
+      if (drvSel2 && drvSel2.tomselect) drvSel2.tomselect.setValue('', true);
+    }
+  }
 }
 
 function onSupplierSelect() {
@@ -1081,7 +1364,7 @@ function onSupplierSelect() {
     inp.type = 'text';
     inp.id = 'f_supplier_custom';
     inp.placeholder = 'Type supplier name...';
-    inp.style.cssText = "background:var(--s2);border:1.5px solid var(--ac);border-radius:7px;padding:9px 11px;color:var(--tx);font-family:'DM Sans',sans-serif;font-size:13px;outline:none;width:100%";
+    inp.style.cssText = "background:var(--s2);border:1.5px solid var(--ac);border-radius:7px;padding:9px 11px;color:var(--tx);font-family:'Inter',sans-serif;font-size:13px;outline:none;width:100%";
     wrapper.appendChild(inp);
     inp.focus();
   }
@@ -1151,7 +1434,10 @@ function rowMenuEditAction() {
   closeRowMenu();
   if (_rowMenuType === 'req') {
     var r = ALL.find(function(x){ return x.id === _rowMenuId; });
-    if (r) { if(r.status==='RECEIVED') askPassword(function(){doEdit(r);}); else doEdit(r); }
+    if (r) {
+      if (!canEditReq(r)) { toast('You do not have permission to edit this requisition', 'er'); return; }
+      if(r.status==='RECEIVED') askPassword(function(){doEdit(r);}); else doEdit(r);
+    }
   } else if (_rowMenuType === 'jc') {
     var j = JOBCARDS.find(function(x){ return x.id === _rowMenuId; });
     if (j) { if(j.workStatus==='COMPLETED') editJobCardProtected(_rowMenuId); else editJobCard(_rowMenuId); }
@@ -1164,7 +1450,11 @@ function rowMenuEditAction() {
 function rowMenuDeleteAction() {
   if (!_rowMenuId) return;
   closeRowMenu();
-  if (_rowMenuType === 'req') { deleteRecord(_rowMenuId); }
+  if (_rowMenuType === 'req') {
+    var rd = ALL.find(function(x){ return x.id === _rowMenuId; });
+    if (rd && !canDeleteReq(rd)) { toast('You do not have permission to delete this requisition', 'er'); return; }
+    deleteRecord(_rowMenuId);
+  }
   else if (_rowMenuType === 'jc') {
     var j = JOBCARDS.find(function(x){ return x.id === _rowMenuId; });
     if (j) { if(j.workStatus==='COMPLETED') deleteJobCardProtected(_rowMenuId); else deleteJobCard(_rowMenuId); }
@@ -1200,7 +1490,65 @@ function toDateInput(v){
   return v;
 }
 function toast(msg,type='in'){const icons={ok:'✅',er:'❌',in:'ℹ️'};const el=document.createElement('div');el.className=`toast ${type}`;el.innerHTML=`<span>${icons[type]}</span><span>${msg}</span>`;document.getElementById('toastbox').appendChild(el);setTimeout(()=>el.remove(),3000);}
-function doExport(){const data=filtered.length?filtered:ALL;const hd=['Req No','Date Requested','Truck','Vehicle Type','Driver Name','Priority','Job Card No','LPO No','Description','Qty','Cost','Supplier','Date Received','Status','Payment Mode','Category','Requested By','Remarks','Date Issued'];const ks=['reqNo','dateRequested','truck','vehicleType','driverName','priority','jobCardNo','lpoNo','description','qty','cost','supplier','dateReceived','status','paymentMode','category','requestedBy','remarks','dateIssued'];const rows=[hd,...data.map(r=>ks.map(k=>r[k]||''))];const csv=rows.map(r=>r.map(v=>`"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n');const a=document.createElement('a');a.href='data:text/csv;charset=utf-8,'+encodeURIComponent(csv);a.download=`requisitions_${todayStr()}.csv`;a.click();toast('Exported','ok');}
+function doExport(){
+  // Route to correct export based on current view
+  if (currentView === 'jcsummary' || currentView === 'jobcards') { exportJCSummary(); return; }
+  if (currentView === 'drivers') { exportDrivers(); return; }
+  if (currentView === 'vehicles') { exportVehicles(); return; }
+  if (currentView === 'suppliers') { exportSuppliers(); return; }
+  if (currentView === 'spareparts') { exportSpareParts(); return; }
+  // Default: export requisitions
+  exportRequisitions();
+}
+
+function exportRequisitions(){
+  const data=filtered.length?filtered:ALL;
+  const hd=['Req No','Date Requested','Truck','Vehicle Type','Driver Name','Priority','Job Card No','LPO No','Description','Qty','Unit Price','Total Amount','Supplier','Date Received','Status','Payment Mode','Category','Requested By','Remarks','Date Issued'];
+  const ks=['reqNo','dateRequested','truck','vehicleType','driverName','priority','jobCardNo','lpoNo','description','qty','unitPrice','cost','supplier','dateReceived','status','paymentMode','category','requestedBy','remarks','dateIssued'];
+  const rows=[hd,...data.map(r=>ks.map(k=>r[k]||''))];
+  const csv=rows.map(r=>r.map(v=>'"'+String(v).replace(/"/g,'""')+'"').join(',')).join('\n');
+  const a=document.createElement('a');
+  a.href='data:text/csv;charset=utf-8,'+encodeURIComponent(csv);
+  a.download='requisitions_'+todayStr()+'.csv';
+  a.click();
+  toast('Exported ✓','ok');
+}
+
+function exportDrivers(){
+  var hd=['Code','Name','Phone','Emergency','License No','License Expiry','License Class','Passport No','Passport Expiry','National ID','DOB','Nationality','Assigned Vehicle','Status','Remarks'];
+  var ks=['code','name','phone','emergency','licenseNo','licenseExpiry','licenseClass','passportNo','passportExpiry','nationalId','dob','nationality','assignedVehicle','status','remarks'];
+  var rows=[hd,...DRIVERS.map(function(d){ return ks.map(function(k){ return d[k]||''; }); })];
+  var csv=rows.map(function(r){ return r.map(function(v){ return '"'+String(v).replace(/"/g,'""')+'"'; }).join(','); }).join('\n');
+  var a=document.createElement('a'); a.href='data:text/csv;charset=utf-8,'+encodeURIComponent(csv);
+  a.download='drivers_'+todayStr()+'.csv'; a.click(); toast('Exported ✓','ok');
+}
+
+function exportVehicles(){
+  var hd=['Code','Plate','Type','Make','Model','Year','Engine No','Chassis No','Colour','Fuel','Odometer','Driver','Road Lic Expiry','Insurance Expiry','Inspection Expiry','Ownership','Status'];
+  var ks=['code','plate','vehicleType','make','model','year','engineNo','chassisNo','colour','fuelType','odometer','assignedDriver','roadLicExpiry','insuranceExpiry','inspectionExpiry','ownership','status'];
+  var rows=[hd,...VEHICLES.map(function(v){ return ks.map(function(k){ return v[k]||''; }); })];
+  var csv=rows.map(function(r){ return r.map(function(v){ return '"'+String(v).replace(/"/g,'""')+'"'; }).join(','); }).join('\n');
+  var a=document.createElement('a'); a.href='data:text/csv;charset=utf-8,'+encodeURIComponent(csv);
+  a.download='vehicles_'+todayStr()+'.csv'; a.click(); toast('Exported ✓','ok');
+}
+
+function exportSuppliers(){
+  var hd=['Code','Name','Phone','Contact','Address','Category','Status','Remarks'];
+  var ks=['code','name','phone','contact','address','category','status','remarks'];
+  var rows=[hd,...SUPPLIERS.map(function(s){ return ks.map(function(k){ return s[k]||''; }); })];
+  var csv=rows.map(function(r){ return r.map(function(v){ return '"'+String(v).replace(/"/g,'""')+'"'; }).join(','); }).join('\n');
+  var a=document.createElement('a'); a.href='data:text/csv;charset=utf-8,'+encodeURIComponent(csv);
+  a.download='suppliers_'+todayStr()+'.csv'; a.click(); toast('Exported ✓','ok');
+}
+
+function exportSpareParts(){
+  var hd=['Code','Name','Part No','Trucks','Category','Unit','Cost','Status','Remarks'];
+  var ks=['code','name','partNo','trucks','category','unit','cost','status','remarks'];
+  var rows=[hd,...SPAREPARTS.map(function(p){ return ks.map(function(k){ return p[k]||''; }); })];
+  var csv=rows.map(function(r){ return r.map(function(v){ return '"'+String(v).replace(/"/g,'""')+'"'; }).join(','); }).join('\n');
+  var a=document.createElement('a'); a.href='data:text/csv;charset=utf-8,'+encodeURIComponent(csv);
+  a.download='spare_parts_'+todayStr()+'.csv'; a.click(); toast('Exported ✓','ok');
+}
 function clearSearch(){['SEARCH1','SEARCH2','SEARCH3'].forEach(id=>document.getElementById(id).value='');document.getElementById('STATUSFILTER').value='';document.getElementById('SEARCHFIELD1').value='truck';document.getElementById('SEARCHFIELD2').value='';document.getElementById('SEARCHFIELD3').value='';document.getElementById('SEARCH1').placeholder='e.g. T843DEE';applyFilters();document.getElementById('SEARCH1').focus();}
 
 
@@ -1436,6 +1784,7 @@ function deleteJobCard(id) {
 }
 
 function renderJobCards() {
+  renderJCStats(JOBCARDS);
   document.getElementById('viewsub').textContent = JOBCARDS.length + ' job card' + (JOBCARDS.length !== 1 ? 's' : '');
   document.getElementById('tablehead').innerHTML = `<tr>
     <th>JC Code</th>
@@ -1457,6 +1806,7 @@ function renderJobCards() {
     <th>Duration</th>
     <th>Work Status</th>
     <th>Comment</th>
+    <th style="color:var(--ac)">Total Amount</th>
     <th>Actions</th>
   </tr>`;
   document.getElementById('loadmorediv').style.display = 'none';
@@ -1494,9 +1844,10 @@ function renderJobCards() {
     <td>${fd(j.startDate)}</td>
     <td>${fd(j.endDate)}</td>
     <td>${fd(j.expectedReleaseDate)}</td>
-    <td style="font-family:monospace;text-align:center">${j.duration||''}</td>
+    <td style="font-family:monospace;text-align:center">${calcDurationDays(j.startDate,j.endDate,j.workStatus)}</td>
     <td><span class="sb ${wsColors[j.workStatus]||'sNR'}">${j.workStatus||''}</span></td>
     <td style="color:var(--t2);font-size:10px" title="${j.comment||''}">${(j.comment||'').substring(0,20)}${(j.comment||'').length>20?'…':''}</td>
+    <td style="font-family:monospace;font-weight:700;color:var(--ac)">${(function(){ var a=0; ALL.forEach(function(r){ if(r.status==='RECEIVED'&&r.jobCardNo&&j.code&&r.jobCardNo.toUpperCase()===j.code.toUpperCase()) a+=parseFloat(r.cost)||0; }); return a>0?a.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}):'—'; })()}</td>
     <td>
       <button class="actbtn jcr-edit" data-id="${j.id}" data-done="${j.workStatus==='COMPLETED'?'1':''}" style="${j.workStatus==='COMPLETED'?'color:#fbbf24;border-color:#fbbf24':''}" title="${j.workStatus==='COMPLETED'?'Password required':'Edit'}">
         ${j.workStatus==='COMPLETED'?'🔒 Edit':'✏ Edit'}
@@ -1903,7 +2254,7 @@ function onDriverSelect(selId, txtId) {
       txtInp.type = 'text';
       txtInp.id = txtId;
       txtInp.placeholder = 'Type driver name manually...';
-      txtInp.style.cssText = "margin-top:6px;background:var(--s2);border:1.5px solid var(--ac);border-radius:7px;padding:9px 11px;color:var(--tx);font-family:'DM Sans',sans-serif;font-size:13px;outline:none;width:100%;display:block";
+      txtInp.style.cssText = "margin-top:6px;background:var(--s2);border:1.5px solid var(--ac);border-radius:7px;padding:9px 11px;color:var(--tx);font-family:'Inter',sans-serif;font-size:13px;outline:none;width:100%;display:block";
       sel.parentNode.appendChild(txtInp);
     }
     txtInp.style.display = 'block';
@@ -2201,9 +2552,10 @@ async function deleteSigned(id) {
 // JOB CARD SUMMARY
 // ════════════════════════════════════════════════
 function renderJCSummary() {
+  renderJCStats(JOBCARDS);
   document.getElementById('viewsub').textContent = JOBCARDS.length + ' job card' + (JOBCARDS.length !== 1 ? 's' : '');
   document.getElementById('loadmorediv').style.display = 'none';
-  document.getElementById('tablehead').innerHTML = '<tr><th>Job Card No</th><th>Truck / Vehicle</th><th>Driver</th><th>Category</th><th>Start Date</th><th>End Date</th><th>Duration</th><th>Work Status</th><th>Actions</th></tr>';
+  document.getElementById('tablehead').innerHTML = '<tr><th>Job Card No</th><th>Truck / Vehicle</th><th>Driver</th><th>Category</th><th>Start Date</th><th>End Date</th><th>Duration</th><th>Work Status</th><th style="color:var(--ac)">Total Amount</th><th>Actions</th></tr>';
 
   if (JOBCARDS.length === 0) {
     document.getElementById('TBODY').innerHTML = '';
@@ -2213,13 +2565,26 @@ function renderJCSummary() {
   }
   document.getElementById('emptystate').style.display = 'none';
 
+  // ── STATS BAR ──
   var wsColors = {'IN PROGRESS':'sPNR','COMPLETED':'sR','STALLED':'sOH','PENDING':'sRNP','TO BE REPAIRED AFTER LOADING':'sNR'};
   var rows = '';
   for (var i = 0; i < JOBCARDS.length; i++) {
     var j = JOBCARDS[i];
     var jid = j.id;
     var catStyle = j.category === 'WORKSHOP' ? 'background:rgba(79,142,247,.15);color:#4f8ef7' : j.category === 'BREAKDOWN' ? 'background:rgba(249,115,22,.15);color:#f97316' : 'background:var(--s2);color:var(--t2)';
+    var totalAmt = 0;
+    ALL.forEach(function(r) {
+      if (r.status === 'RECEIVED' && r.jobCardNo && j.code &&
+          r.jobCardNo.toUpperCase() === j.code.toUpperCase()) {
+        totalAmt += parseFloat(r.cost) || 0;
+      }
+    });
+    var totalAmtDisplay = totalAmt > 0 ? totalAmt.toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2}) : '—';
     var canManageSigned = CURRENT_USER && CURRENT_USER.role !== 'staff' && CURRENT_USER.role !== 'viewer';
+    // Quick status badge - clickable
+    var wsColor = {'IN PROGRESS':'sPNR','COMPLETED':'sR','STALLED':'sOH','PENDING':'sRNP','TO BE REPAIRED AFTER LOADING':'sNR'}[j.workStatus]||'sNR';
+    var quickStatus = '<span class="sb '+wsColor+' jcs-status" data-id="'+jid+'" style="cursor:pointer;user-select:none" title="Click to change status">'+( j.workStatus||'')+'</span>';
+
     var signedBtns = j.signedPdfUrl
       ? '<button class="actbtn jcs-view" data-id="'+jid+'" style="color:#4ade80;border-color:#4ade80;font-size:11px">👁 View Signed</button>'
         +'<button class="actbtn jcs-dl" data-id="'+jid+'" style="color:#38bdf8;border-color:#38bdf8;font-size:11px">⬇ Download</button>'
@@ -2235,8 +2600,9 @@ function renderJCSummary() {
       +'<td><span style="padding:2px 8px;border-radius:5px;font-size:10px;font-weight:700;'+catStyle+'">'+(j.category||'')+'</span></td>'
       +'<td style="font-size:11px">'+fd(j.startDate)+'</td>'
       +'<td style="font-size:11px">'+fd(j.endDate)+'</td>'
-      +'<td style="font-family:monospace;text-align:center">'+(j.duration ? j.duration+' d' : '—')+'</td>'
-      +'<td><span class="sb '+(wsColors[j.workStatus]||'sNR')+'">'+(j.workStatus||'')+'</span></td>'
+      +'<td style="font-family:monospace;text-align:center">'+calcDurationDays(j.startDate, j.endDate, j.workStatus)+'</td>'
+      +'<td>'+quickStatus+'</td>'
+      +'<td style="font-family:monospace;font-weight:700;color:var(--ac)">'+totalAmtDisplay+'</td>'
       +'<td style="white-space:nowrap;max-width:none;overflow:visible">'
         +'<button class="actbtn jcs-prev" data-id="'+jid+'" style="color:#a78bfa;border-color:#a78bfa;font-size:11px">👁 Preview</button>'
         +'<button class="actbtn jcs-pdf" data-id="'+jid+'" style="color:#4f8ef7;border-color:#4f8ef7;font-size:11px">⬇ PDF</button>'
@@ -2259,7 +2625,50 @@ function renderJCSummary() {
     else if (btn.classList.contains('jcs-rep')) triggerAttach(id);
     else if (btn.classList.contains('jcs-att')) triggerAttach(id);
     else if (btn.classList.contains('jcs-del')) deleteSigned(id);
+    else if (btn.classList.contains('jcs-status')) showQuickStatus(btn, id);
   };
+}
+
+function showQuickStatus(el, id) {
+  if (!canEditJC()) { toast('No permission to edit job cards', 'er'); return; }
+  var j = JOBCARDS.find(function(x){ return x.id === id; });
+  if (!j) return;
+  var statuses = ['IN PROGRESS','COMPLETED','STALLED','PENDING','TO BE REPAIRED AFTER LOADING'];
+  var menu = document.createElement('div');
+  menu.style.cssText = 'position:fixed;background:var(--s1);border:1px solid var(--br);border-radius:10px;z-index:5000;box-shadow:0 8px 24px rgba(0,0,0,.6);overflow:hidden;min-width:200px';
+  var rect = el.getBoundingClientRect();
+  menu.style.left = rect.left + 'px';
+  menu.style.top = (rect.bottom + 4) + 'px';
+  var colors = {'IN PROGRESS':'#60a5fa','COMPLETED':'#4ade80','STALLED':'#f87171','PENDING':'#fbbf24','TO BE REPAIRED AFTER LOADING':'#a0a0c0'};
+  statuses.forEach(function(s) {
+    var item = document.createElement('div');
+    item.style.cssText = 'padding:10px 16px;cursor:pointer;font-size:12px;font-weight:600;color:'+( colors[s]||'var(--tx)')+';display:flex;align-items:center;gap:8px';
+    item.innerHTML = (s === j.workStatus ? '✓ ' : '&nbsp;&nbsp;') + s;
+    item.onmouseenter = function(){ this.style.background='var(--s2)'; };
+    item.onmouseleave = function(){ this.style.background=''; };
+    item.onclick = function() {
+      document.body.removeChild(menu);
+      if (s === j.workStatus) return;
+      if (j.workStatus === 'COMPLETED') { askPassword(function(){ doQuickStatusUpdate(id, s); }); return; }
+      doQuickStatusUpdate(id, s);
+    };
+    menu.appendChild(item);
+  });
+  document.body.appendChild(menu);
+  setTimeout(function() {
+    document.addEventListener('click', function remove(e) {
+      if (!menu.contains(e.target)) { if(document.body.contains(menu)) document.body.removeChild(menu); document.removeEventListener('click', remove); }
+    });
+  }, 10);
+}
+
+function doQuickStatusUpdate(id, newStatus) {
+  var i = JOBCARDS.findIndex(function(x){ return x.id === id; });
+  if (i === -1) return;
+  JOBCARDS[i].workStatus = newStatus;
+  renderJCSummary();
+  toast('Updating status...', 'in');
+  callAPI('updateJobCard', { record: JOBCARDS[i] }).then(function(){ toast('Status updated ✓', 'ok'); }).catch(function(){ toast('Sync failed', 'er'); });
 }
 
 
@@ -2370,18 +2779,32 @@ const ROLE_PRESETS = {
 function can(perm) {
   if (!CURRENT_USER) return false;
   if (CURRENT_USER.role === 'admin') return true;
+  // staff_jc can create requisitions (breakdown only - enforced at save time)
+  if (perm === 'req' && CURRENT_USER.role === 'staff_jc') return true;
   return CURRENT_USER['p_'+perm] === true || CURRENT_USER['p_'+perm] === 'true';
 }
-function canEditReq() {
+function canEditReq(record) {
   if (!CURRENT_USER) return false;
   if (CURRENT_USER.role === 'admin' || CURRENT_USER.role === 'manager') return true;
-  if (CURRENT_USER.role === 'staff_jc') return false; // JC staff cannot edit requisitions
+  if (CURRENT_USER.role === 'staff_jc') {
+    // JC staff can only edit BREAKDOWN requisitions that are NOT received
+    if (!record) return false;
+    if ((record.category||'').toUpperCase() !== 'BREAKDOWN') return false;
+    if ((record.status||'').toUpperCase() === 'RECEIVED') return false;
+    return true;
+  }
   return can('edit');
 }
-function canDeleteReq() {
+function canDeleteReq(record) {
   if (!CURRENT_USER) return false;
   if (CURRENT_USER.role === 'admin' || CURRENT_USER.role === 'manager') return true;
-  if (CURRENT_USER.role === 'staff_jc') return false; // JC staff cannot delete requisitions
+  if (CURRENT_USER.role === 'staff_jc') {
+    // JC staff can only delete BREAKDOWN requisitions that are NOT received
+    if (!record) return false;
+    if ((record.category||'').toUpperCase() !== 'BREAKDOWN') return false;
+    if ((record.status||'').toUpperCase() === 'RECEIVED') return false;
+    return true;
+  }
   return can('delete');
 }
 function canEditJC() {
@@ -2575,7 +2998,7 @@ function renderUserTable() {
       var isSelf = CURRENT_USER && u.username === CURRENT_USER.username;
       html += '<tr style="border-bottom:1px solid rgba(46,50,72,.3)">'
         + '<td style="padding:8px"><b>' + (u.name||'') + '</b></td>'
-        + '<td style="padding:8px;font-family:DM Mono,monospace;color:var(--ac)">' + (u.username||'') + '</td>'
+        + '<td style="padding:8px;font-family:monospace;color:var(--ac)">' + (u.username||'') + '</td>'
         + '<td style="padding:8px"><span class="role-tag ' + rc + '">' + (roleLabels[u.role] || (u.role||'').toUpperCase()) + '</span></td>'
         + '<td style="padding:8px"><span class="sb ' + st + '">' + (u.status||'active').toUpperCase() + '</span></td>'
         + '<td style="padding:8px;color:var(--t2);font-size:11px">' + (perms||'View only') + '</td>'
@@ -2753,6 +3176,84 @@ function clearGenericFilter() {
   applyGenericFilter();
 }
 
+function applyJCFilter() {
+  var filters = [
+    {field: document.getElementById('JCF1_FIELD').value, val: (document.getElementById('JCF1').value||'').trim().toLowerCase()},
+    {field: document.getElementById('JCF2_FIELD').value, val: (document.getElementById('JCF2').value||'').trim().toLowerCase()},
+    {field: document.getElementById('JCF3_FIELD').value, val: (document.getElementById('JCF3').value||'').trim().toLowerCase()},
+    {field: document.getElementById('JCF4_FIELD').value, val: (document.getElementById('JCF4').value||'').trim().toLowerCase()}
+  ];
+  var data = JOBCARDS.slice();
+  var hasFilter = filters.some(function(f){ return f.field && f.val; });
+  filters.forEach(function(f) {
+    if (f.field && f.val) {
+      data = data.filter(function(j) {
+        return (j[f.field]||'').toLowerCase().includes(f.val);
+      });
+    }
+  });
+  document.getElementById('viewsub').textContent = data.length + ' job card' + (data.length!==1?'s':'');
+  renderJCStats(hasFilter ? data : JOBCARDS);
+  renderFilteredJobCards(data);
+}
+
+function clearJCFilter() {
+  ['JCF1','JCF2','JCF3','JCF4'].forEach(function(id){ var el=document.getElementById(id); if(el) el.value=''; });
+  ['JCF2_FIELD','JCF3_FIELD','JCF4_FIELD'].forEach(function(id){ var el=document.getElementById(id); if(el) el.value=''; });
+  renderJobCards();
+}
+
+function applyJCSFilter() {
+  var filters = [
+    {field: document.getElementById('JF1_FIELD').value, val: (document.getElementById('JF1').value||'').trim().toLowerCase()},
+    {field: document.getElementById('JF2_FIELD').value, val: (document.getElementById('JF2').value||'').trim().toLowerCase()},
+    {field: document.getElementById('JF3_FIELD').value, val: (document.getElementById('JF3').value||'').trim().toLowerCase()},
+    {field: document.getElementById('JF4_FIELD').value, val: (document.getElementById('JF4').value||'').trim().toLowerCase()}
+  ];
+  var data = JOBCARDS.slice();
+  var hasFilter = filters.some(function(f){ return f.field && f.val; });
+  filters.forEach(function(f) {
+    if (f.field && f.val) {
+      data = data.filter(function(j) {
+        return (j[f.field]||'').toLowerCase().includes(f.val);
+      });
+    }
+  });
+  document.getElementById('viewsub').textContent = data.length + ' job card' + (data.length!==1?'s':'');
+  // Update stats based on filtered data if filter active, else show all
+  renderJCStats(hasFilter ? data : JOBCARDS);
+  renderFilteredJCSummary(data);
+}
+
+function exportJCSummary() {
+  var headers = ['Job Card No','Vehicle','Vehicle Type','Driver','Category','Location','Start Date','End Date','Duration (days)','Work Status','Total Amount'];
+  var rows = [headers];
+  JOBCARDS.forEach(function(j) {
+    var start = j.startDate ? new Date(j.startDate) : null;
+    var end = j.endDate ? new Date(j.endDate) : new Date();
+    var days = start ? Math.ceil((end - start)/(1000*60*60*24)) : 0;
+    var amt = 0;
+    ALL.forEach(function(r){
+      if(r.status==='RECEIVED'&&r.jobCardNo&&j.code&&r.jobCardNo.toUpperCase()===j.code.toUpperCase()){
+        amt += parseFloat(r.cost)||0;
+      }
+    });
+    rows.push([j.code||'',j.vehicle||'',j.vehicleType||'',j.driverName||'',j.category||'',j.location||'',j.startDate||'',j.endDate||'',days,j.workStatus||'',amt]);
+  });
+  var csv = rows.map(function(r){ return r.map(function(v){ return '"'+String(v).replace(/"/g,'""')+'"'; }).join(','); }).join('\n');
+  var a = document.createElement('a');
+  a.href = 'data:text/csv;charset=utf-8,' + encodeURIComponent(csv);
+  a.download = 'job_card_summary_' + new Date().toISOString().split('T')[0] + '.csv';
+  a.click();
+  toast('Exported ✓', 'ok');
+}
+
+function clearJCSFilter() {
+  ['JF1','JF2','JF3','JF4'].forEach(function(id){ var el=document.getElementById(id); if(el) el.value=''; });
+  ['JF2_FIELD','JF3_FIELD','JF4_FIELD'].forEach(function(id){ var el=document.getElementById(id); if(el) el.value=''; });
+  renderJCSummary();
+}
+
 function updateFilterPlaceholders() {
   var cfg = FILTER_CONFIGS[currentView];
   if (!cfg) return;
@@ -2834,7 +3335,7 @@ function renderFilteredJobCards(data) {
   if (data.length===0){document.getElementById('TBODY').innerHTML='';document.getElementById('emptystate').style.display='block';return;}
   document.getElementById('emptystate').style.display='none';
   var wsColors={'IN PROGRESS':'sPNR','COMPLETED':'sR','STALLED':'sOH','PENDING':'sRNP','TO BE REPAIRED AFTER LOADING':'sNR'};
-  document.getElementById('TBODY').innerHTML=data.map(function(j){return'<tr class="'+(j.workStatus==="COMPLETED"?"jc-completed":"")+'"><td><span class="reqbadge">'+(j.code||'')+'</span></td><td><b>'+(j.vehicle||'')+'</b></td><td style="color:var(--t2);font-size:10px">'+(j.vehicleType||'')+'</td><td>'+(j.driverName||'')+'</td><td style="font-family:monospace;font-size:10px">'+(j.odometer?Number(j.odometer).toLocaleString()+' km':'')+'</td><td><span style="font-size:10px;font-weight:600;color:'+(j.orderStatus==="BOOKED"?"#4ade80":"#f97316")+'">'+(j.orderStatus||'')+'</span></td><td style="color:var(--t2)">'+(j.clientName||'')+'</td><td><span style="background:'+(j.category==="WORKSHOP"?"rgba(79,142,247,.15)":"rgba(249,115,22,.15)")+';color:'+(j.category==="WORKSHOP"?"#4f8ef7":"#f97316")+';padding:2px 7px;border-radius:5px;font-size:10px;font-weight:700">'+(j.category||'')+'</span></td><td style="color:var(--t2);font-size:10px">'+(j.location||'')+'</td><td style="color:var(--t2);font-size:10px">'+(j.maintenanceLevel||'')+'</td><td><span style="font-family:monospace;font-size:10px;color:var(--ac)">'+(j.jobCardNo||'')+'</span></td><td title="'+(j.taskDescription||'')+'">'+(j.taskDescription||'').substring(0,25)+((j.taskDescription||'').length>25?"…":"")+'</td><td title="'+(j.partsRequested||'')+'" style="color:var(--t2);font-size:10px">'+(j.partsRequested||'').substring(0,20)+((j.partsRequested||'').length>20?"…":"")+'</td><td>'+fd(j.startDate)+'</td><td>'+fd(j.endDate)+'</td><td>'+fd(j.expectedReleaseDate)+'</td><td style="font-family:monospace;text-align:center">'+(j.duration||'')+'</td><td><span class="sb '+(wsColors[j.workStatus]||'sNR')+'">'+(j.workStatus||'')+'</span></td><td style="color:var(--t2);font-size:10px" title="'+(j.comment||'')+'">'+(j.comment||'').substring(0,20)+((j.comment||'').length>20?"…":"")+'</td><td><button class="actbtn jcr-edit" data-id="'+j.id+'" data-done="'+(j.workStatus==="COMPLETED"?"1":"")+'" style="'+(j.workStatus==="COMPLETED"?"color:#fbbf24;border-color:#fbbf24":"")+'">'+(j.workStatus==="COMPLETED"?"🔒 Edit":"✏ Edit")+'</button><button class="actbtn d jcr-del" data-id="'+j.id+'" data-done="'+(j.workStatus==="COMPLETED"?"1":"")+'">🗑</button></td></tr>';}).join('');
+  document.getElementById('TBODY').innerHTML=data.map(function(j){return'<tr class="'+(j.workStatus==="COMPLETED"?"jc-completed":"")+'"><td><span class="reqbadge">'+(j.code||'')+'</span></td><td><b>'+(j.vehicle||'')+'</b></td><td style="color:var(--t2);font-size:10px">'+(j.vehicleType||'')+'</td><td>'+(j.driverName||'')+'</td><td style="font-family:monospace;font-size:10px">'+(j.odometer?Number(j.odometer).toLocaleString()+' km':'')+'</td><td><span style="font-size:10px;font-weight:600;color:'+(j.orderStatus==="BOOKED"?"#4ade80":"#f97316")+'">'+(j.orderStatus||'')+'</span></td><td style="color:var(--t2)">'+(j.clientName||'')+'</td><td><span style="background:'+(j.category==="WORKSHOP"?"rgba(79,142,247,.15)":"rgba(249,115,22,.15)")+';color:'+(j.category==="WORKSHOP"?"#4f8ef7":"#f97316")+';padding:2px 7px;border-radius:5px;font-size:10px;font-weight:700">'+(j.category||'')+'</span></td><td style="color:var(--t2);font-size:10px">'+(j.location||'')+'</td><td style="color:var(--t2);font-size:10px">'+(j.maintenanceLevel||'')+'</td><td><span style="font-family:monospace;font-size:10px;color:var(--ac)">'+(j.jobCardNo||'')+'</span></td><td title="'+(j.taskDescription||'')+'">'+(j.taskDescription||'').substring(0,25)+((j.taskDescription||'').length>25?"…":"")+'</td><td title="'+(j.partsRequested||'')+'" style="color:var(--t2);font-size:10px">'+(j.partsRequested||'').substring(0,20)+((j.partsRequested||'').length>20?"…":"")+'</td><td>'+fd(j.startDate)+'</td><td>'+fd(j.endDate)+'</td><td>'+fd(j.expectedReleaseDate)+'</td><td style="font-family:monospace;text-align:center">'+calcDurationDays(j.startDate,j.endDate,j.workStatus)+'</td><td><span class="sb '+(wsColors[j.workStatus]||'sNR')+'">'+(j.workStatus||'')+'</span></td><td style="color:var(--t2);font-size:10px" title="'+(j.comment||'')+'">'+(j.comment||'').substring(0,20)+((j.comment||'').length>20?"…":"")+'</td><td style="font-family:monospace;font-weight:700;color:var(--ac)">'+(function(){ var fa=0; ALL.forEach(function(r){ if(r.status==='RECEIVED'&&r.jobCardNo&&j.code&&r.jobCardNo.toUpperCase()===j.code.toUpperCase()) fa+=parseFloat(r.cost)||0; }); return fa>0?fa.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}):'—'; })()+'</td><td><button class="actbtn jcr-edit" data-id="'+j.id+'" data-done="'+(j.workStatus==="COMPLETED"?"1":"")+'" style="'+(j.workStatus==="COMPLETED"?"color:#fbbf24;border-color:#fbbf24":"")+'">'+(j.workStatus==="COMPLETED"?"🔒 Edit":"✏ Edit")+'</button><button class="actbtn d jcr-del" data-id="'+j.id+'" data-done="'+(j.workStatus==="COMPLETED"?"1":"")+'">🗑</button></td></tr>';}).join('');
   // Re-wire event delegation
   document.getElementById('TBODY').onclick = function(e) {
     var btn = e.target.closest('button'); if (!btn) return;
@@ -2854,8 +3355,10 @@ function renderFilteredJCSummary(data) {
   for(var i=0;i<data.length;i++){
     var j=data[i],jid=j.id;
     var catStyle=j.category==='WORKSHOP'?'background:rgba(79,142,247,.15);color:#4f8ef7':j.category==='BREAKDOWN'?'background:rgba(249,115,22,.15);color:#f97316':'background:var(--s2);color:var(--t2)';
+    var fAmt=0; ALL.forEach(function(r){if(r.status==='RECEIVED'&&r.jobCardNo&&j.code&&r.jobCardNo.toUpperCase()===j.code.toUpperCase()){fAmt+=parseFloat(r.cost)||0;}});
+    var fAmtDisplay=fAmt>0?fAmt.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}):'—';
     var signedBtns=j.signedPdfUrl?'<button class="actbtn jcs-view" data-id="'+jid+'" style="color:#4ade80;border-color:#4ade80;font-size:11px">👁 View Signed</button><button class="actbtn jcs-dl" data-id="'+jid+'" style="color:#38bdf8;border-color:#38bdf8;font-size:11px">⬇ Download</button><button class="actbtn jcs-rep" data-id="'+jid+'" style="color:#fbbf24;border-color:#fbbf24;font-size:11px">🔄 Replace</button><button class="actbtn jcs-del d" data-id="'+jid+'" style="font-size:11px">🗑 Remove</button>':'<button class="actbtn jcs-att" data-id="'+jid+'" style="color:#fbbf24;border-color:#fbbf24;font-size:11px">📤 Attach Signed PDF</button>';
-    rows+='<tr><td><span class="reqbadge" style="font-size:11px">'+(j.code||'')+'</span></td><td><b style="color:var(--ac)">'+(j.vehicle||'')+'</b> <span style="color:var(--t2);font-size:10px">'+(j.vehicleType||'')+'</span></td><td>'+(j.driverName||'')+'</td><td><span style="padding:2px 8px;border-radius:5px;font-size:10px;font-weight:700;'+catStyle+'">'+(j.category||'')+'</span></td><td style="font-size:11px">'+fd(j.startDate)+'</td><td style="font-size:11px">'+fd(j.endDate)+'</td><td style="font-family:monospace;text-align:center">'+(j.duration?j.duration+' d':'—')+'</td><td><span class="sb '+(wsColors[j.workStatus]||'sNR')+'">'+(j.workStatus||'')+'</span></td><td style="white-space:nowrap;max-width:none;overflow:visible"><button class="actbtn jcs-prev" data-id="'+jid+'" style="color:#a78bfa;border-color:#a78bfa;font-size:11px">👁 Preview</button><button class="actbtn jcs-pdf" data-id="'+jid+'" style="color:#4f8ef7;border-color:#4f8ef7;font-size:11px">⬇ PDF</button>'+signedBtns+'</td></tr>';
+    rows+='<tr><td><span class="reqbadge" style="font-size:11px">'+(j.code||'')+'</span></td><td><b style="color:var(--ac)">'+(j.vehicle||'')+'</b> <span style="color:var(--t2);font-size:10px">'+(j.vehicleType||'')+'</span></td><td>'+(j.driverName||'')+'</td><td><span style="padding:2px 8px;border-radius:5px;font-size:10px;font-weight:700;'+catStyle+'">'+(j.category||'')+'</span></td><td style="font-size:11px">'+fd(j.startDate)+'</td><td style="font-size:11px">'+fd(j.endDate)+'</td><td style="font-family:monospace;text-align:center">'+calcDurationDays(j.startDate,j.endDate,j.workStatus)+'</td><td><span class="sb '+(wsColors[j.workStatus]||'sNR')+'">'+(j.workStatus||'')+'</span></td><td style="font-family:monospace;font-weight:700;color:var(--ac)">'+fAmtDisplay+'</td><td style="white-space:nowrap;max-width:none;overflow:visible"><button class="actbtn jcs-prev" data-id="'+jid+'" style="color:#a78bfa;border-color:#a78bfa;font-size:11px">👁 Preview</button><button class="actbtn jcs-pdf" data-id="'+jid+'" style="color:#4f8ef7;border-color:#4f8ef7;font-size:11px">⬇ PDF</button>'+signedBtns+'</td></tr>';
   }
   document.getElementById('TBODY').innerHTML=rows;
   document.getElementById('TBODY').onclick = function(e) {
