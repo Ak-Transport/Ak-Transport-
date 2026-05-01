@@ -11,139 +11,495 @@
 <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Outfit:wght@600;700;800;900&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link href="https://cdnjs.cloudflare.com/ajax/libs/tom-select/2.3.1/css/tom-select.min.css" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/tom-select/2.3.1/js/tom-select.complete.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
-:root{--bg:#0f1117;--s1:#1a1d27;--s2:#222536;--br:#2e3248;--ac:#4f8ef7;--tx:#e8eaf6;--t2:#8b90b0;--t3:#555a7a}
+/* AK TRANSPORT WORKSHOP SYSTEM — Apple-inspired + AK Navy */
+:root{
+  --bg:#f5f5f7;
+  --s1:#ffffff;
+  --s2:#f0f0f4;
+  --br:#d2d2d7;
+  --ac:#0a2d6e;
+  --ac2:#1a4fa0;
+  --hi:#0071e3;
+  --tx:#1d1d1f;
+  --t2:#515154;
+  --t3:#86868b;
+}
 *{box-sizing:border-box;margin:0;padding:0}
-body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--tx);height:100vh;display:flex;flex-direction:column;overflow:hidden}
-.topbar{display:flex;align-items:center;justify-content:space-between;padding:0 20px;height:54px;background:var(--s1);border-bottom:1px solid var(--br);flex-shrink:0}
-.logo{font-family:'Outfit',sans-serif;font-size:15px;font-weight:800;color:var(--ac)}.logo span{color:var(--t2);font-weight:700}
+body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--tx);height:100vh;display:flex;flex-direction:column;overflow:hidden;-webkit-font-smoothing:antialiased}
+
+/* TOPBAR */
+.topbar{display:flex;align-items:center;justify-content:space-between;padding:0 20px;height:54px;background:rgba(255,255,255,.95);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border-bottom:1px solid var(--br);flex-shrink:0;z-index:100}
+.logo{font-family:'Outfit',sans-serif;font-size:15px;font-weight:800;color:var(--ac);letter-spacing:-.2px}
+.logo span{color:var(--hi);font-weight:700}
 .ta{display:flex;gap:8px;align-items:center}
 .syncbadge{font-size:11px;color:var(--t3);display:flex;align-items:center;gap:5px}
-.dot{width:6px;height:6px;border-radius:50%;background:var(--t3)}.dot.on{background:#4ade80;box-shadow:0 0 5px #4ade80}.dot.sy{background:#fbbf24;animation:pu .7s infinite}.dot.er{background:#f87171}
+.dot{width:6px;height:6px;border-radius:50%;background:var(--t3)}
+.dot.on{background:#1a7f3c;box-shadow:0 0 5px rgba(26,127,60,.5)}
+.dot.sy{background:#d97706;animation:pu .7s infinite}
+.dot.er{background:#b91c1c}
 @keyframes pu{0%,100%{opacity:1}50%{opacity:.2}}
-.btn{padding:7px 14px;border-radius:7px;border:none;cursor:pointer;font-family:'Inter',sans-serif;font-size:13px;font-weight:500}
-.bp{background:var(--ac);color:#fff}.bp:hover{filter:brightness(1.1)}.bg{background:transparent;color:var(--t2);border:1px solid var(--br)}.bg:hover{background:var(--s2);color:var(--tx)}.btn:disabled{opacity:.5;cursor:not-allowed}
+
+/* BUTTONS */
+.btn{padding:7px 16px;border-radius:8px;border:none;cursor:pointer;font-family:'Inter',sans-serif;font-size:13px;font-weight:500;transition:all .15s}
+.bp{background:var(--ac);color:#fff}
+.bp:hover{background:var(--ac2);box-shadow:0 3px 12px rgba(10,45,110,.3)}
+.bg{background:#ffffff;color:var(--tx);border:1px solid var(--br)}
+.bg:hover{background:var(--s2)}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+
+/* NEW DROPDOWN */
+.newwrap{position:relative}
+.newdrop{
+  position:absolute;
+  top:calc(100% + 6px);
+  right:0;
+  background:#ffffff;
+  border:1px solid var(--br);
+  border-radius:12px;
+  box-shadow:0 8px 32px rgba(0,0,0,.12),0 2px 8px rgba(0,0,0,.06);
+  min-width:200px;
+  z-index:9000;
+  overflow:hidden;
+  display:none;
+}
+.newdrop.open{display:block}
+.newdrop div{
+  padding:11px 16px;
+  cursor:pointer;
+  font-size:13px;
+  color:var(--tx);
+  transition:background .1s;
+  border-bottom:1px solid #f0f0f4;
+}
+.newdrop div:last-child{border-bottom:none}
+.newdrop div:hover{background:#f0f4ff;color:var(--ac)}
+
+/* LAYOUT */
 .layout{display:flex;flex:1;overflow:hidden}
-.sidebar{width:210px;background:var(--s1);border-right:1px solid var(--br);padding:10px 0;flex-shrink:0;overflow-y:auto}
-.slbl{font-size:9px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.15em;padding:10px 20px 3px;font-family:'Inter',sans-serif}
-.navitem{display:flex;align-items:center;gap:8px;padding:8px 10px 8px 20px;cursor:pointer;font-size:13px;color:var(--t2);font-family:'Inter',sans-serif;border-radius:8px;margin:1px 8px;transition:all .1s}
-.navitem:hover{background:var(--s2);color:var(--tx)}.navitem.active{background:rgba(79,142,247,.14);color:var(--ac)}
+
+/* SIDEBAR */
+.sidebar{
+  width:228px;
+  background:linear-gradient(175deg,#0d3585 0%,#081f55 100%);
+  padding:0 0 24px;
+  flex-shrink:0;
+  overflow-y:auto;
+  box-shadow:3px 0 20px rgba(0,0,0,.15);
+  display:flex;
+  flex-direction:column;
+}
+.sidebar::-webkit-scrollbar{width:3px}
+.sidebar::-webkit-scrollbar-thumb{background:rgba(255,255,255,.15);border-radius:3px}
+.slbl{font-size:9px;font-weight:700;color:rgba(255,255,255,.35);text-transform:uppercase;letter-spacing:.15em;padding:13px 18px 4px;font-family:'Inter',sans-serif}
+.navitem{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  padding:9px 12px 9px 18px;
+  cursor:pointer;
+  font-size:12.5px;
+  color:rgba(255,255,255,.78);
+  font-family:'Inter',sans-serif;
+  margin:1px 8px;
+  border-radius:8px;
+  transition:background .1s,color .1s;
+}
+.navitem:hover{background:rgba(255,255,255,.1);color:#ffffff}
+.navitem.active{background:rgba(255,255,255,.16);color:#ffffff;font-weight:600;box-shadow:inset 3px 0 0 #60a5fa}
 .navdot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
-.navbadge{margin-left:auto;background:var(--s2);color:var(--t3);font-size:10px;padding:1px 6px;border-radius:8px;font-family:monospace}
-.divider{height:1px;background:var(--br);margin:6px 14px}
-.main{flex:1;display:flex;flex-direction:column;overflow:hidden}
-.vtitle{font-family:'Inter',sans-serif;font-size:22px;font-weight:700;letter-spacing:-.3px}.vsub{font-size:12px;color:var(--t2);margin-top:2px}
-#searchrow input{flex:1;background:var(--s1);border:1.5px solid var(--br);border-radius:8px;padding:8px 12px;color:var(--tx);font-family:'Inter',sans-serif;font-size:13px;outline:none;min-width:0}
-#searchrow input:focus{border-color:var(--ac)}#searchrow input::placeholder{color:var(--t3)}
-#searchrow select{background:var(--s1);border:1.5px solid var(--br);border-radius:8px;padding:8px 10px;color:var(--tx);font-size:12px;outline:none;cursor:pointer}
-#searchrow select option{background:var(--s2)}
-#tablearea{flex:1;overflow:auto;padding:0 20px 20px}
-table{width:100%;border-collapse:collapse;font-size:12px}
-thead tr{background:var(--s1);position:sticky;top:0;z-index:5}
-th{padding:9px 10px;text-align:left;font-weight:600;font-size:10px;letter-spacing:.06em;color:var(--t2);text-transform:uppercase;border-bottom:1px solid var(--br);white-space:nowrap;cursor:pointer;user-select:none}
-th:hover{color:var(--tx)}
-td{padding:8px 10px;border-bottom:1px solid rgba(46,50,72,.4);color:var(--tx);vertical-align:middle;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-td:has(.actbtn){max-width:none;overflow:visible;white-space:nowrap}
-tr:hover td{background:rgba(255,255,255,.02)}
-.reqbadge{font-family:monospace;font-size:10px;color:var(--ac);background:rgba(79,142,247,.1);padding:2px 5px;border-radius:4px}
-.sb{display:inline-flex;padding:2px 7px;border-radius:5px;font-size:10px;font-weight:700;white-space:nowrap}
-.sR{background:#1a3a2a;color:#4ade80;border:1px solid #166534}.sRNP{background:#3a2a0a;color:#fbbf24;border:1px solid #92400e}
-.sOH{background:#3a1a1a;color:#f87171;border:1px solid #991b1b}.sPNR{background:#1a2a3a;color:#60a5fa;border:1px solid #1e40af}
-.sNR{background:#252530;color:#a0a0c0;border:1px solid #3a3a5a}
-.ptbadge{background:rgba(252,92,164,.14);color:#fc5ca4;border:1px solid rgba(252,92,164,.28);padding:2px 6px;border-radius:4px;font-size:10px;font-weight:700}
-.actbtn{background:none;border:1px solid var(--br);color:var(--t2);border-radius:5px;padding:3px 7px;cursor:pointer;font-size:11px;margin-right:3px;transition:all .1s}
-.actbtn:hover{background:var(--s2)}.actbtn.e:hover{border-color:var(--ac);color:var(--ac)}.actbtn.d:hover{border-color:#f87171;color:#f87171}
-#loadmorediv{text-align:center;padding:14px}
-#dasharea{flex:1;overflow-y:auto;padding-bottom:20px}
-.dgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:14px;padding:0 20px 16px}
-.statcard{background:var(--s1);border:1px solid var(--br);border-radius:10px;padding:18px;cursor:pointer;transition:border-color .12s}.statcard:hover{border-color:var(--ac)}
-.statlbl{font-size:10px;font-weight:700;color:var(--t2);text-transform:uppercase;letter-spacing:.06em;margin-bottom:7px}
-.statval{font-family:'Outfit',sans-serif;font-size:30px;font-weight:800;line-height:1}.statsub{font-size:11px;color:var(--t3);margin-top:3px}
-.chartgrid{padding:0 20px 20px;display:grid;grid-template-columns:1fr 1fr;gap:14px}
-.chartcard{background:var(--s1);border:1px solid var(--br);border-radius:10px;padding:18px}
-.charttitle{font-family:'Outfit',sans-serif;font-size:13px;font-weight:800;margin-bottom:14px}
-.barchart{display:flex;flex-direction:column;gap:9px}.barrow{display:flex;align-items:center;gap:9px}
-.barlabel{font-size:10px;color:var(--t2);width:140px;flex-shrink:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.bartrack{flex:1;background:var(--s2);border-radius:3px;height:18px;overflow:hidden}
-.barfill{height:100%;border-radius:3px;display:flex;align-items:center;justify-content:flex-end;padding-right:5px}
-.barval{font-size:9px;font-weight:700;font-family:monospace;color:rgba(255,255,255,.75)}
-.pielegend{display:flex;flex-direction:column;gap:7px;margin-top:10px}
-.pielegenditem{display:flex;align-items:center;gap:7px;font-size:11px;color:var(--t2)}
-.pielegendval{margin-left:auto;font-family:monospace;font-size:10px;color:var(--tx)}
-.loadingoverlay{position:fixed;inset:0;background:rgba(15,17,23,.88);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:9999;backdrop-filter:blur(3px)}
-.spinner{width:36px;height:36px;border:3px solid var(--br);border-top-color:var(--ac);border-radius:50%;animation:sp .75s linear infinite;margin-bottom:10px}
-@keyframes sp{to{transform:rotate(360deg)}}
-.overlay{position:fixed;inset:0;background:rgba(0,0,0,.72);display:flex;align-items:center;justify-content:center;z-index:1000;padding:16px;backdrop-filter:blur(3px)}
-.modal{background:var(--s1);border:1px solid var(--br);border-radius:14px;width:100%;max-width:700px;max-height:92vh;overflow-y:auto}
-.modalhead{padding:18px 22px 14px;border-bottom:1px solid var(--br);display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;background:var(--s1);z-index:2}
-.modaltitle{font-family:'Outfit',sans-serif;font-size:17px;font-weight:800}
-.modalclose{background:none;border:none;color:var(--t2);cursor:pointer;font-size:18px;padding:3px 7px;border-radius:5px}.modalclose:hover{background:var(--s2)}
-.modalbody{padding:18px 22px}
-.formgrid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
-.formgroup{display:flex;flex-direction:column;gap:5px}.formgroup.full{grid-column:1/-1}
-label{font-size:10px;font-weight:700;color:var(--t2);text-transform:uppercase;letter-spacing:.06em}
-input,select,textarea{background:var(--s2);border:1px solid var(--br);border-radius:7px;padding:9px 11px;color:var(--tx);font-family:'Inter',sans-serif;font-size:13px;outline:none;width:100%;transition:border-color .12s}
-input:focus,select:focus,textarea:focus{border-color:var(--ac)}
-input::placeholder,textarea::placeholder{color:var(--t3)}
-select option{background:var(--s2)}textarea{resize:vertical;min-height:56px}input[readonly]{opacity:.55;cursor:not-allowed}
-.modalfoot{padding:14px 22px;border-top:1px solid var(--br);display:flex;justify-content:flex-end;gap:8px;position:sticky;bottom:0;background:var(--s1)}
-.toastbox{position:fixed;bottom:20px;right:20px;display:flex;flex-direction:column;gap:7px;z-index:2000}
-.toast{background:var(--s2);border:1px solid var(--br);border-radius:9px;padding:11px 14px;font-size:12px;display:flex;align-items:center;gap:9px;animation:tin .25s ease;min-width:240px}
-.toast.ok{border-color:#166534}.toast.er{border-color:#991b1b}.toast.in{border-color:#1e40af}
-@keyframes tin{from{transform:translateX(100%);opacity:0}to{transform:translateX(0);opacity:1}}
+.navbadge{font-size:10px;background:rgba(255,255,255,.15);color:rgba(255,255,255,.9);padding:1px 7px;border-radius:20px;margin-left:auto;font-weight:700;flex-shrink:0}
+.divider{height:1px;background:rgba(255,255,255,.08);margin:6px 14px}
+
+/* MAIN */
+.main{flex:1;display:flex;flex-direction:column;overflow:hidden;background:var(--bg)}
+#toolbar{padding:14px 22px 0;display:flex;align-items:center;gap:10px;flex-shrink:0;flex-wrap:wrap}
+.vtitle{font-family:'Outfit',sans-serif;font-size:23px;font-weight:700;color:var(--ac);letter-spacing:-.3px}
+.viewsub{font-size:11px;color:var(--t3);font-weight:500}
+.tb-divider{flex:1}
+
+/* SEARCH/FILTER ROWS */
+#searchrow{padding:10px 22px 8px;display:grid;grid-template-columns:1fr 1fr;gap:8px;flex-shrink:0}
+#filterrow,#jcfilterrow,#jcsfilterrow{padding:0 22px 8px;flex-shrink:0}
+
+/* INPUTS */
+select,input[type=text],input[type=password],input[type=date],textarea{
+  background:#ffffff;
+  border:1.5px solid var(--br);
+  border-radius:8px;
+  padding:8px 11px;
+  color:var(--tx);
+  font-family:'Inter',sans-serif;
+  font-size:13px;
+  outline:none;
+  transition:border-color .15s,box-shadow .15s;
+  width:100%;
+}
+select:focus,input:focus,textarea:focus{border-color:var(--hi);box-shadow:0 0 0 3px rgba(0,113,227,.1)}
+
+/* TABLE */
+#tablearea{flex:1;overflow:auto;padding:0 22px 20px}
+table{width:100%;border-collapse:separate;border-spacing:0;font-size:12.5px}
+#tablearea table{border-radius:12px;overflow:hidden;border:1px solid var(--br);box-shadow:0 2px 8px rgba(0,0,0,.05)}
+th{background:var(--ac);color:#ffffff;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;padding:11px 13px;white-space:nowrap;cursor:pointer;user-select:none;position:sticky;top:0;z-index:2}
+th:hover{background:var(--ac2)}
+td{padding:10px 13px;border-bottom:1px solid #ebebed;font-size:12.5px;vertical-align:middle;color:var(--tx);max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;background:#ffffff}
+tr:last-child td{border-bottom:none}
+tr:hover td{background:#f0f4ff}
+
+/* STATUS BADGES */
+.sb{display:inline-flex;align-items:center;padding:3px 10px;border-radius:6px;font-size:11px;font-weight:600;white-space:nowrap;letter-spacing:.02em}
+.sR  {background:#dcfce7;color:#166534}
+.sNR {background:#fee2e2;color:#991b1b}
+.sOH {background:#fef3c7;color:#92400e}
+.sRNP{background:#e0e7ff;color:#3730a3}
+.sPNR{background:#dbeafe;color:#1e40af}
+
+/* MODALS */
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,.3);backdrop-filter:blur(5px);-webkit-backdrop-filter:blur(5px);display:flex;align-items:center;justify-content:center;z-index:1000;padding:20px}
+.modal{background:#ffffff;border-radius:18px;width:90%;max-width:720px;max-height:92vh;display:flex;flex-direction:column;box-shadow:0 24px 60px rgba(0,0,0,.16)}
 .hidden{display:none!important}
-.newwrap{position:relative;display:inline-block}
-.newdrop{display:none;position:absolute;right:0;top:108%;background:var(--s1);border:1px solid var(--br);border-radius:10px;min-width:185px;z-index:300;box-shadow:0 8px 24px rgba(0,0,0,.5);overflow:hidden}
-.newdrop div{padding:11px 16px;cursor:pointer;font-size:13px;color:var(--tx);display:flex;align-items:center;gap:10px}.newdrop div:hover{background:var(--s2)}
-.usermenu-wrap{position:relative;display:inline-block}
-.usermenu{display:none;position:absolute;right:0;top:110%;background:var(--s1);border:1px solid var(--br);border-radius:10px;min-width:180px;z-index:300;box-shadow:0 8px 24px rgba(0,0,0,.5);overflow:hidden}
-.usermenu div{padding:10px 16px;cursor:pointer;font-size:13px;color:var(--tx);display:flex;align-items:center;gap:10px}.usermenu div:hover{background:var(--s2)}
-.role-tag{display:inline-flex;align-items:center;padding:2px 8px;border-radius:5px;font-size:10px;font-weight:700}
-.role-admin{background:rgba(249,115,22,.15);color:#f97316;border:1px solid #f97316}
-.role-manager{background:rgba(79,142,247,.15);color:#4f8ef7;border:1px solid #4f8ef7}
-.role-staff{background:rgba(74,222,128,.15);color:#4ade80;border:1px solid #4ade80}
-.role-viewer{background:rgba(160,160,192,.15);color:#a0a0c0;border:1px solid #a0a0c0}
-.jc-completed td{opacity:.75}
-.no-edit .actbtn.e{display:none!important}.no-delete .actbtn.d{display:none!important}
-/* ── PERMISSIONS CHECKBOXES ── */
-.perm-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:8px}
-.perm-item{display:flex;align-items:center;gap:10px;padding:9px 12px;background:var(--s2);border:1px solid var(--br);border-radius:7px;cursor:pointer;transition:border-color .15s}
-.perm-item:hover{border-color:var(--ac)}
-.perm-item input[type=checkbox]{width:16px;height:16px;min-width:16px;accent-color:var(--ac);cursor:pointer;margin:0}
-.perm-item span{font-size:12px;font-weight:500;color:var(--tx);text-transform:none;letter-spacing:0;line-height:1.2}
-/* Login overlay */
-#aklg{position:fixed;inset:0;background:#0f1117;z-index:999999;display:flex;align-items:center;justify-content:center;font-family:'Inter',sans-serif}
-#aklgb{background:#1a1d27;border:1px solid #2e3248;border-radius:14px;padding:40px;width:360px;box-shadow:0 20px 60px rgba(0,0,0,.6)}
-#aklgb h2{font-family:'Outfit',sans-serif;color:#4f8ef7;margin:0 0 4px;font-size:22px;font-weight:800}
-#aklgb p{color:#8b90b0;font-size:13px;margin:0 0 28px}
-.aklf{display:block;font-size:10px;font-weight:700;color:#8b90b0;text-transform:uppercase;letter-spacing:.06em;margin-bottom:5px}
-#aklg input[type=text],#aklg input[type=password]{width:100%;padding:11px 14px;background:#222536;border:1px solid #2e3248;border-radius:8px;color:#e8eaf6;font-size:14px;outline:none;margin-bottom:14px;box-sizing:border-box;transition:border-color .15s}
-#aklg input:focus{border-color:#4f8ef7}
-#aklg button{width:100%;padding:12px;background:#4f8ef7;color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;font-family:'Inter',sans-serif;transition:filter .15s}
-#aklg button:hover{filter:brightness(1.1)}
-#aklge{color:#f87171;font-size:12px;text-align:center;min-height:18px;margin-bottom:10px}
-::-webkit-scrollbar{width:5px;height:5px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:var(--br);border-radius:3px}
-/* Tom Select dark theme */
-.ts-wrapper{width:100%}
-.ts-control{background:var(--s2)!important;border:1px solid var(--br)!important;border-radius:7px!important;padding:8px 11px!important;color:var(--tx)!important;font-family:'Inter',sans-serif!important;font-size:13px!important;min-height:38px!important;box-shadow:none!important;cursor:pointer!important}
-.ts-wrapper.focus .ts-control{border-color:var(--ac)!important;box-shadow:none!important}
-.ts-dropdown{background:var(--s1)!important;border:1px solid var(--br)!important;border-radius:8px!important;margin-top:3px!important;box-shadow:0 8px 24px rgba(0,0,0,.5)!important;font-family:'Inter',sans-serif!important;font-size:13px!important;z-index:9999!important}
-.ts-dropdown .option{padding:9px 12px!important;color:var(--tx)!important;cursor:pointer!important}
-.ts-dropdown .option:hover,.ts-dropdown .option.active{background:var(--s2)!important;color:var(--ac)!important}
-.ts-dropdown .option.selected{background:rgba(79,142,247,.15)!important;color:var(--ac)!important}
-.ts-dropdown-content{max-height:220px!important;overflow-y:auto!important}
+.modalhead{padding:20px 24px 16px;border-bottom:1px solid #ebebed;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;background:#f5f5f7;border-radius:18px 18px 0 0}
+.modaltitle{font-family:'Outfit',sans-serif;font-size:17px;font-weight:700;color:var(--ac);letter-spacing:-.2px}
+.modalclose{background:none;border:none;cursor:pointer;font-size:20px;color:var(--t3);width:32px;height:32px;display:flex;align-items:center;justify-content:center;border-radius:50%;transition:background .15s}
+.modalclose:hover{background:#e8e8ed;color:var(--tx)}
+.modalbody{padding:20px 24px;overflow-y:auto;flex:1}
+.modalfoot{padding:14px 24px;border-top:1px solid #ebebed;display:flex;gap:8px;justify-content:flex-end;flex-shrink:0;background:#f5f5f7;border-radius:0 0 18px 18px}
+
+/* FORM */
+.formgrid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.formgrid .full{grid-column:1/-1}
+.formgroup{display:flex;flex-direction:column;gap:5px}
+.formgroup label{font-size:11px;font-weight:600;color:var(--t2);text-transform:uppercase;letter-spacing:.07em}
+.reqbadge{background:rgba(10,45,110,.07);color:var(--ac);padding:2px 8px;border-radius:5px;font-size:11px;font-weight:700;font-family:monospace;white-space:nowrap;border:1px solid rgba(10,45,110,.12)}
+
+/* ACTION BUTTONS */
+.actbtn{padding:4px 9px;border-radius:6px;border:1.5px solid var(--br);background:#fff;cursor:pointer;font-size:11px;color:var(--t2);font-family:'Inter',sans-serif;white-space:nowrap;transition:all .1s}
+.actbtn.e{color:#0071e3;border-color:#0071e3}
+.actbtn.e:hover{background:#0071e3;color:#fff}
+.actbtn.d{color:#b91c1c;border-color:#b91c1c}
+.actbtn.d:hover{background:#b91c1c;color:#fff}
+.ptbadge{background:var(--ac);color:#fff;font-size:9px;font-weight:700;padding:2px 6px;border-radius:4px}
+
+/* STAT CARDS */
+.statcard{background:#ffffff;border:1px solid #ebebed;border-radius:14px;padding:18px 20px;display:flex;flex-direction:column;gap:6px;box-shadow:0 1px 4px rgba(0,0,0,.05)}
+.statlbl{font-size:11px;font-weight:600;color:var(--t3);text-transform:uppercase;letter-spacing:.08em}
+.statval{font-family:'Outfit',sans-serif;font-size:32px;font-weight:800;line-height:1;letter-spacing:-.5px;color:var(--ac)}
+.charttitle{font-family:'Outfit',sans-serif;font-size:13px;font-weight:700;margin-bottom:14px;letter-spacing:-.1px;color:var(--ac)}
+
+/* LOAD */
+#loadbar{position:fixed;inset:0;background:rgba(245,245,247,.92);backdrop-filter:blur(10px);display:flex;align-items:center;justify-content:center;z-index:9000;flex-direction:column;gap:14px}
+.loader{width:36px;height:36px;border:3px solid #d2d2d7;border-top-color:var(--ac);border-radius:50%;animation:spin .7s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.loadtxt{color:var(--ac);font-size:14px;font-weight:600}
+
+/* TOAST */
+.toastbox{position:fixed;bottom:24px;right:24px;z-index:9001;display:flex;flex-direction:column;gap:8px}
+.toast{padding:11px 18px;border-radius:12px;font-size:13px;font-weight:600;animation:slidein .25s ease;box-shadow:0 4px 20px rgba(0,0,0,.12)}
+@keyframes slidein{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+.tok{background:var(--ac);color:#ffffff}
+.ter{background:#b91c1c;color:#ffffff}
+
+/* ROW MENU */
+#rowmenu{position:fixed;background:#ffffff;border:1px solid var(--br);border-radius:12px;box-shadow:0 8px 32px rgba(0,0,0,.12);z-index:9999;min-width:160px;overflow:hidden}
+
+/* EMPTY STATE */
+#emptystate{display:none;text-align:center;padding:60px 20px;color:var(--t3)}
+
+/* LOGIN */
+#aklg{position:fixed;inset:0;background:linear-gradient(150deg,#020d1f 0%,#0a2d6e 55%,#1558b0 100%);display:flex;align-items:center;justify-content:center;z-index:10000;overflow:hidden}
+#aklg::before{content:'';position:absolute;width:600px;height:600px;background:radial-gradient(circle,rgba(26,79,160,.2) 0%,transparent 70%);top:-150px;right:-100px;pointer-events:none}
+#aklg::after{content:'';position:absolute;width:400px;height:400px;background:radial-gradient(circle,rgba(10,45,110,.25) 0%,transparent 70%);bottom:-100px;left:-80px;pointer-events:none}
+#aklgb{background:#ffffff;border-radius:22px;padding:42px 38px 36px;width:390px;box-shadow:0 32px 80px rgba(0,0,0,.28);text-align:center;position:relative;z-index:1}
+#aklgb h2{font-family:'Outfit',sans-serif;color:var(--ac);margin:0 0 6px;font-size:26px;font-weight:800;letter-spacing:-.4px}
+#aklgb p{font-size:13px;color:var(--t3);margin-bottom:0;font-weight:500}
+.aklf{font-size:12px;font-weight:600;color:var(--t2);display:block;text-align:left;margin:14px 0 5px;letter-spacing:.02em}
+
+/* SCROLLBAR */
+::-webkit-scrollbar{width:6px;height:6px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:#c7c7cc;border-radius:6px}
+::-webkit-scrollbar-thumb:hover{background:#a0a0a5}
+
+/* MISC */
+input[type=checkbox]{accent-color:var(--ac)}
+
+/* TOM SELECT */
+.ts-control{background:#ffffff!important;border:1.5px solid var(--br)!important;border-radius:8px!important;padding:7px 10px!important;color:var(--tx)!important;font-family:'Inter',sans-serif!important;font-size:13px!important;min-height:38px!important;box-shadow:none!important}
+.ts-control:focus-within,.ts-wrapper.focus .ts-control{border-color:var(--hi)!important;box-shadow:0 0 0 3px rgba(0,113,227,.1)!important}
+.ts-dropdown{background:#ffffff!important;border:1px solid var(--br)!important;border-radius:10px!important;margin-top:4px!important;box-shadow:0 4px 24px rgba(0,0,0,.1)!important;font-family:'Inter',sans-serif!important;font-size:13px!important;z-index:1000!important}
+.ts-dropdown .option{padding:9px 13px!important;color:var(--tx)!important}
+.ts-dropdown .option.active,.ts-dropdown .option:hover{background:rgba(10,45,110,.07)!important;color:var(--ac)!important}
 .ts-wrapper .ts-control input{color:var(--tx)!important;font-family:'Inter',sans-serif!important;font-size:13px!important;background:transparent!important}
-.ts-wrapper .ts-control input::placeholder{color:var(--t3)!important}
-.ts-dropdown .no-results{color:var(--t2)!important;padding:10px 12px!important;font-size:12px!important}
-.ts-dropdown input.ts-dropdown-search{background:var(--s2)!important;border:1px solid var(--br)!important;border-radius:6px!important;color:var(--tx)!important;padding:7px 10px!important;margin:6px!important;width:calc(100% - 12px)!important;font-size:12px!important;outline:none!important}
-.ts-wrapper.single .ts-control::after{border-color:var(--t2) transparent transparent transparent!important}
-@media(max-width:700px){.sidebar{display:none}.formgrid{grid-template-columns:1fr}.chartgrid{grid-template-columns:1fr}.dgrid{grid-template-columns:1fr 1fr}}
+.ts-wrapper .ts-control .item{color:var(--tx)!important;background:rgba(10,45,110,.06)!important;border-radius:4px!important;padding:1px 6px!important}
+
+/* PROFESSIONAL FORM IMPROVEMENTS */
+.formgroup label{
+  font-size:11px;
+  font-weight:600;
+  color:var(--t2);
+  text-transform:uppercase;
+  letter-spacing:.08em;
+  display:flex;
+  align-items:center;
+  gap:4px;
+}
+.formgrid{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:16px;
+}
+.formgroup input,
+.formgroup select,
+.formgroup textarea{
+  background:#fafafa;
+  border:1.5px solid #e2e2e7;
+  border-radius:9px;
+  padding:10px 13px;
+  font-size:13px;
+  color:var(--tx);
+  font-family:'Inter',sans-serif;
+  transition:border-color .15s,box-shadow .15s,background .15s;
+}
+.formgroup input:focus,
+.formgroup select:focus,
+.formgroup textarea:focus{
+  background:#ffffff;
+  border-color:var(--hi);
+  box-shadow:0 0 0 3px rgba(0,113,227,.1);
+  outline:none;
+}
+.formgroup input[readonly]{
+  background:#f5f5f7;
+  color:var(--ac);
+  font-weight:600;
+  cursor:not-allowed;
+  border-color:#e2e2e7;
+}
+.formgroup textarea{
+  resize:vertical;
+  min-height:72px;
+  line-height:1.5;
+}
+.modalbody{
+  padding:22px 26px;
+  overflow-y:auto;
+  flex:1;
+  background:#ffffff;
+}
+/* Section dividers inside forms */
+.form-section-title{
+  font-family:'Outfit',sans-serif;
+  font-size:12px;
+  font-weight:700;
+  color:var(--ac);
+  text-transform:uppercase;
+  letter-spacing:.1em;
+  padding-bottom:8px;
+  border-bottom:2px solid var(--ac);
+  margin-bottom:4px;
+  grid-column:1/-1;
+}
+/* Perm grid in user management */
+.perm-grid{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:8px;
+  margin-top:6px;
+}
+.perm-item{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  font-size:12.5px;
+  color:var(--tx);
+  cursor:pointer;
+  font-weight:400;
+  padding:8px 12px;
+  background:#f5f5f7;
+  border-radius:8px;
+  border:1px solid #e8e8ed;
+  transition:background .1s,border-color .1s;
+  text-transform:none;
+  letter-spacing:0;
+}
+.perm-item:hover{background:#eef3ff;border-color:rgba(10,45,110,.2)}
+.perm-item input[type=checkbox]{flex-shrink:0;width:15px;height:15px}
+
+/* LOADING OVERLAY */
+.loadingoverlay{
+  position:fixed;inset:0;
+  background:rgba(245,245,247,.96);
+  backdrop-filter:blur(12px);
+  -webkit-backdrop-filter:blur(12px);
+  display:flex;align-items:center;justify-content:center;
+  z-index:8999;
+  transition:opacity .3s;
+}
+.spinner{
+  width:56px;height:56px;
+  border:3.5px solid #e2e2e7;
+  border-top-color:#0a2d6e;
+  border-radius:50%;
+  animation:spin .75s linear infinite;
+}
+
+/* USER MENU DROPDOWN */
+.usermenu-wrap{position:relative}
+.usermenu{
+  position:absolute;
+  top:calc(100% + 6px);
+  right:0;
+  background:#ffffff;
+  border:1px solid var(--br);
+  border-radius:12px;
+  box-shadow:0 8px 32px rgba(0,0,0,.12),0 2px 8px rgba(0,0,0,.06);
+  min-width:200px;
+  z-index:9000;
+  overflow:hidden;
+  display:none;
+}
+.usermenu div{
+  padding:11px 16px;
+  cursor:pointer;
+  font-size:13px;
+  color:var(--tx);
+  display:flex;
+  align-items:center;
+  gap:10px;
+  transition:background .1s;
+  border-bottom:1px solid #f0f0f4;
+}
+.usermenu div:last-child{border-bottom:none}
+.usermenu div:hover{background:#f0f4ff;color:var(--ac)}
+
+/* ROLE TAGS in user table */
+.role-tag{padding:2px 8px;border-radius:4px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.04em}
+.role-admin{background:rgba(10,45,110,.1);color:#0a2d6e}
+.role-manager{background:rgba(0,113,227,.1);color:#0071e3}
+.role-staff{background:rgba(26,127,60,.1);color:#1a7f3c}
+.role-viewer{background:rgba(134,134,139,.12);color:#515154}
+
+/* DASHBOARD GRID */
+.dgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:14px;padding:0 22px 16px}
+.statsub{font-size:11px;color:var(--t3);margin-top:4px}
+.chartgrid{display:grid;grid-template-columns:1fr 1fr;gap:14px;padding:0 22px 20px}
+.chartcard{background:#ffffff;border:1px solid #ebebed;border-radius:14px;padding:18px 20px;box-shadow:0 1px 4px rgba(0,0,0,.05)}
+.barchart{display:flex;flex-direction:column;gap:8px}
+.barrow{display:flex;align-items:center;gap:8px}
+.barlabel{font-size:10px;font-weight:600;color:var(--t2);width:130px;flex-shrink:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.bartrack{flex:1;background:var(--s2);border-radius:4px;height:18px;overflow:hidden}
+.barfill{height:100%;border-radius:4px;display:flex;align-items:center;justify-content:flex-end;padding-right:6px;min-width:4px;transition:width .4s}
+.barval{font-size:10px;font-weight:700;color:#fff}
+.pielegend{margin-top:10px;display:flex;flex-direction:column;gap:5px}
+.pielegenditem{display:flex;align-items:center;gap:8px;font-size:11px;color:var(--t2)}
+.pielegendval{margin-left:auto;font-weight:700;color:var(--tx)}
+
+/* UNIFORM FONT SIZE in table cells - override small inline sizes */
+td span:not(.sb):not(.reqbadge):not(.ptbadge){font-size:13px}
+td b, td strong{font-size:13px}
+/* Keep badge sizes as-is */
+.sb{font-size:11px}
+.reqbadge{font-size:11px}
+.ptbadge{font-size:9px}
+/* Table header uniform */
+th{font-size:11px}
+
+/* ══ FONT & COLOUR STANDARDISATION ══ */
+
+/* All table cells - one size, one font */
+td, td * {
+  font-size: 13px !important;
+  font-family: 'Inter', sans-serif !important;
+}
+
+/* Exceptions that should stay small */
+.sb      { font-size: 11px !important; }
+.reqbadge{ font-size: 11px !important; }
+.ptbadge { font-size: 10px !important; }
+
+/* Table headers stay distinct */
+th { font-size: 11px !important; }
+
+/* Duration — readable dark colours only */
+/* Override the colour-coded spans inside duration cells */
+td span[style*="color:#4ade80"],
+td span[style*="color: #4ade80"] { color: #1a7f3c !important; }   /* bright green → dark green */
+td span[style*="color:#fbbf24"],
+td span[style*="color: #fbbf24"] { color: #92400e !important; }   /* bright yellow → dark amber */
+td span[style*="color:#f97316"],
+td span[style*="color: #f97316"] { color: #7c2d12 !important; }   /* bright orange → dark orange */
+td span[style*="color:#f87171"],
+td span[style*="color: #f87171"] { color: #b91c1c !important; }   /* bright red → dark red */
+td span[style*="color:#60a5fa"],
+td span[style*="color: #60a5fa"] { color: #1d4ed8 !important; }   /* bright blue → dark blue */
+
+/* Muted secondary text — keep readable */
+td[style*="color:var(--t2)"],
+td span[style*="color:var(--t2)"],
+td span[style*="color: var(--t2)"] { color: #515154 !important; }
+
+td[style*="color:var(--t3)"],
+td span[style*="color:var(--t3)"] { color: #3a3a3c !important; }
+
+/* Monospace amounts — keep navy not light */
+td[style*="font-family:monospace"],
+td span[style*="font-family:monospace"] { color: var(--ac) !important; font-weight: 600 !important; }
+
+/* Stat card summary rows — readable */
+#jcstatsbar span[style*="color:#d97706"] { color: #92400e !important; }
+#jcstatsbar span[style*="color:#b91c1c"] { color: #7f1d1d !important; }
+
+/* Sidebar stays white text - do not override */
+.navitem, .navitem * { font-family: 'Inter', sans-serif !important; }
+
+/* Filter selects - readable */
+select[id^="SEARCHFIELD"], select[id^="JCF"], select[id^="JF"] {
+  color: var(--ac) !important;
+  font-size: 12px !important;
+}
+
+/* Wider columns for readability */
+td:nth-child(5) { max-width:160px }  /* driver */
+td:nth-child(9) { max-width:220px }  /* description */
+td[title] { cursor:help }
+
+/* JC Summary action buttons - bolder */
+.jcs-prev{color:#5b21b6!important;border-color:#5b21b6!important;font-weight:700!important}
+.jcs-pdf{color:#1e40af!important;border-color:#1e40af!important;font-weight:700!important}
+.jcs-att{color:#92400e!important;border-color:#92400e!important;font-weight:700!important}
+.jcs-view{color:#166534!important;border-color:#166534!important;font-weight:700!important}
+.jcs-dl{color:#1e40af!important;border-color:#1e40af!important;font-weight:700!important}
+.jcs-rep{color:#92400e!important;border-color:#92400e!important;font-weight:700!important}
+.jcs-del{color:#991b1b!important;border-color:#991b1b!important;font-weight:700!important}
+.actbtn.jcr-edit{color:#1e40af!important;border-color:#1e40af!important;font-weight:700!important}
+.actbtn.jcr-del{color:#991b1b!important;border-color:#991b1b!important;font-weight:700!important}
+
+/* Prevent browser swipe back/forward navigation */
+html, body { overscroll-behavior-x: none; }
+
+/* Allow text selection inside modals without closing them */
+.modal, .modalbody, .modal * { user-select: text !important; -webkit-user-select: text !important; }
+.overlay { user-select: none; }
+
+/* Allow pinch zoom on trackpad and touch */
+html { touch-action: pan-x pan-y pinch-zoom; }
+body { touch-action: pan-x pan-y pinch-zoom; }
+
+/* Action button spacing in JC tables */
+.jcs-prev, .jcs-pdf, .jcs-view, .jcs-dl, .jcs-rep, .jcs-att, .jcs-del { margin:1px 2px !important; }
 </style>
+
+
 </head>
 <body>
 <div class="loadingoverlay hidden" id="loading"><div class="spinner"></div><div style="color:var(--t2);font-size:13px" id="loadtext">Connecting...</div></div>
 <div class="topbar">
-  <div class="logo">AK <span>TRANSPORT</span></div>
+  <div style="display:flex;align-items:center;gap:10px">
+    <button id="sidebar_toggle" onclick="toggleSidebar()" title="Toggle navigation" style="background:var(--s2);border:1px solid var(--br);cursor:pointer;padding:6px 10px;border-radius:8px;color:var(--ac);font-size:16px;line-height:1;font-weight:700;display:flex;align-items:center;justify-content:center">&#9776;</button>
+    <div class="logo">AK <span>TRANSPORT</span></div>
+  </div>
   <div class="ta">
     <div class="syncbadge"><div class="dot" id="syndot"></div><span id="synlbl">Connecting...</span></div>
     <button class="btn bg" onclick="refreshAll()">&#8635; Refresh</button>
@@ -169,32 +525,96 @@ select option{background:var(--s2)}textarea{resize:vertical;min-height:56px}inpu
     </div>
   </div>
 </div>
-<div class="layout">
+<div class="layout" id="mainlayout" style="display:none">
   <div class="sidebar">
-    <div class="slbl">Navigation</div>
-    <div class="navitem active" id="nav-workshop" onclick="switchView('workshop')"><div class="navdot" style="background:#4f8ef7"></div>Workshop Requisition<span class="navbadge" id="badge-workshop">0</span></div>
-    <div class="navitem" id="nav-today" onclick="switchView('today')"><div class="navdot" style="background:#fc5ca4"></div>Today's Request<span class="navbadge" id="badge-today">0</span></div>
-    <div class="divider"></div>
-    <div class="slbl">Status Sheets</div>
-    <div class="navitem" id="nav-RECEIVED" onclick="switchView('RECEIVED')"><div class="navdot" style="background:#4ade80"></div>Received<span class="navbadge" id="badge-RECEIVED">0</span></div>
-    <div class="navitem" id="nav-RECEIVED NOT ISSUED" onclick="switchView('RECEIVED NOT ISSUED')"><div class="navdot" style="background:#fbbf24"></div>Received Not Issued<span class="navbadge" id="badge-RECEIVED NOT ISSUED">0</span></div>
-    <div class="navitem" id="nav-ON HOLD" onclick="switchView('ON HOLD')"><div class="navdot" style="background:#f87171"></div>On Hold<span class="navbadge" id="badge-ON HOLD">0</span></div>
-    <div class="navitem" id="nav-PAID NOT RECEIVED" onclick="switchView('PAID NOT RECEIVED')"><div class="navdot" style="background:#60a5fa"></div>Paid Not Received<span class="navbadge" id="badge-PAID NOT RECEIVED">0</span></div>
-    <div class="navitem" id="nav-NOT PAID" onclick="switchView('NOT PAID')"><div class="navdot" style="background:#a0a0c0"></div>Not Paid<span class="navbadge" id="badge-NOT PAID">0</span></div>
-    <div class="divider"></div>
-    <div class="slbl">Fleet</div>
-    <div class="navitem" id="nav-drivers" onclick="switchView('drivers')"><div class="navdot" style="background:#38bdf8"></div>Drivers<span class="navbadge" id="badge-drivers">0</span></div>
-    <div class="navitem" id="nav-vehicles" onclick="switchView('vehicles')"><div class="navdot" style="background:#fb923c"></div>Vehicles<span class="navbadge" id="badge-vehicles">0</span></div>
-    <div class="divider"></div>
-    <div class="slbl">Reports</div>
-    <div class="navitem" id="nav-jobcards" onclick="switchView('jobcards')"><div class="navdot" style="background:#34d399"></div>Job Cards<span class="navbadge" id="badge-jobcards">0</span></div>
-    <div class="navitem" id="nav-jcsummary" onclick="switchView('jcsummary')"><div class="navdot" style="background:#818cf8"></div>Job Card Summary<span class="navbadge" id="badge-jcsummary">0</span></div>
-    <div class="navitem" id="nav-suppliers" onclick="switchView('suppliers')"><div class="navdot" style="background:#f97316"></div>Suppliers<span class="navbadge" id="badge-suppliers">0</span></div>
-    <div class="navitem" id="nav-spareparts" onclick="switchView('spareparts')"><div class="navdot" style="background:#a78bfa"></div>Spare Parts<span class="navbadge" id="badge-spareparts">0</span></div>
-    <div class="navitem" id="nav-dashboard" onclick="switchView('dashboard')"><div class="navdot" style="background:#7c5cfc"></div>Dashboard</div>
+    <!-- Brand header in sidebar -->
+    <div style="padding:20px 16px 16px;border-bottom:1px solid rgba(255,255,255,.1);margin-bottom:8px;background:rgba(0,0,0,.1)">
+      <div style="display:flex;align-items:center;gap:10px">
+        <div style="width:34px;height:34px;background:rgba(255,255,255,.15);border-radius:9px;display:flex;align-items:center;justify-content:center;flex-shrink:0">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M1 22V9l11-7 11 7v13" stroke="white" stroke-width="2" stroke-linejoin="round"/><path d="M9 22V14h6v8" stroke="white" stroke-width="2" stroke-linejoin="round"/></svg>
+        </div>
+        <div>
+          <div style="font-family:'Outfit',sans-serif;font-size:13px;font-weight:800;color:#ffffff;letter-spacing:-.1px">AK Transport</div>
+          <div style="font-size:10px;color:rgba(255,255,255,.45);font-weight:500;margin-top:1px">Workshop System</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Requisition section -->
+    <div class="slbl">Requisition</div>
+    <div class="navitem active" id="nav-workshop" onclick="switchView('workshop')">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14,2 14,8 20,8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+      Workshop Requisition<span class="navbadge" id="badge-workshop">0</span>
+    </div>
+    <div class="navitem" id="nav-today" onclick="switchView('today')">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12,6 12,12 16,14"/></svg>
+      High Priority Request<span class="navbadge" id="badge-today">0</span>
+    </div>
+
+    <!-- Status section -->
+    <div class="slbl" style="margin-top:6px">Status</div>
+    <div class="navitem" id="nav-RECEIVED" onclick="switchView('RECEIVED')">
+      <span style="width:8px;height:8px;border-radius:50%;background:#34d399;flex-shrink:0;display:inline-block"></span>
+      Received<span class="navbadge" id="badge-RECEIVED">0</span>
+    </div>
+    <div class="navitem" id="nav-RECEIVED NOT ISSUED" onclick="switchView('RECEIVED NOT ISSUED')">
+      <span style="width:8px;height:8px;border-radius:50%;background:#fbbf24;flex-shrink:0;display:inline-block"></span>
+      Received Not Issued<span class="navbadge" id="badge-RECEIVED NOT ISSUED">0</span>
+    </div>
+    <div class="navitem" id="nav-ON HOLD" onclick="switchView('ON HOLD')">
+      <span style="width:8px;height:8px;border-radius:50%;background:#f87171;flex-shrink:0;display:inline-block"></span>
+      On Hold<span class="navbadge" id="badge-ON HOLD">0</span>
+    </div>
+    <div class="navitem" id="nav-PAID NOT RECEIVED" onclick="switchView('PAID NOT RECEIVED')">
+      <span style="width:8px;height:8px;border-radius:50%;background:#60a5fa;flex-shrink:0;display:inline-block"></span>
+      Paid Not Received<span class="navbadge" id="badge-PAID NOT RECEIVED">0</span>
+    </div>
+    <div class="navitem" id="nav-NOT PAID" onclick="switchView('NOT PAID')">
+      <span style="width:8px;height:8px;border-radius:50%;background:#fb923c;flex-shrink:0;display:inline-block"></span>
+      Not Paid<span class="navbadge" id="badge-NOT PAID">0</span>
+    </div>
+
+    <!-- Fleet section -->
+    <div class="slbl" style="margin-top:6px">Fleet</div>
+    <div class="navitem" id="nav-drivers" onclick="switchView('drivers')">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+      Drivers<span class="navbadge" id="badge-drivers">0</span>
+    </div>
+    <div class="navitem" id="nav-vehicles" onclick="switchView('vehicles')">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="3" width="15" height="13" rx="2"/><path d="M16 8h4l3 5v3h-7V8z"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>
+      Vehicles<span class="navbadge" id="badge-vehicles">0</span>
+    </div>
+
+    <!-- Job Cards section -->
+    <div class="slbl" style="margin-top:6px">Job Cards</div>
+    <div class="navitem" id="nav-jobcards" onclick="switchView('jobcards')">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+      Job Cards<span class="navbadge" id="badge-jobcards">0</span>
+    </div>
+    <div class="navitem" id="nav-jcsummary" onclick="switchView('jcsummary')">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+      JC Summary<span class="navbadge" id="badge-jcsummary">0</span>
+    </div>
+
+    <!-- Inventory section -->
+    <div class="slbl" style="margin-top:6px">Inventory</div>
+    <div class="navitem" id="nav-suppliers" onclick="switchView('suppliers')">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/></svg>
+      Suppliers<span class="navbadge" id="badge-suppliers">0</span>
+    </div>
+    <div class="navitem" id="nav-spareparts" onclick="switchView('spareparts')">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a1 1 0 000 1.4l1.6 1.6a1 1 0 001.4 0l3.77-3.77a6 6 0 01-7.94 7.94l-6.91 6.91a2.12 2.12 0 01-3-3l6.91-6.91a6 6 0 017.94-7.94l-3.76 3.76z"/></svg>
+      Spare Parts<span class="navbadge" id="badge-spareparts">0</span>
+    </div>
+    <div class="navitem" id="nav-dashboard" onclick="switchView('dashboard')">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+      Dashboard
+    </div>
+
+    <!-- User management accessible via user menu only -->
     <div class="divider" id="div-usermgmt" style="display:none"></div>
-    <div class="slbl" id="slbl-usermgmt" style="display:none">System</div>
-    <div class="navitem" id="nav-usermgmt" style="display:none" onclick="switchView('usermgmt')"><div class="navdot" style="background:#f87171"></div>User Management</div>
+    <div id="slbl-usermgmt" style="display:none"></div>
+    <div id="nav-usermgmt" style="display:none"></div>
   </div>
   <div class="main">
     <div id="toolbar" style="padding:14px 20px 0;display:flex;align-items:center;justify-content:space-between;flex-shrink:0">
@@ -203,20 +623,20 @@ select option{background:var(--s2)}textarea{resize:vertical;min-height:56px}inpu
     </div>
     <div id="searchrow" style="padding:8px 20px;display:grid;grid-template-columns:1fr 1fr;gap:8px;flex-shrink:0">
       <div style="display:flex;gap:6px">
-        <select id="SEARCHFIELD1" style="background:var(--s1);border:1.5px solid var(--ac);border-radius:8px;padding:8px 10px;color:var(--ac);font-size:12px;font-weight:600;outline:none;cursor:pointer;width:148px;flex-shrink:0">
-          <option value="truck">🚛 Truck No</option><option value="reqNo">🔢 REQ No</option><option value="description">🔧 Spare Part</option><option value="supplier">🏪 Supplier</option><option value="driverName">👤 Driver</option><option value="jobCardNo">📋 Job Card</option><option value="lpoNo">📄 LPO No</option><option value="priority">⚡ Priority</option><option value="paymentMode">💳 Payment Mode</option><option value="category">🏷 Category</option><option value="requestedBy">👤 Requested By</option><option value="dateRequested">📅 Date Requested</option><option value="dateReceived">📅 Date Received</option><option value="dateIssued">📅 Date Issued</option>
+        <select id="SEARCHFIELD1" style="background:var(--s1);border:1.5px solid var(--ac);border-radius:8px;padding:8px 10px;color:#1d3c6e;font-size:12px;font-weight:600;outline:none;cursor:pointer;width:148px;flex-shrink:0">
+          <option value="truck">🚛 Truck No</option><option value="reqNo">🔢 REQ No</option><option value="description">🔧 Spare Part</option><option value="supplier">🏪 Supplier</option><option value="driverName">👤 Driver</option><option value="jobCardNo">📋 Job Card</option><option value="lpoNo">📄 LPO No</option><option value="priority">⚡ Priority</option><option value="paymentMode">💳 Payment Mode</option><option value="category">🏷 Category</option><option value="requestedBy">👤 Requested By</option><option value="dateRequested">📅 Date Requested</option><option value="dateReceived">📅 Date Received</option><option value="dateIssued">📅 Date Issued</option><option value="orderStatus">🚦 Order Status</option><option value="clientName">🏢 Client</option>
         </select>
         <input type="text" id="SEARCH1" placeholder="e.g. T843DEE" autocomplete="off" spellcheck="false" style="flex:1;min-width:0">
       </div>
       <div style="display:flex;gap:6px">
-        <select id="SEARCHFIELD2" style="background:var(--s1);border:1.5px solid var(--ac);border-radius:8px;padding:8px 10px;color:var(--ac);font-size:12px;font-weight:600;outline:none;cursor:pointer;width:148px;flex-shrink:0">
-          <option value="">— Filter 2 —</option><option value="truck">🚛 Truck No</option><option value="reqNo">🔢 REQ No</option><option value="description">🔧 Spare Part</option><option value="supplier">🏪 Supplier</option><option value="driverName">👤 Driver</option><option value="jobCardNo">📋 Job Card</option><option value="lpoNo">📄 LPO No</option><option value="priority">⚡ Priority</option><option value="paymentMode">💳 Payment Mode</option><option value="category">🏷 Category</option><option value="requestedBy">👤 Requested By</option><option value="dateRequested">📅 Date Requested</option><option value="dateReceived">📅 Date Received</option><option value="dateIssued">📅 Date Issued</option>
+        <select id="SEARCHFIELD2" style="background:var(--s1);border:1.5px solid var(--ac);border-radius:8px;padding:8px 10px;color:#1d3c6e;font-size:12px;font-weight:600;outline:none;cursor:pointer;width:148px;flex-shrink:0">
+          <option value="">— Filter 2 —</option><option value="truck">🚛 Truck No</option><option value="reqNo">🔢 REQ No</option><option value="description">🔧 Spare Part</option><option value="supplier">🏪 Supplier</option><option value="driverName">👤 Driver</option><option value="jobCardNo">📋 Job Card</option><option value="lpoNo">📄 LPO No</option><option value="priority">⚡ Priority</option><option value="paymentMode">💳 Payment Mode</option><option value="category">🏷 Category</option><option value="requestedBy">👤 Requested By</option><option value="dateRequested">📅 Date Requested</option><option value="dateReceived">📅 Date Received</option><option value="dateIssued">📅 Date Issued</option><option value="orderStatus">🚦 Order Status</option><option value="clientName">🏢 Client</option>
         </select>
         <input type="text" id="SEARCH2" placeholder="Optional..." autocomplete="off" spellcheck="false" style="flex:1;min-width:0">
       </div>
       <div style="display:flex;gap:6px">
-        <select id="SEARCHFIELD3" style="background:var(--s1);border:1.5px solid var(--ac);border-radius:8px;padding:8px 10px;color:var(--ac);font-size:12px;font-weight:600;outline:none;cursor:pointer;width:148px;flex-shrink:0">
-          <option value="">— Filter 3 —</option><option value="truck">🚛 Truck No</option><option value="reqNo">🔢 REQ No</option><option value="description">🔧 Spare Part</option><option value="supplier">🏪 Supplier</option><option value="driverName">👤 Driver</option><option value="jobCardNo">📋 Job Card</option><option value="lpoNo">📄 LPO No</option><option value="priority">⚡ Priority</option><option value="paymentMode">💳 Payment Mode</option><option value="category">🏷 Category</option><option value="requestedBy">👤 Requested By</option><option value="dateRequested">📅 Date Requested</option><option value="dateReceived">📅 Date Received</option><option value="dateIssued">📅 Date Issued</option>
+        <select id="SEARCHFIELD3" style="background:var(--s1);border:1.5px solid var(--ac);border-radius:8px;padding:8px 10px;color:#1d3c6e;font-size:12px;font-weight:600;outline:none;cursor:pointer;width:148px;flex-shrink:0">
+          <option value="">— Filter 3 —</option><option value="truck">🚛 Truck No</option><option value="reqNo">🔢 REQ No</option><option value="description">🔧 Spare Part</option><option value="supplier">🏪 Supplier</option><option value="driverName">👤 Driver</option><option value="jobCardNo">📋 Job Card</option><option value="lpoNo">📄 LPO No</option><option value="priority">⚡ Priority</option><option value="paymentMode">💳 Payment Mode</option><option value="category">🏷 Category</option><option value="requestedBy">👤 Requested By</option><option value="dateRequested">📅 Date Requested</option><option value="dateReceived">📅 Date Received</option><option value="dateIssued">📅 Date Issued</option><option value="orderStatus">🚦 Order Status</option><option value="clientName">🏢 Client</option>
         </select>
         <input type="text" id="SEARCH3" placeholder="Optional..." autocomplete="off" spellcheck="false" style="flex:1;min-width:0">
       </div>
@@ -228,7 +648,7 @@ select option{background:var(--s2)}textarea{resize:vertical;min-height:56px}inpu
       </div>
       <!-- Date range row - shown when a date field is selected -->
       <div id="daterangerow" style="display:none;grid-column:1/-1">
-        <div style="display:flex;gap:8px;align-items:center;background:rgba(79,142,247,.07);border:1px solid rgba(79,142,247,.2);border-radius:8px;padding:8px 12px">
+        <div style="display:flex;gap:8px;align-items:center;background:rgba(29,60,110,.05);border:1px solid rgba(29,60,110,.15);border-radius:8px;padding:8px 12px">
           <span style="font-size:11px;font-weight:700;color:var(--ac);white-space:nowrap">📅 Date Range:</span>
           <input type="date" id="DATE_FROM" style="background:var(--s1);border:1.5px solid var(--br);border-radius:7px;padding:6px 10px;color:var(--tx);font-size:12px;outline:none;width:150px" onchange="applyFilters()" title="From date">
           <span style="color:var(--t2);font-size:12px">to</span>
@@ -258,7 +678,7 @@ select option{background:var(--s2)}textarea{resize:vertical;min-height:56px}inpu
     <div id="jcfilterrow" style="display:none;padding:0 20px 8px;flex-shrink:0">
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
         <div style="display:flex;gap:6px">
-          <select id="JCF1_FIELD" style="background:var(--s1);border:1.5px solid var(--ac);border-radius:8px;padding:8px 10px;color:var(--ac);font-size:12px;font-weight:600;outline:none;cursor:pointer;width:148px;flex-shrink:0" onchange="onJCFieldChange()">
+          <select id="JCF1_FIELD" style="background:var(--s1);border:1.5px solid var(--ac);border-radius:8px;padding:8px 10px;color:#1d3c6e;font-size:12px;font-weight:600;outline:none;cursor:pointer;width:148px;flex-shrink:0" onchange="onJCFieldChange()">
             <option value="vehicle">🚛 Vehicle No</option>
             <option value="vehicleType">🏷 Type</option>
             <option value="driverName">👤 Driver</option>
@@ -273,7 +693,7 @@ select option{background:var(--s2)}textarea{resize:vertical;min-height:56px}inpu
             oninput="applyJCFilter()">
         </div>
         <div style="display:flex;gap:6px">
-          <select id="JCF2_FIELD" style="background:var(--s1);border:1.5px solid var(--ac);border-radius:8px;padding:8px 10px;color:var(--ac);font-size:12px;font-weight:600;outline:none;cursor:pointer;width:148px;flex-shrink:0" onchange="onJCFieldChange()">
+          <select id="JCF2_FIELD" style="background:var(--s1);border:1.5px solid var(--ac);border-radius:8px;padding:8px 10px;color:#1d3c6e;font-size:12px;font-weight:600;outline:none;cursor:pointer;width:148px;flex-shrink:0" onchange="onJCFieldChange()">
             <option value="">— Filter 2 —</option>
             <option value="vehicle">🚛 Vehicle No</option>
             <option value="vehicleType">🏷 Type</option>
@@ -289,7 +709,7 @@ select option{background:var(--s2)}textarea{resize:vertical;min-height:56px}inpu
             oninput="applyJCFilter()">
         </div>
         <div style="display:flex;gap:6px">
-          <select id="JCF3_FIELD" style="background:var(--s1);border:1.5px solid var(--ac);border-radius:8px;padding:8px 10px;color:var(--ac);font-size:12px;font-weight:600;outline:none;cursor:pointer;width:148px;flex-shrink:0" onchange="onJCFieldChange()">
+          <select id="JCF3_FIELD" style="background:var(--s1);border:1.5px solid var(--ac);border-radius:8px;padding:8px 10px;color:#1d3c6e;font-size:12px;font-weight:600;outline:none;cursor:pointer;width:148px;flex-shrink:0" onchange="onJCFieldChange()">
             <option value="">— Filter 3 —</option>
             <option value="startDate">📅 Start Date</option>
             <option value="endDate">📅 End Date</option>
@@ -302,7 +722,7 @@ select option{background:var(--s2)}textarea{resize:vertical;min-height:56px}inpu
             oninput="applyJCFilter()">
         </div>
         <div style="display:flex;gap:6px">
-          <select id="JCF4_FIELD" style="background:var(--s1);border:1.5px solid var(--ac);border-radius:8px;padding:8px 10px;color:var(--ac);font-size:12px;font-weight:600;outline:none;cursor:pointer;width:148px;flex-shrink:0" onchange="onJCFieldChange()">
+          <select id="JCF4_FIELD" style="background:var(--s1);border:1.5px solid var(--ac);border-radius:8px;padding:8px 10px;color:#1d3c6e;font-size:12px;font-weight:600;outline:none;cursor:pointer;width:148px;flex-shrink:0" onchange="onJCFieldChange()">
             <option value="">— Filter 4 —</option>
             <option value="startDate">📅 Start Date</option>
             <option value="endDate">📅 End Date</option>
@@ -317,14 +737,14 @@ select option{background:var(--s2)}textarea{resize:vertical;min-height:56px}inpu
       </div>
       <!-- JC Date range row -->
       <div id="jcdaterangerow" style="display:none;margin-top:8px">
-        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;background:rgba(79,142,247,.07);border:1px solid rgba(79,142,247,.2);border-radius:8px;padding:10px 14px">
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;background:rgba(29,60,110,.05);border:1px solid rgba(29,60,110,.15);border-radius:8px;padding:10px 14px">
           <span style="font-size:11px;font-weight:700;color:var(--ac);white-space:nowrap">📅 Date Range:</span>
           <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
             <input type="date" id="JC_DATE_FROM" style="background:var(--s1);border:1.5px solid var(--br);border-radius:7px;padding:7px 10px;color:var(--tx);font-size:13px;outline:none;min-width:160px" onchange="applyJCFilter()">
             <span style="color:var(--t2);font-size:12px;font-weight:600">→</span>
             <input type="date" id="JC_DATE_TO" style="background:var(--s1);border:1.5px solid var(--br);border-radius:7px;padding:7px 10px;color:var(--tx);font-size:13px;outline:none;min-width:160px" onchange="applyJCFilter()">
           </div>
-          <span id="jc_daterange_label" style="font-size:11px;color:var(--t3)"></span>
+          <span id="jc_daterange_label" style="font-size:11px;color:#515154;font-weight:500"></span>
           <button class="btn bg" onclick="clearJCDateRange()" style="padding:6px 12px;font-size:12px;margin-left:auto;white-space:nowrap">✕ Clear Dates</button>
         </div>
       </div>
@@ -334,7 +754,7 @@ select option{background:var(--s2)}textarea{resize:vertical;min-height:56px}inpu
     <div id="jcsfilterrow" style="display:none;padding:0 20px 8px;flex-shrink:0">
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
         <div style="display:flex;gap:6px">
-          <select id="JF1_FIELD" style="background:var(--s1);border:1.5px solid var(--ac);border-radius:8px;padding:8px 10px;color:var(--ac);font-size:12px;font-weight:600;outline:none;cursor:pointer;width:148px;flex-shrink:0" onchange="onJCSFieldChange()">
+          <select id="JF1_FIELD" style="background:var(--s1);border:1.5px solid var(--ac);border-radius:8px;padding:8px 10px;color:#1d3c6e;font-size:12px;font-weight:600;outline:none;cursor:pointer;width:148px;flex-shrink:0" onchange="onJCSFieldChange()">
             <option value="vehicle">🚛 Truck No</option>
             <option value="driverName">👤 Driver</option>
             <option value="code">📋 JC Number</option>
@@ -346,7 +766,7 @@ select option{background:var(--s2)}textarea{resize:vertical;min-height:56px}inpu
             oninput="applyJCSFilter()">
         </div>
         <div style="display:flex;gap:6px">
-          <select id="JF2_FIELD" style="background:var(--s1);border:1.5px solid var(--ac);border-radius:8px;padding:8px 10px;color:var(--ac);font-size:12px;font-weight:600;outline:none;cursor:pointer;width:148px;flex-shrink:0" onchange="onJCSFieldChange()">
+          <select id="JF2_FIELD" style="background:var(--s1);border:1.5px solid var(--ac);border-radius:8px;padding:8px 10px;color:#1d3c6e;font-size:12px;font-weight:600;outline:none;cursor:pointer;width:148px;flex-shrink:0" onchange="onJCSFieldChange()">
             <option value="">— Filter 2 —</option>
             <option value="vehicle">🚛 Truck No</option>
             <option value="driverName">👤 Driver</option>
@@ -359,7 +779,7 @@ select option{background:var(--s2)}textarea{resize:vertical;min-height:56px}inpu
             oninput="applyJCSFilter()">
         </div>
         <div style="display:flex;gap:6px">
-          <select id="JF3_FIELD" style="background:var(--s1);border:1.5px solid var(--ac);border-radius:8px;padding:8px 10px;color:var(--ac);font-size:12px;font-weight:600;outline:none;cursor:pointer;width:148px;flex-shrink:0" onchange="onJCSFieldChange()">
+          <select id="JF3_FIELD" style="background:var(--s1);border:1.5px solid var(--ac);border-radius:8px;padding:8px 10px;color:#1d3c6e;font-size:12px;font-weight:600;outline:none;cursor:pointer;width:148px;flex-shrink:0" onchange="onJCSFieldChange()">
             <option value="">— Filter 3 —</option>
             <option value="startDate">📅 Start Date</option>
             <option value="endDate">📅 End Date</option>
@@ -372,7 +792,7 @@ select option{background:var(--s2)}textarea{resize:vertical;min-height:56px}inpu
             oninput="applyJCSFilter()">
         </div>
         <div style="display:flex;gap:6px">
-          <select id="JF4_FIELD" style="background:var(--s1);border:1.5px solid var(--ac);border-radius:8px;padding:8px 10px;color:var(--ac);font-size:12px;font-weight:600;outline:none;cursor:pointer;width:148px;flex-shrink:0" onchange="onJCSFieldChange()">
+          <select id="JF4_FIELD" style="background:var(--s1);border:1.5px solid var(--ac);border-radius:8px;padding:8px 10px;color:#1d3c6e;font-size:12px;font-weight:600;outline:none;cursor:pointer;width:148px;flex-shrink:0" onchange="onJCSFieldChange()">
             <option value="">— Filter 4 —</option>
             <option value="startDate">📅 Start Date</option>
             <option value="endDate">📅 End Date</option>
@@ -386,59 +806,88 @@ select option{background:var(--s2)}textarea{resize:vertical;min-height:56px}inpu
         </div>
       </div>
       <div id="jcsdaterangerow" style="display:none;margin-top:8px">
-        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;background:rgba(79,142,247,.07);border:1px solid rgba(79,142,247,.2);border-radius:8px;padding:10px 14px">
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;background:rgba(29,60,110,.05);border:1px solid rgba(29,60,110,.15);border-radius:8px;padding:10px 14px">
           <span style="font-size:11px;font-weight:700;color:var(--ac);white-space:nowrap">📅 Date Range:</span>
           <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
             <input type="date" id="JCS_DATE_FROM" style="background:var(--s1);border:1.5px solid var(--br);border-radius:7px;padding:7px 10px;color:var(--tx);font-size:13px;outline:none;min-width:160px" onchange="applyJCSFilter()">
             <span style="color:var(--t2);font-size:12px;font-weight:600">→</span>
             <input type="date" id="JCS_DATE_TO" style="background:var(--s1);border:1.5px solid var(--br);border-radius:7px;padding:7px 10px;color:var(--tx);font-size:13px;outline:none;min-width:160px" onchange="applyJCSFilter()">
           </div>
-          <span id="jcs_daterange_label" style="font-size:11px;color:var(--t3)"></span>
+          <span id="jcs_daterange_label" style="font-size:11px;color:#515154;font-weight:500"></span>
           <button class="btn bg" onclick="clearJCSDateRange()" style="padding:6px 12px;font-size:12px;margin-left:auto;white-space:nowrap">✕ Clear Dates</button>
         </div>
       </div>
     </div>
-    <!-- JC Stats Summary Bar - shown on jobcards and jcsummary views -->
-    <div id="jcstatsbar" style="display:none;padding:0 20px 12px;flex-shrink:0">
-      <!-- Total badges row -->
-      <div style="display:flex;gap:10px;margin-bottom:10px;align-items:center;flex-wrap:wrap">
-        <div id="jcs_total_ws" style="background:rgba(79,142,247,.15);color:#4f8ef7;border:1px solid #4f8ef7;padding:5px 12px;border-radius:6px;font-size:12px;font-weight:700"></div>
-        <div id="jcs_total_bd" style="background:rgba(249,115,22,.15);color:#f97316;border:1px solid #f97316;padding:5px 12px;border-radius:6px;font-size:12px;font-weight:700"></div>
-        <div style="margin-left:auto;display:flex;gap:8px">
-          <div style="background:var(--s2);border:1px solid var(--br);padding:5px 12px;border-radius:6px;font-size:12px;color:var(--t2)">Workshop Spent: <span id="jcs_top_ws_amt" style="color:#4ade80;font-weight:700;font-family:monospace">0</span></div>
-          <div style="background:var(--s2);border:1px solid var(--br);padding:5px 12px;border-radius:6px;font-size:12px;color:var(--t2)">Breakdown Spent: <span id="jcs_top_bd_amt" style="color:#4ade80;font-weight:700;font-family:monospace">0</span></div>
+    <!-- JC slim one-line summary strip -->
+    <div id="jcstatsbar" style="display:none;padding:0 22px 6px;flex-shrink:0">
+      <!-- Top bar: total JCs + unsigned counts -->
+      <div style="display:flex;gap:8px;margin-bottom:8px;flex-wrap:wrap">
+        <div style="display:flex;align-items:center;gap:8px;background:#ffffff;border:1px solid #ebebed;border-radius:8px;padding:7px 14px;flex:1;min-width:160px;box-shadow:0 1px 3px rgba(0,0,0,.04)">
+          <div style="font-size:10px;font-weight:700;color:var(--ac);text-transform:uppercase;letter-spacing:.06em">Total Job Cards</div>
+          <span id="jcs_grand_total" style="font-size:15px;font-weight:800;color:var(--ac);font-family:'Outfit',sans-serif;margin-left:auto">0</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;background:#fff8f0;border:1px solid #fed7aa;border-radius:8px;padding:7px 14px;flex:1;min-width:180px;box-shadow:0 1px 3px rgba(0,0,0,.04)">
+          <div style="font-size:10px;font-weight:700;color:#92400e;text-transform:uppercase;letter-spacing:.06em">🏭 Workshop — Job Card Completed · Pending Sign-off</div>
+          <span id="jcs_ws_unsigned" style="font-size:15px;font-weight:800;color:#b45309;font-family:'Outfit',sans-serif;margin-left:auto">0</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;background:#fef2f2;border:1px solid #fecaca;border-radius:8px;padding:7px 14px;flex:1;min-width:180px;box-shadow:0 1px 3px rgba(0,0,0,.04)">
+          <div style="font-size:10px;font-weight:700;color:#991b1b;text-transform:uppercase;letter-spacing:.06em">🔧 Breakdown — Job Card Completed · Pending Sign-off</div>
+          <span id="jcs_bd_unsigned" style="font-size:15px;font-weight:800;color:#b91c1c;font-family:'Outfit',sans-serif;margin-left:auto">0</span>
         </div>
       </div>
-      <!-- Two column summary -->
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
-        <!-- Workshop -->
-        <div style="background:var(--s1);border:1px solid #4f8ef7;border-radius:10px;padding:14px">
-          <div style="font-family:'Outfit',sans-serif;font-size:13px;font-weight:800;color:#4f8ef7;margin-bottom:10px;display:flex;align-items:center;gap:6px">🏭 Workshop Summary</div>
-          <div style="display:flex;flex-direction:column;gap:7px;font-size:12px">
-            <div style="display:flex;justify-content:space-between"><span style="color:var(--t2)">Total Job Cards</span><span id="jcs_ws_total" style="font-weight:700;color:var(--tx)">0</span></div>
-            <div style="display:flex;justify-content:space-between"><span style="color:var(--t2)">Open (No Signed Doc)</span><span id="jcs_ws_open" style="font-weight:700;color:#fbbf24">0</span></div>
-            <div style="display:flex;justify-content:space-between"><span style="color:var(--t2)">Active (Not Completed)</span><span id="jcs_ws_active" style="font-weight:700;color:#f87171">0</span></div>
-            <div style="height:1px;background:var(--br);margin:2px 0"></div>
-            <div style="display:flex;justify-content:space-between"><span style="color:var(--t2)">— Minor Maintenance</span><span id="jcs_ws_minor" style="font-weight:700;color:var(--t2)">0</span></div>
-            <div style="display:flex;justify-content:space-between"><span style="color:var(--t2)">— Major Maintenance</span><span id="jcs_ws_major" style="font-weight:700;color:var(--t2)">0</span></div>
-            <div style="height:1px;background:var(--br);margin:2px 0"></div>
-            <div style="display:flex;justify-content:space-between"><span style="color:var(--t2)">Total Amount Spent</span><span id="jcs_ws_amt" style="font-weight:700;color:#4ade80;font-family:monospace">0</span></div>
+      <!-- Summary strip: Workshop LEFT, Breakdown RIGHT -->
+      <div style="display:flex;gap:0;align-items:stretch;background:#ffffff;border:1px solid #ebebed;border-radius:10px;overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,.04)">
+        <!-- Workshop block - LEFT -->
+        <div style="display:flex;align-items:center;gap:10px;padding:9px 18px;border-right:2px solid #ebebed;flex:1;flex-wrap:wrap">
+          <span style="font-size:10px;font-weight:700;color:#ffffff;background:var(--ac);padding:3px 8px;border-radius:5px;letter-spacing:.06em;text-transform:uppercase;flex-shrink:0">🏭 Workshop</span>
+          <div style="display:flex;align-items:center;gap:5px">
+            <span style="font-size:11px;color:#3a3a3c;font-weight:600">Total Spent</span>
+            <span id="jcs_ws_amt" style="font-size:13px;font-weight:700;color:var(--ac);font-family:monospace">0</span>
+          </div>
+          <div style="width:1px;background:#d1d1d6;height:14px;align-self:center;flex-shrink:0"></div>
+          <div style="display:flex;align-items:center;gap:5px">
+            <span style="font-size:11px;color:#3a3a3c;font-weight:600">Active trucks</span>
+            <span id="jcs_ws_active" style="font-size:13px;font-weight:700;color:#b91c1c">0</span>
+          </div>
+          <div style="width:1px;background:#d1d1d6;height:14px;align-self:center;flex-shrink:0"></div>
+          <div style="display:flex;align-items:center;gap:5px">
+            <span style="font-size:11px;color:#3a3a3c;font-weight:600">Active spend</span>
+            <span id="jcs_ws_active_amt" style="font-size:13px;font-weight:700;color:#b91c1c;font-family:monospace">0</span>
           </div>
         </div>
-        <!-- Breakdown -->
-        <div style="background:var(--s1);border:1px solid #f97316;border-radius:10px;padding:14px">
-          <div style="font-family:'Outfit',sans-serif;font-size:13px;font-weight:800;color:#f97316;margin-bottom:10px;display:flex;align-items:center;gap:6px">🔧 Breakdown Summary</div>
-          <div style="display:flex;flex-direction:column;gap:7px;font-size:12px">
-            <div style="display:flex;justify-content:space-between"><span style="color:var(--t2)">Total Job Cards</span><span id="jcs_bd_total" style="font-weight:700;color:var(--tx)">0</span></div>
-            <div style="display:flex;justify-content:space-between"><span style="color:var(--t2)">Open (No Signed Doc)</span><span id="jcs_bd_open" style="font-weight:700;color:#fbbf24">0</span></div>
-            <div style="display:flex;justify-content:space-between"><span style="color:var(--t2)">Active (Not Completed)</span><span id="jcs_bd_active" style="font-weight:700;color:#f87171">0</span></div>
-            <div style="height:1px;background:var(--br);margin:2px 0"></div>
-            <div style="display:flex;justify-content:space-between"><span style="color:var(--t2)">— Minor Maintenance</span><span id="jcs_bd_minor" style="font-weight:700;color:var(--t2)">0</span></div>
-            <div style="display:flex;justify-content:space-between"><span style="color:var(--t2)">— Major Maintenance</span><span id="jcs_bd_major" style="font-weight:700;color:var(--t2)">0</span></div>
-            <div style="height:1px;background:var(--br);margin:2px 0"></div>
-            <div style="display:flex;justify-content:space-between"><span style="color:var(--t2)">Total Amount Spent</span><span id="jcs_bd_amt" style="font-weight:700;color:#4ade80;font-family:monospace">0</span></div>
+        <!-- Breakdown block - RIGHT -->
+        <div style="display:flex;align-items:center;gap:10px;padding:9px 18px;flex:1;flex-wrap:wrap">
+          <span style="font-size:10px;font-weight:700;color:#ffffff;background:var(--ac);padding:3px 8px;border-radius:5px;letter-spacing:.06em;text-transform:uppercase;flex-shrink:0">🔧 Breakdown</span>
+          <div style="display:flex;align-items:center;gap:5px">
+            <span style="font-size:11px;color:#3a3a3c;font-weight:600">Total Spent</span>
+            <span id="jcs_bd_amt" style="font-size:13px;font-weight:700;color:var(--ac);font-family:monospace">0</span>
+          </div>
+          <div style="width:1px;background:#d1d1d6;height:14px;align-self:center;flex-shrink:0"></div>
+          <div style="display:flex;align-items:center;gap:5px">
+            <span style="font-size:11px;color:#3a3a3c;font-weight:600">Active trucks</span>
+            <span id="jcs_bd_active" style="font-size:13px;font-weight:700;color:#b91c1c">0</span>
+          </div>
+          <div style="width:1px;background:#d1d1d6;height:14px;align-self:center;flex-shrink:0"></div>
+          <div style="display:flex;align-items:center;gap:5px">
+            <span style="font-size:11px;color:#3a3a3c;font-weight:600">Active spend</span>
+            <span id="jcs_bd_active_amt" style="font-size:13px;font-weight:700;color:#b91c1c;font-family:monospace">0</span>
           </div>
         </div>
+        <!-- hidden elements kept for JS compatibility -->
+        <span id="jcs_total_ws" style="display:none">0</span>
+        <span id="jcs_total_bd" style="display:none">0</span>
+        <span id="jcs_top_ws_amt" style="display:none">0</span>
+        <span id="jcs_top_bd_amt" style="display:none">0</span>
+        <span id="jcs_ws_total" style="display:none">0</span>
+        <span id="jcs_ws_open" style="display:none">0</span>
+        <span id="jcs_ws_minor" style="display:none">0</span>
+        <span id="jcs_ws_major" style="display:none">0</span>
+        <span id="jcs_bd_total" style="display:none">0</span>
+        <span id="jcs_bd_open" style="display:none">0</span>
+        <span id="jcs_bd_minor" style="display:none">0</span>
+        <span id="jcs_bd_major" style="display:none">0</span>
+        <span id="jcs_ws_active_amt" style="display:none">0</span>
+        <span id="jcs_bd_active_amt" style="display:none">0</span>
       </div>
     </div>
 
@@ -465,7 +914,7 @@ window.onerror = function(msg, src, line, col, err) {
 };
 
 const API = 'https://script.google.com/macros/s/AKfycbyiXtmTbRUTzhIgLe4IlKc6tHf4fSN2chmETdCbLXazBTtQgR5xiRInSJL44e0NElhOkA/exec';
-const APP_VERSION = '202604271237';
+const APP_VERSION = '202605011229';
 
 // Auto-detect new version and force reload
 (function(){
@@ -497,6 +946,20 @@ let SPAREPARTS = [];
 let editingSup = null;
 let editingPart = null;
 
+// ── SIDEBAR TOGGLE ──
+function toggleSidebar() {
+  var sb = document.querySelector('.sidebar');
+  if (!sb) return;
+  var btn = document.getElementById('sidebar_toggle');
+  if (sb.style.display === 'none') {
+    sb.style.display = 'flex';
+    if (btn) btn.style.color = 'var(--ac)';
+  } else {
+    sb.style.display = 'none';
+    if (btn) btn.style.color = '#1a7f3c';
+  }
+}
+
 // ── DROPDOWN MENU ──
 function toggleDrop() {
   const d = document.getElementById('newdrop');
@@ -506,7 +969,7 @@ function closeDrop() { document.getElementById('newdrop').style.display = 'none'
 document.addEventListener('click', e => { if (!document.getElementById('newwrap').contains(e.target)) closeDrop(); });
 
 // ── SEARCH — wired ONCE at page load ──
-const PH = {truck:'e.g. T843DEE',reqNo:'e.g. REQ-001234',description:'e.g. BRAKE PAD',supplier:'e.g. GUPTA',driverName:'e.g. RAMADHAN',jobCardNo:'e.g. JN/AK00001',lpoNo:'e.g. PO-001234',priority:"e.g. TODAY'S REQUEST",paymentMode:'e.g. CASH',category:'e.g. WORKSHOP',requestedBy:'e.g. SABRI',dateRequested:'e.g. 2026-04-27',dateReceived:'e.g. 2026-04-28',dateIssued:'e.g. 2026-04-29'};
+const PH = {truck:'e.g. T843DEE',reqNo:'e.g. REQ-001234',description:'e.g. BRAKE PAD',supplier:'e.g. GUPTA',driverName:'e.g. RAMADHAN',jobCardNo:'e.g. JN/AK00001',lpoNo:'e.g. PO-001234',priority:'e.g. HIGH PRIORITY',paymentMode:'e.g. CASH',category:'e.g. WORKSHOP',requestedBy:'e.g. SABRI',dateRequested:'e.g. 2026-04-27',dateReceived:'e.g. 2026-04-28',dateIssued:'e.g. 2026-04-29'};
 ['SEARCH1','SEARCH2','SEARCH3'].forEach(id => {
   document.getElementById(id).addEventListener('input', applyFilters);
   document.getElementById(id).addEventListener('keydown', function(e){ if(e.key==='Escape'){this.value='';applyFilters();} });
@@ -527,7 +990,7 @@ function applyFilters() {
   if (['dashboard','suppliers','spareparts','jobcards','jcsummary','drivers','vehicles'].includes(currentView)) return;
   const fs = document.getElementById('STATUSFILTER').value;
   let data = ALL.slice();
-  if (currentView === 'today') data = data.filter(r => r.priority === "TODAY'S REQUEST" && r.status === 'NOT PAID');
+  if (currentView === 'today') data = data.filter(r => r.priority === 'HIGH PRIORITY' && r.status === 'NOT PAID');
   else if (currentView !== 'workshop') data = data.filter(r => r.status === currentView);
   if (fs) data = data.filter(r => r.status === fs);
   [{f:document.getElementById('SEARCHFIELD1').value,v:(document.getElementById('SEARCH1').value||'').trim().toLowerCase()},
@@ -578,10 +1041,14 @@ function loadMore(){currentPage++;paintTable(true);}
 function buildRow(r,isRO){
   const sc={'RECEIVED':'sR','RECEIVED NOT ISSUED':'sRNP','ON HOLD':'sOH','PAID NOT RECEIVED':'sPNR','NOT PAID':'sNR'};
   const desc=r.description||'';
-  const ph=r.priority==="TODAY'S REQUEST"?'<span class="ptbadge">TODAY</span>':`<span style="color:var(--t3);font-size:10px">${r.priority||''}</span>`;
+  const isHP=(r.priority||'').toUpperCase()==='HIGH PRIORITY';
+  const phColor = isHP && r.status==='NOT PAID' ? '#b91c1c' : 'var(--t2)';
+  const phWeight = isHP && r.status==='NOT PAID' ? '700' : '400';
+  const ph=`<span style="font-size:12px;font-weight:${phWeight};color:${phColor}">${r.priority||''}</span>`;
   const canER=canEditReq(r),canDR=canDeleteReq(r);
   const ac=isRO?'':`<td style="white-space:nowrap;overflow:visible;max-width:none">${canER?`<button class="actbtn e" onclick="editRecord('${r.id}')">✏ Edit</button>`:''} ${canDR?`<button class="actbtn d" onclick="deleteRecord('${r.id}')">🗑</button>`:''} ${r.status==='RECEIVED'?'<span style="font-size:9px;opacity:.4">🔒</span>':''}</td>`;
-  return `<tr>
+  return `<tr data-id="${r.id}">
+    <td style="text-align:center;width:36px"><input type="checkbox" class="row-chk" data-id="${r.id}" onchange="onRowCheck()" style="cursor:pointer;width:14px;height:14px;accent-color:var(--ac)"></td>
     <td><span class="reqbadge">${r.reqNo||''}</span></td>
     <td>${fd(r.dateRequested)}</td><td><b>${r.truck||''}</b></td>
     <td style="color:var(--t2);font-size:10px">${r.vehicleType||''}</td>
@@ -599,6 +1066,7 @@ function buildRow(r,isRO){
     <td style="color:var(--t2);font-size:10px">${r.requestedBy||''}</td>
     <td style="color:var(--t2);font-size:10px">${fd(r.dateIssued)}</td>
     <td style="color:var(--t2);font-size:11px;min-width:80px" title="${r.remarks||''}">${(r.remarks||'').length>25?(r.remarks||'').substring(0,25)+'…':(r.remarks||'')}</td>
+    ${(function(){var i=getJCInfo(r.jobCardNo);return '<td style="font-size:12px">'+i.orderStatus+'</td><td style="font-size:12px;color:var(--t2)">'+i.clientName+'</td>';})()}
     ${ac}</tr>`;
 }
 
@@ -608,6 +1076,7 @@ function si(col){return sortColumn===col?(sortDir===1?'↑':'↓'):'<span style=
 function buildHeader(){
   const isRO=!['workshop','today'].includes(currentView);
   document.getElementById('tablehead').innerHTML=`<tr>
+    <th style="width:36px;text-align:center"><input type="checkbox" id="chk_all" onchange="toggleAllRows(this)" style="cursor:pointer;width:15px;height:15px;accent-color:var(--ac)"></th>
     <th onclick="doSort('reqNo')">Req No ${si('reqNo')}</th>
     <th onclick="doSort('dateRequested')">Date ${si('dateRequested')}</th>
     <th onclick="doSort('truck')">Truck ${si('truck')}</th>
@@ -628,6 +1097,8 @@ function buildHeader(){
     <th onclick="doSort('requestedBy')">Req By ${si('requestedBy')}</th>
     <th onclick="doSort('dateIssued')">Date Issued ${si('dateIssued')}</th>
     <th onclick="doSort('remarks')" style="min-width:80px">Remarks ${si('remarks')}</th>
+    <th>Order Status</th>
+    <th>Client</th>
     ${!isRO?'<th>Actions</th>':''}
   </tr>`;
 }
@@ -636,8 +1107,9 @@ function buildHeader(){
 function switchView(v){
   currentView=v;
   document.querySelectorAll('.navitem').forEach(n=>n.classList.remove('active'));
+  clearSelection();
   const el=document.getElementById('nav-'+v);if(el)el.classList.add('active');
-  const titles={workshop:'Workshop Requisition',today:"Today's Requests",'RECEIVED':'Received','RECEIVED NOT ISSUED':'Received Not Issued','ON HOLD':'On Hold','PAID NOT RECEIVED':'Paid Not Received','NOT PAID':'Not Paid',suppliers:'Suppliers',spareparts:'Spare Parts',jobcards:'Job Cards',jcsummary:'Job Card Summary',drivers:'Drivers',vehicles:'Vehicles',dashboard:'Dashboard'};
+  const titles={workshop:'Workshop Requisition',today:"High Priority Requests",'RECEIVED':'Received','RECEIVED NOT ISSUED':'Received Not Issued','ON HOLD':'On Hold','PAID NOT RECEIVED':'Paid Not Received','NOT PAID':'Not Paid',suppliers:'Suppliers',spareparts:'Spare Parts',jobcards:'Job Cards',jcsummary:'Job Card Summary',drivers:'Drivers',vehicles:'Vehicles',dashboard:'Dashboard'};
   document.getElementById('viewtitle').textContent=titles[v]||v;
   ['SEARCH1','SEARCH2','SEARCH3'].forEach(id=>{document.getElementById(id).value='';});
   document.getElementById('STATUSFILTER').value='';
@@ -686,18 +1158,21 @@ function renderDashboard(){
   updateBadges();
   const c={'RECEIVED':0,'RECEIVED NOT ISSUED':0,'ON HOLD':0,'PAID NOT RECEIVED':0,'NOT PAID':0};
   let tod=0,tot=0,rec=0;
-  ALL.forEach(r=>{if(c.hasOwnProperty(r.status))c[r.status]++;if(r.priority==="TODAY'S REQUEST"&&r.status==='NOT PAID')tod++;if(r.cost)tot+=parseFloat(r.cost)||0;if(r.status==='RECEIVED'&&r.cost)rec+=parseFloat(r.cost)||0;});
+  var wsSpend=0, bdSpend=0;
+  ALL.forEach(r=>{if(c.hasOwnProperty(r.status))c[r.status]++;if(r.priority==='HIGH PRIORITY'&&r.status==='NOT PAID')tod++;if(r.cost)tot+=parseFloat(r.cost)||0;if(r.status==='RECEIVED'&&r.cost){rec+=parseFloat(r.cost)||0;if((r.category||'').toUpperCase()==='WORKSHOP')wsSpend+=parseFloat(r.cost)||0;else if((r.category||'').toUpperCase()==='BREAKDOWN')bdSpend+=parseFloat(r.cost)||0;}});
   const n=ALL.length,mx=Math.max(...Object.values(c),1);
   const col={'RECEIVED':'#4ade80','RECEIVED NOT ISSUED':'#fbbf24','ON HOLD':'#f87171','PAID NOT RECEIVED':'#60a5fa','NOT PAID':'#a0a0c0'};
   const bg={'RECEIVED':'linear-gradient(90deg,#166534,#4ade80)','RECEIVED NOT ISSUED':'linear-gradient(90deg,#92400e,#fbbf24)','ON HOLD':'linear-gradient(90deg,#991b1b,#f87171)','PAID NOT RECEIVED':'linear-gradient(90deg,#1e40af,#60a5fa)','NOT PAID':'linear-gradient(90deg,#3a3a5a,#a0a0c0)'};
   document.getElementById('dashcontent').innerHTML=`
     <div class="dgrid">
       <div class="statcard" onclick="switchView('workshop')"><div class="statlbl">Total Records</div><div class="statval" style="color:var(--ac)">${n.toLocaleString()}</div><div class="statsub">All requisitions</div></div>
-      <div class="statcard" onclick="switchView('today')"><div class="statlbl">Today's Requests</div><div class="statval" style="color:#fc5ca4">${tod}</div><div class="statsub">Pending today</div></div>
+      <div class="statcard" onclick="switchView('today')"><div class="statlbl">High Priority Requests</div><div class="statval" style="color:#fc5ca4">${tod}</div><div class="statsub">Pending today</div></div>
       <div class="statcard" onclick="switchView('RECEIVED')"><div class="statlbl">Received</div><div class="statval" style="color:#4ade80">${c['RECEIVED'].toLocaleString()}</div><div class="statsub">Parts fitted</div></div>
       <div class="statcard" onclick="switchView('ON HOLD')"><div class="statlbl">On Hold</div><div class="statval" style="color:#f87171">${c['ON HOLD'].toLocaleString()}</div><div class="statsub">Needs attention</div></div>
       <div class="statcard"><div class="statlbl">Total Cost</div><div class="statval" style="color:var(--ac);font-size:20px">${tot.toLocaleString()}</div><div class="statsub">All items</div></div>
-      <div class="statcard"><div class="statlbl">Received Cost</div><div class="statval" style="color:#4ade80;font-size:20px">${rec.toLocaleString()}</div><div class="statsub">Parts purchased</div></div>
+      <div class="statcard"><div class="statlbl">Received Cost</div><div class="statval" style="color:#166534;font-size:20px">${rec.toLocaleString()}</div><div class="statsub">Parts purchased</div></div>
+      <div class="statcard"><div class="statlbl">Workshop Spend</div><div class="statval" style="color:var(--ac);font-size:20px">${wsSpend.toLocaleString()}</div><div class="statsub">Workshop requisitions</div></div>
+      <div class="statcard"><div class="statlbl">Breakdown Spend</div><div class="statval" style="color:#b91c1c;font-size:20px">${bdSpend.toLocaleString()}</div><div class="statsub">Breakdown requisitions</div></div>
     </div>
     <div style="padding:0 20px 8px;font-size:10px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.1em">Job Cards Overview</div>
     <div class="dgrid" style="padding:0 20px 16px">
@@ -738,7 +1213,7 @@ function buildPie(c,col,n){
 // ── BADGES ──
 function updateBadges(){
   const c={};let t=0,p=0;
-  ALL.forEach(r=>{c[r.status]=(c[r.status]||0)+1;if(r.priority==="TODAY'S REQUEST"&&r.status==='NOT PAID')t++;if(r.status==='RECEIVED')p++;});
+  ALL.forEach(r=>{c[r.status]=(c[r.status]||0)+1;if(r.priority==='HIGH PRIORITY'&&r.status==='NOT PAID')t++;if(r.status==='RECEIVED')p++;});
   document.getElementById('badge-workshop').textContent=ALL.length;
   document.getElementById('badge-today').textContent=t;
   ['RECEIVED','RECEIVED NOT ISSUED','ON HOLD','PAID NOT RECEIVED','NOT PAID'].forEach(s=>{const el=document.getElementById('badge-'+s);if(el)el.textContent=c[s]||0;});
@@ -769,8 +1244,22 @@ async function refreshAll(){
   showLoad('Refreshing...');await loadRecords();hideLoad();updateBadges();applyFilters();toast('Data refreshed','ok');
 }
 function setSyncStatus(s){document.getElementById('syndot').className='dot '+s;document.getElementById('synlbl').textContent={on:'Live',sy:'Syncing...',er:'Offline'}[s]||s;}
-function showLoad(t){document.getElementById('loadtext').textContent=t;document.getElementById('loading').classList.remove('hidden');}
-function hideLoad(){document.getElementById('loading').classList.add('hidden');}
+function showLoad(t){
+  var lt=document.getElementById('loadtext');
+  if(lt) lt.textContent=t||'Loading...';
+  document.getElementById('loading').classList.remove('hidden');
+  // Cycle through progress messages
+  if(window._loadMsgTimer) clearInterval(window._loadMsgTimer);
+  var msgs=['Connecting to database...','Loading requisitions...','Loading job cards...','Loading fleet data...','Almost ready...'];
+  var i=0;
+  window._loadMsgTimer=setInterval(function(){
+    i++; if(i<msgs.length&&lt) lt.textContent=msgs[i];
+  },900);
+}
+function hideLoad(){
+  if(window._loadMsgTimer) clearInterval(window._loadMsgTimer);
+  document.getElementById('loading').classList.add('hidden');
+}
 
 // ── REQUISITION CRUD ──
 function onStatusChange() {
@@ -818,29 +1307,61 @@ function renderJCStats(jcList) {
   var wsActive = ws.filter(function(j){ return (j.workStatus||'').toUpperCase() !== 'COMPLETED'; }).length;
   var wsMinor  = ws.filter(function(j){ return (j.maintenanceLevel||'').toUpperCase().includes('MINOR') && (j.workStatus||'').toUpperCase() !== 'COMPLETED'; }).length;
   var wsMajor  = ws.filter(function(j){ return (j.maintenanceLevel||'').toUpperCase().includes('MAJOR') && (j.workStatus||'').toUpperCase() !== 'COMPLETED'; }).length;
-  var wsAmt    = calcAmt(ws);
+  var wsAmt         = calcAmt(ws);
+  var wsActiveList  = ws.filter(function(j){ return (j.workStatus||'').toUpperCase() !== 'COMPLETED'; });
+  var wsActiveAmt   = calcAmt(wsActiveList);
   var bdOpen   = bd.filter(function(j){ return !j.signedPdfUrl && !j.signedPdfId; }).length;
   var bdActive = bd.filter(function(j){ return (j.workStatus||'').toUpperCase() !== 'COMPLETED'; }).length;
   var bdMinor  = bd.filter(function(j){ return (j.maintenanceLevel||'').toUpperCase().includes('MINOR') && (j.workStatus||'').toUpperCase() !== 'COMPLETED'; }).length;
   var bdMajor  = bd.filter(function(j){ return (j.maintenanceLevel||'').toUpperCase().includes('MAJOR') && (j.workStatus||'').toUpperCase() !== 'COMPLETED'; }).length;
-  var bdAmt    = calcAmt(bd);
+  var bdAmt         = calcAmt(bd);
+  var bdActiveList  = bd.filter(function(j){ return (j.workStatus||'').toUpperCase() !== 'COMPLETED'; });
+  var bdActiveAmt   = calcAmt(bdActiveList);
   var s = function(id, val) { var el=document.getElementById(id); if(el) el.textContent=val; };
   s('jcs_total_ws', ws.length + ' Workshop Job Cards');
   s('jcs_total_bd', bd.length + ' Breakdown Job Cards');
   s('jcs_top_ws_amt', fmt(wsAmt));
   s('jcs_top_bd_amt', fmt(bdAmt));
+  s('jcs_grand_total', jcList.length);
+  s('jcs_ws_unsigned', ws.filter(function(j){ return (j.workStatus||'').toUpperCase()==='COMPLETED' && !j.signedPdfUrl && !j.signedPdfId; }).length);
+  s('jcs_bd_unsigned', bd.filter(function(j){ return (j.workStatus||'').toUpperCase()==='COMPLETED' && !j.signedPdfUrl && !j.signedPdfId; }).length);
+  // New top bar elements
+  s('jcs_grand_total', jcList.length);
+  s('jcs_ws_unsigned', ws.filter(function(j){ return (j.workStatus||'').toUpperCase()==='COMPLETED' && !j.signedPdfUrl && !j.signedPdfId; }).length);
+  s('jcs_bd_unsigned', bd.filter(function(j){ return (j.workStatus||'').toUpperCase()==='COMPLETED' && !j.signedPdfUrl && !j.signedPdfId; }).length);
   s('jcs_ws_total', ws.length);
   s('jcs_ws_open',  wsOpen);
   s('jcs_ws_active', wsActive);
   s('jcs_ws_minor', wsMinor);
   s('jcs_ws_major', wsMajor);
   s('jcs_ws_amt',   fmt(wsAmt));
+  s('jcs_ws_active_amt', fmt(wsActiveAmt));
   s('jcs_bd_total', bd.length);
   s('jcs_bd_open',  bdOpen);
   s('jcs_bd_active', bdActive);
   s('jcs_bd_minor', bdMinor);
   s('jcs_bd_major', bdMajor);
   s('jcs_bd_amt',   fmt(bdAmt));
+  s('jcs_bd_active_amt', fmt(bdActiveAmt));
+}
+
+function getJCInfo(jcNo) {
+  if (!jcNo || !JOBCARDS) return {orderStatus:'', clientName:''};
+  var j = JOBCARDS.find(function(x){
+    return (x.code||'').toUpperCase() === (jcNo||'').toUpperCase()
+        || (x.jobCardNo||'').toUpperCase() === (jcNo||'').toUpperCase();
+  });
+  return j ? {orderStatus:j.orderStatus||'', clientName:j.clientName||''} : {orderStatus:'', clientName:''};
+}
+function fmtDate(d) {
+  if (!d) return '';
+  var dt = new Date(d);
+  if (isNaN(dt.getTime())) return d;
+  var months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  var dd = String(dt.getDate()).padStart(2,'0');
+  var mon = months[dt.getMonth()];
+  var yy = String(dt.getFullYear()).slice(-2);
+  return dd + '-' + mon + '-' + yy;
 }
 
 function calcDurationDays(startDate, endDate, workStatus) {
@@ -853,10 +1374,10 @@ function calcDurationDays(startDate, endDate, workStatus) {
   var days = Math.ceil((end - start) / (1000 * 60 * 60 * 24));
   if (days < 0) days = 0;
   // Color code: green<3, yellow 3-7, orange 7-14, red>14
-  var color = days < 3 ? '#4ade80' : days < 7 ? '#fbbf24' : days < 14 ? '#f97316' : '#f87171';
+  var color = days < 3 ? '#1a7f3c' : days < 7 ? '#92400e' : days < 14 ? '#7c2d12' : '#b91c1c';
   var overdue = isOngoing && days > 7;
   var label = days + ' d' + (isOngoing ? ' <span style="font-size:9px;opacity:.7">(ongoing)</span>' : '');
-  var badge = overdue ? ' <span style="background:#f87171;color:#fff;font-size:9px;padding:1px 5px;border-radius:4px;font-weight:700">OVERDUE</span>' : '';
+  var badge = overdue ? ' <span style="background:#fee2e2;color:#991b1b;font-size:9px;padding:1px 4px;border-radius:3px;font-weight:700">OVR</span>' : '';
   return '<span style="font-weight:700;color:'+color+'">'+label+'</span>'+badge;
 }
 
@@ -1546,7 +2067,16 @@ document.addEventListener('DOMContentLoaded', function() {
   if (re) re.addEventListener('click', rowMenuEditAction);
   if (rd) rd.addEventListener('click', rowMenuDeleteAction);
 });
-document.addEventListener('click',function(e){if(e.target.classList&&e.target.classList.contains('overlay')){e.target.classList.add('hidden');pwdCb=null;}});
+document.addEventListener('click',function(e){
+  // Only close overlay if click landed directly on backdrop (not modal content)
+  // AND no text is currently selected (user may be trying to copy text)
+  if(e.target.classList && e.target.classList.contains('overlay')) {
+    var sel = window.getSelection ? window.getSelection() : null;
+    if (sel && sel.toString().length > 0) return; // user is selecting text - don't close
+    e.target.classList.add('hidden');
+    pwdCb=null;
+  }
+});
 function fd(v){if(!v)return'–';const m=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];const d=new Date(v);if(isNaN(d.getTime()))return v;return`${String(d.getDate()).padStart(2,'0')}-${m[d.getMonth()]}-${String(d.getFullYear()).slice(-2)}`;}
 function todayStr(){return new Date().toISOString().split('T')[0];}
 function toDateInput(v){
@@ -1565,6 +2095,183 @@ function toDateInput(v){
   return v;
 }
 function toast(msg,type='in'){const icons={ok:'✅',er:'❌',in:'ℹ️'};const el=document.createElement('div');el.className=`toast ${type}`;el.innerHTML=`<span>${icons[type]}</span><span>${msg}</span>`;document.getElementById('toastbox').appendChild(el);setTimeout(()=>el.remove(),3000);}
+// ── ROW SELECTION ──
+function toggleAllRows(chkAll) {
+  var boxes = document.querySelectorAll('.row-chk');
+  boxes.forEach(function(b){ b.checked = chkAll.checked; });
+  onRowCheck();
+}
+
+function onRowCheck() {
+  var checked = document.querySelectorAll('.row-chk:checked');
+  var bar = document.getElementById('selectionbar');
+  var cnt = document.getElementById('sel_count');
+  if (checked.length > 0) {
+    bar.style.display = 'flex';
+    cnt.textContent = checked.length + ' row' + (checked.length > 1 ? 's' : '') + ' selected';
+    // Show PDF button only on NOT PAID or workshop/today views
+    var pdfBtn = document.getElementById('btn_pdf_req');
+    if (pdfBtn) pdfBtn.style.display = ['workshop','today','NOT PAID'].includes(currentView) ? 'block' : 'none';
+  } else {
+    bar.style.display = 'none';
+  }
+}
+
+function clearSelection() {
+  document.querySelectorAll('.row-chk').forEach(function(b){ b.checked = false; });
+  var ca = document.getElementById('chk_all'); if (ca) ca.checked = false;
+  var bar = document.getElementById('selectionbar'); if (bar) bar.style.display = 'none';
+}
+
+function getSelectedRows() {
+  var ids = [];
+  document.querySelectorAll('.row-chk:checked').forEach(function(b){ ids.push(b.getAttribute('data-id')); });
+  if (ids.length === 0) return filtered.length ? filtered : ALL;
+  return ALL.filter(function(r){ return ids.includes(r.id); });
+}
+
+function exportSelectedExcel() {
+  var rows = getSelectedRows();
+  if (!rows.length) { toast('No rows to export','er'); return; }
+  var hd = ['Req No','Date Requested','Truck','Vehicle Type','Driver','Priority','Job Card','LPO No','Description','Qty','Unit Price','Total Amount','Supplier','Date Received','Status','Payment Mode','Category','Requested By','Date Issued','Remarks'];
+  var ks = ['reqNo','dateRequested','truck','vehicleType','driverName','priority','jobCardNo','lpoNo','description','qty','unitPrice','cost','supplier','dateReceived','status','paymentMode','category','requestedBy','dateIssued','remarks'];
+  var wsData = [hd];
+  rows.forEach(function(r){ wsData.push(ks.map(function(k){ return r[k]||''; })); });
+  var wb = XLSX.utils.book_new();
+  var ws = XLSX.utils.aoa_to_sheet(wsData);
+  // Style header row
+  var range = XLSX.utils.decode_range(ws['!ref']);
+  for (var c = range.s.c; c <= range.e.c; c++) {
+    var cell = ws[XLSX.utils.encode_cell({r:0,c:c})];
+    if (cell) cell.s = {font:{bold:true},fill:{fgColor:{rgb:'0A2D6E'}},font:{color:{rgb:'FFFFFF'},bold:true}};
+  }
+  // Column widths
+  ws['!cols'] = [{wch:12},{wch:14},{wch:12},{wch:12},{wch:18},{wch:10},{wch:14},{wch:12},{wch:30},{wch:6},{wch:12},{wch:14},{wch:18},{wch:14},{wch:18},{wch:12},{wch:12},{wch:16},{wch:12},{wch:20}];
+  XLSX.utils.book_append_sheet(wb, ws, 'Requisitions');
+  XLSX.writeFile(wb, 'AK_Requisitions_' + todayStr() + '.xlsx');
+  toast('Exported ' + rows.length + ' rows to Excel ✓', 'ok');
+  clearSelection();
+}
+
+function exportSelectedPDF() {
+  var rows = getSelectedRows();
+  if (!rows.length) { toast('No rows selected','er'); return; }
+  // Build requisition form HTML
+  var formRows = rows.map(function(r, i) {
+    return '<tr style="border-bottom:1px solid #e0e0e0">'
+      + '<td style="padding:6px;font-size:10px;text-align:center">' + (i+1) + '</td>'
+      + '<td style="padding:6px;font-size:10px;font-weight:600">' + (r.reqNo||'') + '</td>'
+      + '<td style="padding:6px;font-size:10px">' + fmtDate(r.dateRequested||'') + '</td>'
+      + '<td style="padding:6px;font-size:10px;font-weight:600">' + (r.truck||'') + '</td>'
+      + '<td style="padding:6px;font-size:10px;color:#0a2d6e">' + (r.jobCardNo||'') + '</td>'
+      + '<td style="padding:6px;font-size:10px">' + (r.description||'') + '</td>'
+      + '<td style="padding:6px;font-size:10px;text-align:center">' + (r.qty||'') + '</td>'
+      + '<td style="padding:6px;font-size:10px;text-align:right">' + (r.unitPrice ? Number(r.unitPrice).toLocaleString() : '') + '</td>'
+      + '<td style="padding:6px;font-size:10px;text-align:right;font-weight:600">' + (r.cost ? Number(r.cost).toLocaleString() : '') + '</td>'
+      + '<td style="padding:6px;font-size:10px">' + (r.supplier||'') + '</td>'
+      + '</tr>';
+  }).join('');
+
+  var totalAmt = rows.reduce(function(s,r){ return s + (parseFloat(r.cost)||0); }, 0);
+
+  var reqNo = rows.length === 1 ? (rows[0].reqNo||'') : '';
+  var html = '<!DOCTYPE html><html><head><meta charset="UTF-8"><title>AK Transport Requisition</title>'
+    + '<style>'
+    + '*{box-sizing:border-box;margin:0;padding:0}'
+    + 'body{font-family:Arial,Helvetica,sans-serif;font-size:11px;color:#000;background:#fff;padding:20px}'
+    + '@media print{@page{margin:12mm;size:A4}body{padding:0}}'
+    + 'table{width:100%;border-collapse:collapse}'
+    + '.tbl-main thead th{background:#fff;color:#000;padding:7px 6px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;border:1.5px solid #000}'
+    + '.tbl-main tbody td{padding:6px;border:1px solid #000;font-size:10px;vertical-align:middle;color:#000}'
+    + '.tbl-main tbody tr:nth-child(even) td{background:#f9f9f9}'
+    + '.tbl-main tfoot td{padding:7px 6px;border:1.5px solid #000;font-weight:700;background:#efefef;color:#000}'
+    + '.sig-box{border:1px solid #000;border-radius:4px;padding:14px 18px}'
+    + '.col-no{width:22px}'
+    + '.col-req{width:70px}'
+    + '.col-date{width:68px}'
+    + '.col-truck{width:70px}'
+    + '.col-jc{width:80px}'
+    + '.col-desc{width:auto}'
+    + '.col-qty{width:30px}'
+    + '.col-up{width:64px}'
+    + '.col-total{width:72px}'
+    + '.col-sup{width:80px}'
+    + '</style>'
+    + '</head><body>'
+    /* ── HEADER ── */
+    + '<table style="margin-bottom:14px"><tr>'
+    + '<td style="vertical-align:middle;padding:4px 0">'
+    + '  <div style="font-size:22px;font-weight:900;color:#000;letter-spacing:-.3px">AK TRANSPORT</div>'
+    + '  <div style="font-size:10px;color:#444;margin-top:3px;letter-spacing:.06em;text-transform:uppercase">Workshop Requisition Form</div>'
+    + '</td>'
+    + '<td style="text-align:right;vertical-align:top;min-width:160px">'
+    + '  <div style="display:inline-block;text-align:right">'
+    + '    <div style="font-size:9px;color:#555;text-transform:uppercase;letter-spacing:.06em">Date Printed</div>'
+    + '    <div style="font-size:12px;font-weight:700;color:#000;margin-bottom:6px">' + fmtDate(todayStr()) + '</div>'
+    + (reqNo ? '    <div style="font-size:9px;color:#888;text-transform:uppercase;letter-spacing:.06em">Requisition No</div><div style="font-size:13px;font-weight:700;color:#0a2d6e">' + reqNo + '</div>' : '')
+    + '  </div>'
+    + '</td>'
+    + '</tr></table>'
+    /* ── DIVIDER ── */
+    + '<div style="height:3px;background:#0a2d6e;border-radius:2px;margin-bottom:14px"></div>'
+    /* ── TABLE ── */
+    + '<table class="tbl-main" style="margin-bottom:20px">'
+    + '<thead><tr>'
+    + '<th class="col-no" style="text-align:center">#</th>'
+    + '<th class="col-req">Req No</th>'
+    + '<th class="col-date">Date</th>'
+    + '<th class="col-truck">Truck</th>'
+    + '<th class="col-jc">Job Card</th>'
+    + '<th class="col-desc">Description / Spare Part</th>'
+    + '<th class="col-qty" style="text-align:center">Qty</th>'
+    + '<th class="col-up" style="text-align:right">Unit Price</th>'
+    + '<th class="col-total" style="text-align:right">Total</th>'
+    + '<th class="col-sup">Supplier</th>'
+    + '</tr></thead>'
+    + '<tbody>' + formRows + '</tbody>'
+    + '<tfoot><tr>'
+    + '<td colspan="8" style="text-align:right;font-size:11px;color:#0a2d6e">GRAND TOTAL</td>'
+    + '<td style="text-align:right;font-size:13px;color:#0a2d6e">' + totalAmt.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}) + '</td>'
+    + '<td></td>'
+    + '</tr></tfoot>'
+    + '</table>'
+    /* ── SIGNATURE SECTION ── */
+    + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:24px;margin-top:8px">'
+    /* Requested by */
+    + '<div class="sig-box">'
+    + '  <div style="font-size:10px;font-weight:700;color:#0a2d6e;text-transform:uppercase;letter-spacing:.1em;margin-bottom:20px;padding-bottom:6px;border-bottom:2px solid #0a2d6e">Requested By</div>'
+    + '  <div style="margin-bottom:28px">'
+    + '    <div style="font-size:10px;color:#888;margin-bottom:4px">Full Name</div>'
+    + '    <div style="border-bottom:1px solid #aaa;height:22px"></div>'
+    + '  </div>'
+    + '  <div style="display:grid;grid-template-columns:2fr 1fr;gap:16px">'
+    + '    <div><div style="font-size:10px;color:#888;margin-bottom:4px">Signature</div><div style="border-bottom:1px solid #aaa;height:34px"></div></div>'
+    + '    <div><div style="font-size:10px;color:#888;margin-bottom:4px">Date</div><div style="border-bottom:1px solid #aaa;height:34px"></div></div>'
+    + '  </div>'
+    + '</div>'
+    /* Approved by */
+    + '<div class="sig-box">'
+    + '  <div style="font-size:10px;font-weight:700;color:#0a2d6e;text-transform:uppercase;letter-spacing:.1em;margin-bottom:20px;padding-bottom:6px;border-bottom:2px solid #0a2d6e">Approved By</div>'
+    + '  <div style="margin-bottom:28px">'
+    + '    <div style="font-size:10px;color:#888;margin-bottom:4px">Full Name</div>'
+    + '    <div style="border-bottom:1px solid #aaa;height:22px"></div>'
+    + '  </div>'
+    + '  <div style="display:grid;grid-template-columns:2fr 1fr;gap:16px">'
+    + '    <div><div style="font-size:10px;color:#888;margin-bottom:4px">Signature</div><div style="border-bottom:1px solid #aaa;height:34px"></div></div>'
+    + '    <div><div style="font-size:10px;color:#888;margin-bottom:4px">Date</div><div style="border-bottom:1px solid #aaa;height:34px"></div></div>'
+    + '  </div>'
+    + '</div>'
+    + '</div>'
+    /* FOOTER */
+    + '<div style="margin-top:20px;padding-top:10px;border-top:1px solid #e0e0e0;font-size:9px;color:#999;text-align:center">AK Transport — Workshop Management System — Generated ' + fmtDate(todayStr()) + '</div>'
+    + '<scr' + 'ipt>window.onload=function(){window.print();window.onafterprint=function(){window.close();};};</' + 'script>'
+    + '</body></html>';
+
+  var win = window.open('','_blank','width=900,height=700');
+  win.document.write(html);
+  win.document.close();
+}
+
 function doExport(){
   // Route to correct export based on current view
   if (currentView === 'jcsummary' || currentView === 'jobcards') { exportJCSummary(); return; }
@@ -1926,7 +2633,7 @@ function deleteJobCard(id) {
 
 function renderJobCards() {
   renderJCStats(JOBCARDS);
-  document.getElementById('viewsub').textContent = JOBCARDS.length + ' job card' + (JOBCARDS.length !== 1 ? 's' : '');
+  document.getElementById('viewsub').textContent = '';
   document.getElementById('tablehead').innerHTML = `<tr>
     <th>JC Code</th>
     <th>Vehicle No</th>
@@ -2412,153 +3119,132 @@ function previewJobCard(id) {
 }
 
 function buildJobCardHTML(j, defects, parts) {
-  const totalCost = parts.reduce((sum, p) => sum + (parseFloat(p.cost)||0), 0);
+  const totalCost = parts.reduce((sum,p)=>sum+(parseFloat(p.cost)||0),0);
+  const fmt = n=>n.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
+  const fd = d=>{if(!d)return ''; var dt=new Date(d); if(isNaN(dt.getTime()))return d; var m=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']; return String(dt.getDate()).padStart(2,'0')+'-'+m[dt.getMonth()]+'-'+String(dt.getFullYear()).slice(-2);};
 
-  // Build defect rows (min 8 rows)
-  const defectRows = [];
-  for (let i = 0; i < Math.max(8, defects.length + 3); i++) {
-    defectRows.push(`<tr><td style="height:22px;border-bottom:1px solid #ccc;padding:3px 6px;font-size:12px;color:#111">${defects[i]||''}</td></tr>`);
+  const defectRows=[];
+  for(let i=0;i<Math.max(8,defects.length+3);i++){
+    const txt=defects[i]||'';
+    defectRows.push(`<tr><td style="padding:3px 4px;border:1px solid #999;text-align:center;font-size:7px;color:#555;width:16px">${i+1}</td><td style="padding:4px 7px;border:1px solid #999;font-size:7px">${txt}</td></tr>`);
   }
 
-  // Build parts rows (min 8 rows)
-  const partRows = [];
-  for (let i = 0; i < Math.max(8, parts.length + 3); i++) {
-    const p = parts[i];
-    partRows.push(`<tr>
-      <td style="height:22px;border-bottom:1px solid #ccc;border-right:1px solid #ccc;padding:3px 6px;font-size:12px;color:#111">${p ? (p.description||'') : ''}</td>
-      <td style="height:22px;border-bottom:1px solid #ccc;padding:3px 6px;font-size:12px;text-align:right">${p && p.cost ? Number(p.cost).toLocaleString() : ''}</td>
-    </tr>`);
+  const partsRows=[];
+  for(let i=0;i<Math.max(5,parts.length+2);i++){
+    const p=parts[i]||{};
+    partsRows.push(`<tr><td style="padding:3px 4px;border:1px solid #999;text-align:center;font-size:7px;width:18px">${i+1}</td><td style="padding:4px 7px;border:1px solid #999;font-size:7px">${p.description||''}</td><td style="padding:3px 4px;border:1px solid #999;text-align:center;font-size:7px;width:30px">${p.qty||''}</td><td style="padding:3px 4px;border:1px solid #999;text-align:right;font-size:7px;width:70px">${p.unitPrice?Number(p.unitPrice).toLocaleString():''}</td><td style="padding:3px 4px;border:1px solid #999;text-align:right;font-size:7px;width:78px;font-weight:600">${p.cost?Number(p.cost).toLocaleString():''}</td></tr>`);
   }
 
-  return `
-  <div id="jcprintarea" style="font-family:Arial,sans-serif;width:750px;margin:0 auto;color:#000;padding:10px">
-    <!-- Header -->
-    <table width="100%" style="border-collapse:collapse;margin-bottom:4px">
-      <tr>
-        <td style="font-size:18px;font-weight:900;letter-spacing:1px;color:#000">AK TRANSPORT</td>
-        <td style="text-align:right">
-          <div style="font-size:11px;font-weight:700;letter-spacing:2px;color:#000">JOB CARD</div>
-          <div style="font-size:12px;color:#111;font-weight:600">Number: <b>${j.code||''}</b></div>
-        </td>
-      </tr>
-    </table>
-    <hr style="border:2px solid #000;margin:4px 0">
+  const ir=(lbl,val,w)=>`<td style="padding:4px 7px;background:#f2f2f2;font-size:7px;font-weight:700;color:#000;text-transform:uppercase;letter-spacing:.04em;border:1px solid #999;width:${w||'80px'};white-space:nowrap">${lbl}</td><td style="padding:3px 6px;font-size:7px;color:#000;border:1px solid #999">${val||'&nbsp;'}</td>`;
 
-    <!-- Title -->
-    <div style="text-align:center;font-weight:700;font-size:14px;border:2px solid #000;padding:6px;margin-bottom:8px;color:#000;background:#f5f5f5">Service &amp; Maintenance</div>
+  return `<!DOCTYPE html><html><head><meta charset="UTF-8"><style>
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:Arial,Helvetica,sans-serif;font-size:7px;color:#000;background:#fff;padding:14px}
+    @media print{@page{margin:8mm;size:A4}body{padding:0}}
+    table{border-collapse:collapse;width:100%}
+    .sh{background:#e8e8e8;font-size:8px;font-weight:700;color:#000;text-transform:uppercase;letter-spacing:.08em;padding:4px 8px;border:1px solid #999;margin-top:8px;display:block}
+  </style></head><body>
 
-    <!-- Info Grid -->
-    <table width="100%" style="border-collapse:collapse;margin-bottom:8px;font-size:12px">
-      <tr>
-        <td width="25%" style="padding:4px 6px;font-weight:700;color:#111">Vehicle Reg No:</td>
-        <td width="25%" style="padding:4px 6px;border-bottom:1px solid #999;color:#111;font-weight:500">${j.vehicle||''}</td>
-        <td width="25%" style="padding:4px 6px;font-weight:700;color:#111">Reporting Date:</td>
-        <td width="25%" style="padding:4px 6px;border-bottom:1px solid #999;color:#111;font-weight:500">${fd(j.startDate)||''}</td>
-      </tr>
-      <tr>
-        <td style="padding:4px 6px;font-weight:700;color:#111">Driver Name:</td>
-        <td style="padding:4px 6px;border-bottom:1px solid #999;color:#111;font-weight:500">${j.driverName||''}</td>
-        <td style="padding:4px 6px;font-weight:700;color:#111">Start Date:</td>
-        <td style="padding:4px 6px;border-bottom:1px solid #999;color:#111;font-weight:500">${fd(j.startDate)||''}</td>
-      </tr>
-      <tr>
-        <td style="padding:4px 6px;font-weight:700;color:#111">Odometer:</td>
-        <td style="padding:4px 6px;border-bottom:1px solid #999;color:#111;font-weight:500">${j.odometer ? Number(j.odometer).toLocaleString()+' km' : ''}</td>
-        <td style="padding:4px 6px;font-weight:700;color:#111">End Date:</td>
-        <td style="padding:4px 6px;border-bottom:1px solid #999;color:#111;font-weight:500">${fd(j.endDate)||''}</td>
-      </tr>
-      <tr>
-        <td style="padding:4px 6px;font-weight:700;color:#111">Category:</td>
-        <td style="padding:4px 6px;border-bottom:1px solid #999;color:#111;font-weight:500">${j.category||''}</td>
-        <td style="padding:4px 6px;font-weight:700;color:#111">Job Type:</td>
-        <td style="padding:4px 6px;border-bottom:1px solid #999;color:#111;font-weight:500">${j.maintenanceLevel||''}</td>
-      </tr>
-      <tr>
-        <td style="padding:4px 6px;font-weight:700;color:#111">Work Status:</td>
-        <td style="padding:4px 6px;border-bottom:1px solid #999;color:#111;font-weight:500">${j.workStatus||''}</td>
-        <td style="padding:4px 6px;font-weight:700;color:#111">Location:</td>
-        <td style="padding:4px 6px;border-bottom:1px solid #999;color:#111;font-weight:500">${j.location||''}</td>
-      </tr>
-      <tr>
-        <td style="padding:4px 6px;font-weight:700;color:#111">Duration:</td>
-        <td style="padding:4px 6px;border-bottom:1px solid #999;color:#111;font-weight:500">${j.duration ? j.duration+' day(s)' : ''}</td>
-        <td style="padding:4px 6px;font-weight:700;color:#111">Client:</td>
-        <td style="padding:4px 6px;border-bottom:1px solid #999;color:#111;font-weight:500">${j.clientName||''}</td>
-      </tr>
-    </table>
+  <!-- HEADER -->
+  <table style="margin-bottom:8px;border:2px solid #000;padding:8px 10px">
+    <tr>
+      <td style="vertical-align:middle;padding:6px 10px">
+        <div style="font-size:17px;font-weight:900;color:#000;letter-spacing:-.3px;line-height:1.1">AK TRANSPORT</div>
+        <div style="font-size:7px;color:#444;margin-top:2px;letter-spacing:.05em;text-transform:uppercase">Workshop Job Card</div>
+      </td>
+      <td style="text-align:right;vertical-align:middle;padding:6px 10px">
+        <div style="font-size:8px;font-weight:700;color:#000;text-transform:uppercase;letter-spacing:.06em;margin-bottom:2px">Job Card No</div>
+        <div style="font-size:18px;font-weight:900;color:#000;border-bottom:2px solid #000;padding-bottom:2px;letter-spacing:-.3px">${j.code||''}</div>
+        <div style="font-size:8px;color:#555;margin-top:3px">Date: ${fd(new Date().toISOString().split('T')[0])}</div>
+      </td>
+    </tr>
+  </table>
 
-    <!-- Defect Section -->
-    <div style="font-weight:700;font-size:13px;border:1px solid #000;padding:5px 6px;margin-bottom:0;background:#f0f0f0;color:#000">Defect</div>
-    <table width="100%" style="border-collapse:collapse;border:1px solid #000;border-top:none;margin-bottom:8px">
-      ${defectRows.join('')}
-    </table>
+  <!-- VEHICLE & JOB INFO -->
+  <div class="sh">Vehicle &amp; Job Information</div>
+  <table>
+    <tr>${ir('Vehicle No',j.vehicle,'70px')}${ir('Vehicle Type',j.vehicleType,'70px')}${ir('Driver',j.driverName,'60px')}</tr>
+    <tr>${ir('Category',j.category,'70px')}${ir('Maint. Level',j.maintenanceLevel,'70px')}${ir('Odometer',j.odometer,'60px')}</tr>
+    <tr>${ir('Order Status',j.orderStatus,'70px')}${ir('Client',j.clientName,'70px')}${ir('Location',j.location,'60px')}</tr>
+    <tr>${ir('Start Date',fd(j.startDate),'70px')}${ir('End Date',fd(j.endDate),'70px')}${ir('Release Date',fd(j.expectedReleaseDate),'60px')}</tr>
+    <tr>${ir('Work Status',j.workStatus,'70px')}<td colspan="3" style="padding:3px 6px;font-size:7px;border:1px solid #999"><span style="font-size:7px;font-weight:700;text-transform:uppercase;letter-spacing:.04em">Comment: </span>${j.comment||'&nbsp;'}</td></tr>
+  </table>
+    <!-- TASK DESCRIPTION -->
+  <div class="sh">Task / Defects Description</div>
+  <table>
+    <thead><tr>
+      <th style="padding:4px 5px;border:1px solid #999;background:#e8e8e8;font-size:8px;color:#000;width:18px;text-align:center">#</th>
+      <th style="padding:4px 7px;border:1px solid #999;background:#e8e8e8;font-size:8px;color:#000;text-align:left;text-transform:uppercase;letter-spacing:.05em">Description of Work / Defect</th>
+    </tr></thead>
+    <tbody>${defectRows.join('')}</tbody>
+  </table>
 
-    <!-- Spare Parts Section -->
-    <table width="100%" style="border-collapse:collapse;margin-bottom:8px">
-      <tr>
-        <td width="75%" style="font-weight:700;font-size:13px;border:1px solid #000;padding:5px 6px;background:#f0f0f0;color:#000">Spare Parts Requested and Fitted</td>
-        <td style="font-weight:700;font-size:13px;border:1px solid #000;border-left:none;padding:5px 6px;text-align:center;background:#f0f0f0;color:#000">Amount</td>
-      </tr>
-      ${partRows.join('')}
-      <tr>
-        <td style="border:1px solid #000;padding:5px 6px;text-align:right;font-weight:700;font-size:12px;color:#000;background:#f8f8f8">TOTAL</td>
-        <td style="border:1px solid #000;border-left:none;padding:5px 6px;text-align:right;font-weight:700;font-size:12px;color:#000;background:#f8f8f8">${totalCost > 0 ? totalCost.toLocaleString() : ''}</td>
-      </tr>
-    </table>
+  <!-- PARTS USED -->
+  <div class="sh">Parts / Materials Used (RECEIVED requisitions)</div>
+  <table>
+    <thead><tr>
+      <th style="padding:4px 5px;border:1px solid #999;background:#e8e8e8;font-size:8px;color:#000;width:18px;text-align:center">#</th>
+      <th style="padding:4px 7px;border:1px solid #999;background:#e8e8e8;font-size:8px;color:#000;text-align:left;text-transform:uppercase;letter-spacing:.05em">Part / Description</th>
+      <th style="padding:4px 5px;border:1px solid #999;background:#e8e8e8;font-size:8px;color:#000;width:30px;text-align:center">Qty</th>
+      <th style="padding:4px 5px;border:1px solid #999;background:#e8e8e8;font-size:8px;color:#000;width:70px;text-align:right">Unit Price</th>
+      <th style="padding:4px 5px;border:1px solid #999;background:#e8e8e8;font-size:8px;color:#000;width:78px;text-align:right">Total</th>
+    </tr></thead>
+    <tbody>${partsRows.join('')}</tbody>
+    <tfoot><tr>
+      <td colspan="4" style="padding:5px 7px;border:1.5px solid #000;font-size:7px;font-weight:700;text-align:right;background:#e8e8e8;color:#000">TOTAL COST</td>
+      <td style="padding:5px 7px;border:1.5px solid #000;font-size:10px;font-weight:900;text-align:right;color:#000;background:#e8e8e8">${fmt(totalCost)}</td>
+    </tr></tfoot>
+  </table>
 
-    <!-- Signature Section -->
-    <div style="font-weight:700;font-size:13px;border:1px solid #000;padding:5px 6px;margin-bottom:0;background:#f0f0f0;color:#000">SIGNATURE</div>
-    <table width="100%" style="border-collapse:collapse;border:1px solid #000;border-top:none;font-size:11px">
-      <tr>
-        <td width="50%" style="padding:6px;border-right:1px solid #ccc">
-          <div style="display:flex;gap:8px;align-items:flex-end;margin-bottom:10px">
-            <span style="white-space:nowrap;font-weight:700;color:#111">Driver (Open Job Card)</span>
-            <span style="flex:1;border-bottom:1px solid #999">&nbsp;</span>
-            <span style="white-space:nowrap;font-weight:700;color:#111">DATE</span>
-            <span style="width:80px;border-bottom:1px solid #999">&nbsp;</span>
-          </div>
-          <div style="display:flex;gap:8px;align-items:flex-end">
-            <span style="white-space:nowrap;font-weight:700;color:#111">Driver (Close Job Card)</span>
-            <span style="flex:1;border-bottom:1px solid #999">&nbsp;</span>
-            <span style="white-space:nowrap;font-weight:700;color:#111">DATE</span>
-            <span style="width:80px;border-bottom:1px solid #999">&nbsp;</span>
-          </div>
-        </td>
-        <td width="50%" style="padding:6px">
-          <div style="display:flex;gap:8px;align-items:flex-end;margin-bottom:10px">
-            <span style="white-space:nowrap;font-weight:700;color:#111">Mechanic</span>
-            <span style="flex:1;border-bottom:1px solid #999">&nbsp;</span>
-            <span style="white-space:nowrap;font-weight:700;color:#111">DATE</span>
-            <span style="width:80px;border-bottom:1px solid #999">&nbsp;</span>
-          </div>
-          <div style="display:flex;gap:8px;align-items:flex-end;margin-bottom:10px">
-            <span style="white-space:nowrap;font-weight:700;color:#111">Workshop Manager</span>
-            <span style="flex:1;border-bottom:1px solid #999">&nbsp;</span>
-            <span style="white-space:nowrap;font-weight:700;color:#111">DATE</span>
-            <span style="width:80px;border-bottom:1px solid #999">&nbsp;</span>
-          </div>
-          <div style="display:flex;gap:8px;align-items:flex-end">
-            <span style="white-space:nowrap;font-weight:700;color:#111">Transport Manager</span>
-            <span style="flex:1;border-bottom:1px solid #999">&nbsp;</span>
-            <span style="white-space:nowrap;font-weight:700;color:#111">DATE</span>
-            <span style="width:80px;border-bottom:1px solid #999">&nbsp;</span>
-          </div>
-        </td>
-      </tr>
-    </table>
-  </div>`;
+  <!-- SIGN-OFF -->
+  <div class="sh">Sign-off &amp; Authorisation</div>
+  <table style="border:1.5px solid #000">
+    <tr>
+      <td style="width:25%;padding:10px 12px;border-right:1px solid #999;vertical-align:top">
+        <div style="font-size:8px;font-weight:700;color:#000;text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px">Technician</div>
+        <div style="border-bottom:1px solid #000;height:30px;margin-bottom:4px"></div>
+        <div style="font-size:8px;color:#666">Signature &amp; Date</div>
+      </td>
+      <td style="width:25%;padding:10px 12px;border-right:1px solid #999;vertical-align:top">
+        <div style="font-size:8px;font-weight:700;color:#000;text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px">Workshop Supervisor</div>
+        <div style="border-bottom:1px solid #000;height:30px;margin-bottom:4px"></div>
+        <div style="font-size:8px;color:#666">Signature &amp; Date</div>
+      </td>
+      <td style="width:25%;padding:10px 12px;border-right:1px solid #999;vertical-align:top">
+        <div style="font-size:8px;font-weight:700;color:#000;text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px">Driver / Operator</div>
+        <div style="border-bottom:1px solid #000;height:30px;margin-bottom:4px"></div>
+        <div style="font-size:8px;color:#666">Signature &amp; Date</div>
+      </td>
+      <td style="width:25%;padding:10px 12px;vertical-align:top">
+        <div style="font-size:8px;font-weight:700;color:#000;text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px">Transport Manager</div>
+        <div style="border-bottom:1px solid #000;height:30px;margin-bottom:4px"></div>
+        <div style="font-size:8px;color:#666">Signature &amp; Date</div>
+      </td>
+    </tr>
+  </table>
+
+  <div style="margin-top:10px;padding-top:6px;border-top:1px solid #ccc;font-size:8px;color:#888;text-align:center">
+    AK Transport — Workshop Management System &nbsp;|&nbsp; Printed: ${fd(new Date().toISOString().split('T')[0])} &nbsp;|&nbsp; Job Card: ${j.code||''}
+  </div>
+
+  </body></html>`;
 }
 
+
+
+
 function downloadJCPDF() {
-  const printArea = document.getElementById('jcprintarea');
-  if (!printArea) return;
-  const win = window.open('', '_blank', 'width=900,height=700');
-  const html = '<!DOCTYPE html><html><head><title>Job Card</title><style>body{margin:20px;font-family:Arial,sans-serif;color:#000}@media print{body{margin:0}@page{margin:15mm size:A4}}</style></head><body>'
-    + printArea.outerHTML
-    + '<scr' + 'ipt>window.onload=function(){window.print();window.onafterprint=function(){window.close();};};</' + 'script>'
-    + '</body></html>';
-  win.document.write(html);
+  // Get content from the preview modal
+  var contentEl = document.getElementById('jcpdfcontent');
+  if (!contentEl || !contentEl.innerHTML.trim()) {
+    toast('No preview content to download', 'er'); return;
+  }
+  var win = window.open('', '_blank', 'width=900,height=700');
+  if (!win) { toast('Pop-up blocked — allow pop-ups and try again', 'er'); return; }
+  win.document.write(contentEl.innerHTML);
   win.document.close();
+  win.focus();
+  setTimeout(function(){ win.print(); }, 500);
 }
 
 
@@ -2671,7 +3357,7 @@ async function deleteSigned(id) {
 // ════════════════════════════════════════════════
 function renderJCSummary() {
   renderJCStats(JOBCARDS);
-  document.getElementById('viewsub').textContent = JOBCARDS.length + ' job card' + (JOBCARDS.length !== 1 ? 's' : '');
+  document.getElementById('viewsub').textContent = '';
   document.getElementById('loadmorediv').style.display = 'none';
   document.getElementById('tablehead').innerHTML = '<tr><th>Job Card No</th><th>Truck / Vehicle</th><th>Driver</th><th>Category</th><th>Start Date</th><th>End Date</th><th>Duration</th><th>Work Status</th><th style="color:var(--ac)">Total Amount</th><th>Actions</th></tr>';
 
@@ -2721,9 +3407,9 @@ function renderJCSummary() {
       +'<td style="font-family:monospace;text-align:center">'+calcDurationDays(j.startDate, j.endDate, j.workStatus)+'</td>'
       +'<td>'+quickStatus+'</td>'
       +'<td style="font-family:monospace;font-weight:700;color:var(--ac)">'+totalAmtDisplay+'</td>'
-      +'<td style="white-space:nowrap;max-width:none;overflow:visible">'
-        +'<button class="actbtn jcs-prev" data-id="'+jid+'" style="color:#a78bfa;border-color:#a78bfa;font-size:11px">👁 Preview</button>'
-        +'<button class="actbtn jcs-pdf" data-id="'+jid+'" style="color:#4f8ef7;border-color:#4f8ef7;font-size:11px">⬇ PDF</button>'
+      +'<td style="white-space:nowrap;max-width:none;overflow:visible;display:flex;gap:5px;align-items:center;flex-wrap:wrap">'
+        +'<button class="actbtn jcs-prev" data-id="'+jid+'" style="color:#5b21b6;border-color:#5b21b6;font-size:11px;font-weight:700">👁 Preview</button>'
+        +'<button class="actbtn jcs-pdf" data-id="'+jid+'" style="color:#1e40af;border-color:#1e40af;font-size:11px;font-weight:700">⬇ PDF</button>'
         +signedBtns
       +'</td>'
       +'</tr>';
@@ -2981,14 +3667,47 @@ function doLogin() {
 
 function doLogout() {
   CURRENT_USER = null;
-  try { sessionStorage.removeItem('ak_user'); } catch(e) {}
-  var ov=document.getElementById('aklg'); if(ov) ov.style.display='flex';
-  var lu=document.getElementById('aklgu'); if(lu){lu.value='';setTimeout(function(){lu.focus();},100);}
-  var lp=document.getElementById('aklgp'); if(lp) lp.value='';
-  var le=document.getElementById('aklge'); if(le) le.textContent='';
+  window.CURRENT_USER = null;
+  try { sessionStorage.clear(); } catch(e) {}
+  // Hide main layout
+  var ml = document.getElementById('mainlayout'); if(ml) ml.style.display='none';
+  // Restore login box - use DOM manipulation to avoid string quoting issues
+  var ov = document.getElementById('aklg');
+  if (ov) {
+    var lb = document.getElementById('aklgb');
+    if (lb) {
+      lb.innerHTML = '';
+      // Icon
+      var ico = document.createElement('div');
+      ico.style.cssText = 'margin-bottom:28px;text-align:center';
+      ico.innerHTML = '<h2>AK Transport</h2><p>Workshop Management System</p>';
+      lb.appendChild(ico);
+      // Username
+      var uf = document.createElement('div'); uf.style.cssText='display:flex;flex-direction:column;gap:14px;margin-bottom:6px';
+      var ul = '<div style="display:flex;flex-direction:column;gap:6px;text-align:left"><label style="font-size:12px;font-weight:600;color:#515154">Username</label>'
+        + '<input type="text" id="aklgu" placeholder="Enter your username" autocomplete="off" style="background:#f5f5f7;border:1.5px solid #d2d2d7;border-radius:10px;padding:11px 14px;font-size:14px;color:#1d1d1f;font-family:Inter,sans-serif;outline:none;width:100%"></div>'
+        + '<div style="display:flex;flex-direction:column;gap:6px;text-align:left"><label style="font-size:12px;font-weight:600;color:#515154">Password</label>'
+        + '<input type="password" id="aklgp" placeholder="Enter your password" style="background:#f5f5f7;border:1.5px solid #d2d2d7;border-radius:10px;padding:11px 14px;font-size:14px;color:#1d1d1f;font-family:Inter,sans-serif;outline:none;width:100%"></div>';
+      uf.innerHTML = ul;
+      lb.appendChild(uf);
+      // Error + button + status + footer
+      var rest = document.createElement('div');
+      rest.innerHTML = '<div id="aklge" style="min-height:20px;font-size:12px;color:#b91c1c;text-align:left;margin-bottom:4px;font-weight:500"></div>'
+        + '<button id="aklgbtn" onclick="doSignIn()" style="width:100%;padding:13px;background:var(--ac);color:#fff;border:none;border-radius:10px;font-size:15px;font-weight:600;cursor:pointer;box-shadow:0 4px 16px rgba(10,45,110,.25)">Sign In</button>'
+        + '<div id="aklgstatus" style="margin-top:14px;font-size:11.5px;color:#86868b;text-align:center">Ready — sign in to continue</div>'
+        + '<div style="margin-top:24px;padding-top:18px;border-top:1px solid #e8e8ed;font-size:11px;color:#86868b">&copy; 2026 AK Transport</div>';
+      lb.appendChild(rest);
+      // Re-wire Enter key
+      var uEl = document.getElementById('aklgu');
+      var pEl = document.getElementById('aklgp');
+      if (uEl) uEl.addEventListener('keydown', function(e){ if(e.key==='Enter') pEl && pEl.focus(); });
+      if (pEl) pEl.addEventListener('keydown', function(e){ if(e.key==='Enter') doSignIn(); });
+    }
+    ov.style.display = 'flex';
+    setTimeout(function(){ var u=document.getElementById('aklgu'); if(u) u.focus(); }, 100);
+  }
   var uw=document.getElementById('usermenu_wrap'); if(uw) uw.style.display='none';
   var nw=document.getElementById('newwrap'); if(nw) nw.style.display='none';
-  var ul=document.getElementById('usermgmt_link'); if(ul) ul.style.display='none';
   setSyncStatus('er');
 }
 
@@ -3359,7 +4078,7 @@ function applyJCFilter() {
       return true;
     });
   }
-  document.getElementById('viewsub').textContent = data.length + ' job card' + (data.length!==1?'s':'');
+  document.getElementById('viewsub').textContent = '';
   renderJCStats(hasFilter ? data : JOBCARDS);
   renderFilteredJobCards(data);
 }
@@ -3423,7 +4142,7 @@ function applyJCSFilter() {
       return true;
     });
   }
-  document.getElementById('viewsub').textContent = data.length+' job card'+(data.length!==1?'s':'');
+  document.getElementById('viewsub').textContent = '';
   renderJCStats(hasFilter ? data : JOBCARDS);
   renderFilteredJCSummary(data);
 }
@@ -3634,7 +4353,7 @@ async function init(){
 
 // Load ALL data after login
 async function loadAppData(){
-  showLoad('Loading data...');
+  showLoad('Loading your workspace...');
   var loadSafe = async function(action){
     try{var r=await callAPI(action);return r.records||[];}catch(e){return[];}
   };
@@ -3655,6 +4374,17 @@ async function loadAppData(){
   }
   hideLoad();
   if(ok){
+    // Enrich requisitions with JC order status + client
+    ALL.forEach(function(r){
+      if(r.jobCardNo){
+        var jci=getJCInfo(r.jobCardNo);
+        r.orderStatus=jci.orderStatus;
+        r.clientName=jci.clientName;
+      }
+    });
+    // Show main layout now that data is ready
+    var ml = document.getElementById('mainlayout');
+    if (ml) ml.style.display = 'flex';
     updateBadges();buildHeader();applyFilters();
     toast('Connected — '+ALL.length+' records loaded','ok');
     setInterval(async function(){
@@ -3691,6 +4421,28 @@ async function loadAppData(){
 }
 init();
 
+// Prevent swipe left/right browser navigation (single touch only - allow pinch zoom)
+(function() {
+  var touchStartX = 0;
+  var touchStartY = 0;
+  document.addEventListener('touchstart', function(e) {
+    if (e.touches.length === 1) {
+      touchStartX = e.touches[0].clientX;
+      touchStartY = e.touches[0].clientY;
+    }
+  }, { passive: true });
+  document.addEventListener('touchmove', function(e) {
+    // Never block multi-touch (pinch zoom uses 2+ fingers)
+    if (e.touches.length > 1) return;
+    var dx = Math.abs(e.touches[0].clientX - touchStartX);
+    var dy = Math.abs(e.touches[0].clientY - touchStartY);
+    // Only block single-finger horizontal swipe from screen edges
+    if (dx > dy && dx > 10 && (touchStartX < 20 || touchStartX > window.innerWidth - 20)) {
+      e.preventDefault();
+    }
+  }, { passive: false });
+})();
+
 </script>
 
 <!-- REQUISITION MODAL -->
@@ -3704,7 +4456,7 @@ init();
       <div class="formgroup"><label>Vehicle Type</label><input type="text" id="f_vtype" readonly style="opacity:.7;cursor:not-allowed;color:var(--ac);font-weight:600"></div>
       <div class="formgroup"><label>Job Card No <span style="color:#f87171">*</span></label><select id="f_jobcard"><option value="">Select job card...</option></select></div>
       <div class="formgroup"><label>Driver Name <span style="color:#f87171">*</span></label><select id="f_driver"><option value="">Select driver...</option></select></div>
-      <div class="formgroup"><label>Priority <span style="color:#f87171">*</span></label><select id="f_priority"><option value="">Select...</option><option>TODAY'S REQUEST</option><option>NORMAL</option></select></div>
+      <div class="formgroup"><label>Priority <span style="color:#f87171">*</span></label><select id="f_priority"><option value="">Select...</option><option>HIGH PRIORITY</option><option>NORMAL</option></select></div>
       <div class="formgroup"><label>LPO No</label><input type="text" id="f_lpo" placeholder="e.g. PO-001234" oninput="validateLPO(this)" style="text-transform:uppercase"></div>
       <div class="formgroup full"><label>Description / Spare Part <span style="color:#f87171">*</span></label>
         <select id="f_desc_select" onchange="onDescSelect()" style="margin-bottom:6px"><option value="">&#8212; Select from spare parts list &#8212;</option></select>
@@ -3861,17 +4613,17 @@ init();
 </div>
 
 <!-- JOB CARD PDF MODAL -->
-<div class="overlay hidden" id="jcpdfmodal">
-  <div class="modal" style="max-width:860px;max-height:96vh">
+<div class="overlay hidden" id="jcpdfmodal" style="padding:12px">
+  <div class="modal" style="max-width:920px;width:95vw;max-height:95vh;height:95vh">
     <div class="modalhead">
       <div class="modaltitle">Job Card Preview</div>
       <div style="display:flex;gap:8px;align-items:center">
         <button class="btn bp" onclick="downloadJCPDF()" style="font-size:12px">&#8659; Download PDF</button>
         <button class="modalclose" onclick="closeModal('jcpdfmodal')">&#10005;</button>
       </div>
-    <div id="jcpdfcontent" style="padding:20px;overflow-y:auto;max-height:80vh;background:#fff;color:#000"></div>
+    </div>
+    <div id="jcpdfcontent" style="padding:24px;overflow-y:auto;flex:1;background:#ffffff;color:#000"></div>
   </div>
-</div>
 </div>
 
 <!-- CHANGE PASSWORD MODAL -->
@@ -3940,25 +4692,63 @@ init();
 
 <input type="file" id="signedpdf_input" accept=".pdf" style="display:none" onchange="handleAttachFile(this)">
 
+<!-- SELECTION ACTION BAR -->
+<div id="selectionbar" style="display:none;position:fixed;bottom:28px;left:50%;transform:translateX(-50%);background:#0a2d6e;color:#fff;border-radius:12px;padding:11px 20px;align-items:center;gap:12px;box-shadow:0 8px 32px rgba(10,45,110,.4);z-index:5000;white-space:nowrap">
+  <span id="sel_count" style="font-size:13px;font-weight:600">0 selected</span>
+  <div style="width:1px;background:rgba(255,255,255,.3);height:18px;flex-shrink:0"></div>
+  <button onclick="exportSelectedExcel()" style="background:rgba(255,255,255,.18);border:1px solid rgba(255,255,255,.3);color:#fff;padding:6px 14px;border-radius:7px;cursor:pointer;font-size:12px;font-weight:600">⬇ Export Excel</button>
+  <button id="btn_pdf_req" onclick="exportSelectedPDF()" style="background:rgba(255,255,255,.18);border:1px solid rgba(255,255,255,.3);color:#fff;padding:6px 14px;border-radius:7px;cursor:pointer;font-size:12px;font-weight:600;display:none">🖨 Print Form</button>
+  <button onclick="clearSelection()" style="background:none;border:none;color:rgba(255,255,255,.7);cursor:pointer;font-size:20px;line-height:1;padding:0 4px">✕</button>
+</div>
+
 <!-- ROW CONTEXT MENU -->
 <div id="rowmenu" style="display:none;position:fixed;background:var(--s1);border:1px solid var(--br);border-radius:10px;min-width:160px;z-index:5000;box-shadow:0 8px 24px rgba(0,0,0,.6);overflow:hidden">
   <div id="rowmenu_title" style="padding:9px 14px;font-size:11px;font-weight:700;color:var(--t2);border-bottom:1px solid var(--br);text-transform:uppercase;letter-spacing:.06em"></div>
-  <div id="rowmenu_edit" onclick="rowMenuEditAction()" style="padding:11px 16px;cursor:pointer;font-size:13px;color:var(--tx);display:flex;align-items:center;gap:10px" onmouseenter="this.style.background='var(--s2)'" onmouseleave="this.style.background=''">✏️ Edit</div>
-  <div id="rowmenu_delete" onclick="rowMenuDeleteAction()" style="padding:11px 16px;cursor:pointer;font-size:13px;color:#f87171;display:flex;align-items:center;gap:10px" onmouseenter="this.style.background='var(--s2)'" onmouseleave="this.style.background=''">🗑️ Delete</div>
+  <div id="rowmenu_edit" onclick="rowMenuEditAction()" style="padding:11px 16px;cursor:pointer;font-size:13px;color:var(--tx);display:flex;align-items:center;gap:10px" onmouseenter="this.style.background='rgba(10,45,110,.06)'" onmouseleave="this.style.background=''">✏️ Edit</div>
+  <div id="rowmenu_delete" onclick="rowMenuDeleteAction()" style="padding:11px 16px;cursor:pointer;font-size:13px;color:#f87171;display:flex;align-items:center;gap:10px" onmouseenter="this.style.background='rgba(10,45,110,.06)'" onmouseleave="this.style.background=''">🗑️ Delete</div>
 </div>
 
 <!-- LOGIN OVERLAY -->
 <div id="aklg">
   <div id="aklgb">
-    <h2>AK TRANSPORT</h2>
-    <p>Workshop Management System</p>
-    <label class="aklf">Username</label>
-    <input type="text" id="aklgu" placeholder="Enter username" autocomplete="off">
-    <label class="aklf">Password</label>
-    <input type="password" id="aklgp" placeholder="Enter password">
-    <div id="aklge"></div>
-    <button id="aklgbtn">Sign In</button>
-    <div id="aklgstatus" style="margin-top:12px;font-size:11px;color:var(--t3);text-align:center">Verifying access...</div>
+    <!-- Logo / Brand -->
+    <div style="margin-bottom:28px">
+
+      <h2>AK Transport</h2>
+      <p>Workshop Management System</p>
+    </div>
+    <!-- Fields -->
+    <div style="display:flex;flex-direction:column;gap:14px;margin-bottom:6px">
+      <div style="display:flex;flex-direction:column;gap:6px;text-align:left">
+        <label style="font-size:12px;font-weight:600;color:#515154;letter-spacing:.03em">Username</label>
+        <input type="text" id="aklgu" placeholder="Enter your username" autocomplete="off"
+          style="background:#f5f5f7;border:1.5px solid #d2d2d7;border-radius:10px;padding:11px 14px;font-size:14px;color:#1d1d1f;font-family:'Inter',sans-serif;outline:none;transition:border-color .15s,box-shadow .15s"
+          onfocus="this.style.borderColor='#0a2d6e';this.style.boxShadow='0 0 0 3px rgba(10,45,110,.12)'"
+          onblur="this.style.borderColor='#d2d2d7';this.style.boxShadow='none'">
+      </div>
+      <div style="display:flex;flex-direction:column;gap:6px;text-align:left">
+        <label style="font-size:12px;font-weight:600;color:#515154;letter-spacing:.03em">Password</label>
+        <input type="password" id="aklgp" placeholder="Enter your password"
+          style="background:#f5f5f7;border:1.5px solid #d2d2d7;border-radius:10px;padding:11px 14px;font-size:14px;color:#1d1d1f;font-family:'Inter',sans-serif;outline:none;transition:border-color .15s,box-shadow .15s"
+          onfocus="this.style.borderColor='#0a2d6e';this.style.boxShadow='0 0 0 3px rgba(10,45,110,.12)'"
+          onblur="this.style.borderColor='#d2d2d7';this.style.boxShadow='none'">
+      </div>
+    </div>
+    <!-- Error -->
+    <div id="aklge" style="min-height:20px;font-size:12px;color:#b91c1c;text-align:left;margin-bottom:4px;font-weight:500"></div>
+    <!-- Button -->
+    <button id="aklgbtn"
+      style="width:100%;padding:13px;background:var(--ac);color:#fff;border:none;border-radius:10px;font-size:15px;font-weight:600;font-family:'Outfit',sans-serif;cursor:pointer;letter-spacing:.01em;transition:all .18s;box-shadow:0 4px 16px rgba(10,45,110,.25)"
+      onmouseover="this.style.background='#1a4fa0';this.style.transform='translateY(-1px)';this.style.boxShadow='0 6px 20px rgba(10,45,110,.35)'"
+      onmouseout="this.style.background='var(--ac)';this.style.transform='';this.style.boxShadow='0 4px 16px rgba(10,45,110,.25)'">
+      Sign In
+    </button>
+    <!-- Status -->
+    <div id="aklgstatus" style="margin-top:14px;font-size:11.5px;color:#86868b;text-align:center;letter-spacing:.01em">Verifying access...</div>
+    <!-- Footer -->
+    <div style="margin-top:24px;padding-top:18px;border-top:1px solid #e8e8ed;font-size:11px;color:#86868b">
+      &copy; 2026 AK Transport &mdash; All rights reserved
+    </div>
   </div>
 </div>
 
@@ -3987,31 +4777,42 @@ function doSignIn() {
   if (!found) { errEl.textContent = 'Username not found'; return; }
   if ((found.status || 'active') === 'inactive') { errEl.textContent = 'Account inactive. Contact admin.'; return; }
   if ((found.password || '') !== p) { errEl.textContent = 'Incorrect password'; return; }
-  document.getElementById('aklg').style.display = 'none';
-  window.CURRENT_USER = found;
-  if (typeof CURRENT_USER !== 'undefined') CURRENT_USER = found;
-
-  // Persist session so page refresh doesn't log out
-  try { sessionStorage.setItem('ak_user', JSON.stringify(found)); } catch(e) {}
-
-  var uw = document.getElementById('usermenu_wrap'); if (uw) uw.style.display = 'inline-block';
-  var nw = document.getElementById('newwrap'); if (nw) nw.style.display = 'inline-block';
-  var un = document.getElementById('topbar_username'); if (un) un.textContent = found.name || found.username;
-  var ul = document.getElementById('usermgmt_link'); if (ul && found.role === 'admin') ul.style.display = 'flex';
-  // Show sidebar user management for admin
-  var navUm = document.getElementById('nav-usermgmt');
-  var divUm = document.getElementById('div-usermgmt');
-  var slblUm = document.getElementById('slbl-usermgmt');
-  if (found.role === 'admin') {
-    if (navUm) navUm.style.display = '';
-    if (divUm) divUm.style.display = '';
-    if (slblUm) slblUm.style.display = '';
+  // Show logging in state INSIDE login box before hiding it
+  var btn = document.getElementById('aklgbtn');
+  var loginBox = document.getElementById('aklgb');
+  if (btn) { btn.disabled = true; btn.textContent = ''; }
+  if (loginBox) {
+    loginBox.innerHTML = '<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:20px 0;gap:18px">'
+      + '<div style="width:48px;height:48px;border:3px solid #d2d2d7;border-top-color:#0a2d6e;border-radius:50%;animation:spin .7s linear infinite"></div>'
+      + '<div style="font-size:18px;font-weight:700;color:#0a2d6e;letter-spacing:-.2px">Logging in...</div>\''  
+      + '<div style="font-size:13px;color:#86868b">Connecting to database</div>'
+      + '</div>';
   }
 
-  if (typeof applyPermissions === 'function') applyPermissions();
-  if (typeof toast === 'function') toast('Welcome, ' + (found.name || found.username) + '!', 'ok');
-  // Load all data now that user is logged in
-  if (typeof loadAppData === 'function') loadAppData();
+  // Short delay so user sees the animation, then proceed
+  setTimeout(function() {
+    document.getElementById('aklg').style.display = 'none';
+    window.CURRENT_USER = found;
+    if (typeof CURRENT_USER !== 'undefined') CURRENT_USER = found;
+
+    try { sessionStorage.setItem('ak_user', JSON.stringify(found)); } catch(e) {}
+
+    var uw = document.getElementById('usermenu_wrap'); if (uw) uw.style.display = 'inline-block';
+    var nw = document.getElementById('newwrap'); if (nw) nw.style.display = 'inline-block';
+    var un = document.getElementById('topbar_username'); if (un) un.textContent = found.name || found.username;
+    var ul = document.getElementById('usermgmt_link'); if (ul && found.role === 'admin') ul.style.display = 'flex';
+    var navUm = document.getElementById('nav-usermgmt');
+    var divUm = document.getElementById('div-usermgmt');
+    var slblUm = document.getElementById('slbl-usermgmt');
+    if (found.role === 'admin') {
+      if (navUm) navUm.style.display = '';
+      if (divUm) divUm.style.display = '';
+      if (slblUm) slblUm.style.display = '';
+    }
+    if (typeof applyPermissions === 'function') applyPermissions();
+    if (typeof toast === 'function') toast('Welcome, ' + (found.name || found.username) + '!', 'ok');
+    if (typeof loadAppData === 'function') loadAppData();
+  }, 1200);
 }
 
 // Restore session on page refresh
@@ -4044,6 +4845,8 @@ function doSignIn() {
 })();
 
 document.getElementById('aklgbtn').addEventListener('click', doSignIn);
+document.getElementById('aklgu').addEventListener('keydown', function(e){ if(e.key==='Enter') document.getElementById('aklgp').focus(); });
+document.getElementById('aklgp').addEventListener('keydown', function(e){ if(e.key==='Enter') doSignIn(); });
 
 
 document.getElementById('aklgu').addEventListener('keydown', function(e) { if (e.key === 'Enter') doSignIn(); });
