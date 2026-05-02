@@ -1433,6 +1433,7 @@ function nextReqNo(){let max=0;ALL.forEach(r=>{const n=parseInt((r.reqNo||'').re
 function openAdd(){
   if (!can('req')) { toast('You do not have permission to create requisitions', 'er'); return; }
   editingId=null;
+  var rm=document.getElementById('recmodal'); if(rm) rm.setAttribute('data-workshop','0');
   document.getElementById('modaltitle').textContent='New Requisition';
   clearForm();
   document.getElementById('f_req').value=nextReqNo();
@@ -1531,7 +1532,9 @@ async function saveRecord(){
   var reqby    = document.getElementById('f_reqby').value;
   var supVal   = (()=>{ var c=document.getElementById('f_supplier_custom'); if(c&&c.value) return c.value; var s=document.getElementById('f_supplier'); return s?s.value:''; })();
 
-  var isWorkshopTruck = (truck||'').toUpperCase().includes('WORKSHOP');
+  var modal = document.getElementById('recmodal');
+  var isWorkshopTruck = (truck||'').toUpperCase().includes('WORKSHOP') ||
+    (modal && modal.getAttribute('data-workshop') === '1');
   if (!truck) missing.push('Truck / Vehicle No');
   if (!isWorkshopTruck && !driver) missing.push('Driver Name');
   if (!isWorkshopTruck && !jobcard) missing.push('Job Card No');
@@ -4516,7 +4519,7 @@ init();
     <div class="modalbody"><div class="formgrid">
       <div class="formgroup"><label>Req No.</label><input type="text" id="f_req" readonly></div>
       <div class="formgroup"><label>Date Requested</label><input type="date" id="f_date"></div>
-      <div class="formgroup"><label>Truck / Vehicle No <span style="color:#f87171">*</span></label><select id="f_truck" onchange="onTruckSelect();(function(){var t=(document.getElementById('f_truck').tomselect?document.getElementById('f_truck').tomselect.getValue():document.getElementById('f_truck').value)||'';var m=t.toUpperCase().includes('WORKSHOP');['f_vtype','f_jobcard','f_driver'].forEach(function(i){var el=document.getElementById(i);if(!el)return;var fg=el.parentNode;while(fg&&!fg.classList.contains('formgroup'))fg=fg.parentNode;if(fg){if(m)fg.classList.add('muted');else fg.classList.remove('muted');}if(m&&i==='f_vtype')el.value='';});})()"><option value="">Select vehicle...</option></select></div>
+      <div class="formgroup"><label>Truck / Vehicle No <span style="color:#f87171">*</span></label><select id="f_truck" onchange="onTruckSelect();(function(){var t=(document.getElementById('f_truck').tomselect?document.getElementById('f_truck').tomselect.getValue():document.getElementById('f_truck').value)||'';var m=t.toUpperCase().includes('WORKSHOP');document.getElementById('recmodal').setAttribute('data-workshop',m?'1':'0');['f_vtype','f_jobcard','f_driver'].forEach(function(i){var el=document.getElementById(i);if(!el)return;var fg=el.parentNode;while(fg&&!fg.classList.contains('formgroup'))fg=fg.parentNode;if(fg){if(m)fg.classList.add('muted');else fg.classList.remove('muted');}if(m&&i==='f_vtype')el.value='';});})()"><option value="">Select vehicle...</option></select></div>
       <div class="formgroup"><label>Vehicle Type</label><input type="text" id="f_vtype" readonly style="opacity:.7;cursor:not-allowed;color:var(--ac);font-weight:600"></div>
       <div class="formgroup"><label>Job Card No <span style="color:#f87171">*</span></label><select id="f_jobcard"><option value="">Select job card...</option></select></div>
       <div class="formgroup"><label>Driver Name <span style="color:#f87171">*</span></label><select id="f_driver"><option value="">Select driver...</option></select></div>
@@ -4531,7 +4534,7 @@ init();
         <div class="formgroup full"><label>Total Amount <span style="color:#f87171">*</span></label><input type="text" id="f_cost" placeholder="Auto-calculated (Qty × Unit Price)" style="color:var(--ac);font-weight:700;font-size:14px;cursor:not-allowed" readonly></div>
       <div class="formgroup"><label>Supplier <span style="color:#f87171">*</span></label><select id="f_supplier" onchange="onSupplierSelect()"><option value="">Select supplier...</option></select></div>
       <div class="formgroup"><label>Date Received</label><input type="date" id="f_datercvd"></div>
-      <div class="formgroup"><label>Status <span style="color:#f87171">*</span></label><select id="f_status" onchange="onStatusChange()"><option value="">Select...</option><option>RECEIVED</option><option>RECEIVED NOT ISSUED</option><option>ON HOLD</option><option>PAID NOT RECEIVED</option><option>NOT PAID</option></select></div>
+      <div class="formgroup"><label>Status <span style="color:#f87171">*</span></label><select id="f_status" onchange="onStatusChange();(function(){var t=(document.getElementById('f_truck').tomselect?document.getElementById('f_truck').tomselect.getValue():document.getElementById('f_truck').value)||'';var isWS=t.toUpperCase().includes('WORKSHOP');var el=document.getElementById('f_vtype');if(el&&isWS){el.style.borderColor='';var fg=el.parentNode;while(fg&&!fg.classList.contains('formgroup'))fg=fg.parentNode;if(fg){var s=fg.querySelector('.req-star');if(s)s.remove();}}})()"><option value="">Select...</option><option>RECEIVED</option><option>RECEIVED NOT ISSUED</option><option>ON HOLD</option><option>PAID NOT RECEIVED</option><option>NOT PAID</option></select></div>
       <div class="formgroup"><label>Payment Mode <span style="color:#f87171">*</span></label><select id="f_payment"><option value="">Select...</option><option>CASH</option><option>CREDIT</option><option>STORE</option></select></div>
       <div class="formgroup"><label>Category <span style="color:#f87171">*</span></label><select id="f_category"><option value="">Select...</option><option>WORKSHOP</option><option>BREAKDOWN</option></select></div>
       <div class="formgroup"><label>Requested By <span style="color:#f87171">*</span></label><select id="f_reqby"><option value="">Select...</option><option>SABRI ABRI</option><option>RAMADHAN LUDEGE</option><option>MUSTAKIM RAMADHAN</option><option>MOHAMED AL JABRY</option></select></div>
