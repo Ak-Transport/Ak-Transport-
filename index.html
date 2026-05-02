@@ -500,6 +500,13 @@ body { touch-action: pan-x pan-y pinch-zoom; }
 .formgroup.muted textarea { opacity: 0.35; background:#f0f0f2 !important; color:#999 !important; pointer-events:none !important; cursor:not-allowed !important; }
 .formgroup.muted .ts-wrapper { opacity: 0.35; pointer-events:none !important; cursor:not-allowed !important; }
 .formgroup.muted .ts-control { background:#f0f0f2 !important; color:#999 !important; }
+
+/* Wider visible scrollbar for horizontal scroll */
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-track { background: #e8e8ed; border-radius: 4px; }
+::-webkit-scrollbar-thumb { background: #a0a0a8; border-radius: 4px; border: 1px solid #e8e8ed; }
+::-webkit-scrollbar-thumb:hover { background: #6e6e76; }
+::-webkit-scrollbar-corner { background: #e8e8ed; }
 </style>
 
 
@@ -1510,11 +1517,24 @@ function doEdit(r){
   document.getElementById('recmodal').classList.remove('hidden');
 }
 function clearForm(){
-  ['f_req','f_date','f_vtype','f_priority','f_lpo','f_desc','f_qty','f_unit_price','f_cost','f_datercvd','f_status','f_payment','f_category','f_reqby','f_dateissued','f_remarks'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
-  ['f_supplier','f_truck','f_driver','f_jobcard'].forEach(id=>{const el=document.getElementById(id);if(el){el.value='';el.style.display='';}});
+  var allFields = ['f_req','f_date','f_vtype','f_priority','f_lpo','f_desc','f_qty','f_unit_price','f_cost','f_datercvd','f_status','f_payment','f_category','f_reqby','f_dateissued','f_remarks'];
+  allFields.forEach(function(id){
+    var el=document.getElementById(id);
+    if(el){
+      el.value='';
+      el.style.borderColor=''; // Clear any red borders
+    }
+    // Remove any req-star labels
+    var fg = el && el.closest ? el.closest('.formgroup') : null;
+    if(fg){
+      var star = fg.querySelector('.req-star');
+      if(star) star.remove();
+    }
+  });
+  ['f_supplier','f_truck','f_driver','f_jobcard'].forEach(id=>{const el=document.getElementById(id);if(el){el.value='';el.style.display='';el.style.borderColor='';}});
   ['f_supplier_custom','f_truck_custom','f_driver_txt'].forEach(id=>{const el=document.getElementById(id);if(el){el.remove?el.remove():el.style.display='none';}});
   const descSel=document.getElementById('f_desc_select');if(descSel)descSel.value='';
-  const descInp=document.getElementById('f_desc');if(descInp)descInp.value='';
+  const descInp=document.getElementById('f_desc');if(descInp){descInp.value='';descInp.style.borderColor='';}
 }
 async function saveRecord(){
   // Validate mandatory fields
@@ -2721,7 +2741,7 @@ function renderJobCards() {
     <th>Duration</th>
     <th>Work Status</th>
     <th>Comment</th>
-    <th style="color:var(--ac)">Total Amount</th>
+    <th style="color:#ffffff">Total Amount</th>
     <th>Actions</th>
   </tr>`;
   document.getElementById('loadmorediv').style.display = 'none';
@@ -3426,7 +3446,7 @@ function renderJCSummary() {
   renderJCStats(JOBCARDS);
   document.getElementById('viewsub').textContent = '';
   document.getElementById('loadmorediv').style.display = 'none';
-  document.getElementById('tablehead').innerHTML = '<tr><th>Job Card No</th><th>Truck / Vehicle</th><th>Driver</th><th>Category</th><th>Start Date</th><th>End Date</th><th>Duration</th><th>Work Status</th><th style="color:var(--ac)">Total Amount</th><th>Actions</th></tr>';
+  document.getElementById('tablehead').innerHTML = '<tr><th>Job Card No</th><th>Truck / Vehicle</th><th>Driver</th><th>Category</th><th>Start Date</th><th>End Date</th><th>Duration</th><th>Work Status</th><th style="color:#ffffff">Total Amount</th><th>Actions</th></tr>';
 
   if (JOBCARDS.length === 0) {
     document.getElementById('TBODY').innerHTML = '';
