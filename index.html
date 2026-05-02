@@ -925,7 +925,7 @@ window.onerror = function(msg, src, line, col, err) {
 };
 
 const API = 'https://script.google.com/macros/s/AKfycbyiXtmTbRUTzhIgLe4IlKc6tHf4fSN2chmETdCbLXazBTtQgR5xiRInSJL44e0NElhOkA/exec';
-const APP_VERSION = '20260502104144';
+const APP_VERSION = '1777727146';
 
 // Auto-detect new version and force reload
 (function(){
@@ -1282,7 +1282,12 @@ function hideLoad(){
 // ── REQUISITION CRUD ──
 function onStatusChange() {
   var status = document.getElementById('f_status').value;
-  var receivedFields = ['f_date','f_vtype','f_priority','f_lpo','f_datercvd','f_payment','f_reqby','f_dateissued','f_remarks'];
+  // Check if truck is Workshop - skip f_vtype highlight
+  var truckEl = document.getElementById('f_truck');
+  var truckVal = (truckEl && truckEl.tomselect ? truckEl.tomselect.getValue() : (truckEl ? truckEl.value : '')) || '';
+  var isWS = truckVal.toUpperCase().includes('WORKSHOP');
+  var receivedFields = ['f_date','f_priority','f_lpo','f_datercvd','f_payment','f_reqby','f_dateissued','f_remarks'];
+  if (!isWS) receivedFields.push('f_vtype');
   receivedFields.forEach(function(id) {
     var el = document.getElementById(id);
     if (!el) return;
@@ -1530,7 +1535,7 @@ async function saveRecord(){
   if (!truck) missing.push('Truck / Vehicle No');
   if (!isWorkshopTruck && !driver) missing.push('Driver Name');
   if (!isWorkshopTruck && !jobcard) missing.push('Job Card No');
-  if (!isWorkshopTruck && !desc) missing.push('Spare Part / Description');
+  if (!desc) missing.push('Spare Part / Description');
   if (!qty) missing.push('Qty');
   if (!cost) missing.push('Total Amount');
   if (!category) missing.push('Category');
@@ -1550,7 +1555,7 @@ async function saveRecord(){
   // If status is RECEIVED, ALL fields are required
   if (status === 'RECEIVED') {
     if (!document.getElementById('f_date').value) missing.push('Date Requested');
-    if (!document.getElementById('f_vtype').value) missing.push('Vehicle Type');
+    if (!isWorkshopTruck && !document.getElementById('f_vtype').value) missing.push('Vehicle Type');
     if (!document.getElementById('f_priority').value) missing.push('Priority');
     if (!document.getElementById('f_lpo').value) missing.push('LPO No');
     if (!document.getElementById('f_datercvd').value) missing.push('Date Received');
@@ -4511,7 +4516,7 @@ init();
     <div class="modalbody"><div class="formgrid">
       <div class="formgroup"><label>Req No.</label><input type="text" id="f_req" readonly></div>
       <div class="formgroup"><label>Date Requested</label><input type="date" id="f_date"></div>
-      <div class="formgroup"><label>Truck / Vehicle No <span style="color:#f87171">*</span></label><select id="f_truck" onchange="onTruckSelect()"><option value="">Select vehicle...</option></select></div>
+      <div class="formgroup"><label>Truck / Vehicle No <span style="color:#f87171">*</span></label><select id="f_truck" onchange="onTruckSelect();(function(){var t=(document.getElementById('f_truck').tomselect?document.getElementById('f_truck').tomselect.getValue():document.getElementById('f_truck').value)||'';var m=t.toUpperCase().includes('WORKSHOP');['f_vtype','f_jobcard','f_driver'].forEach(function(i){var el=document.getElementById(i);if(!el)return;var fg=el.parentNode;while(fg&&!fg.classList.contains('formgroup'))fg=fg.parentNode;if(fg){if(m)fg.classList.add('muted');else fg.classList.remove('muted');}if(m&&i==='f_vtype')el.value='';});})()"><option value="">Select vehicle...</option></select></div>
       <div class="formgroup"><label>Vehicle Type</label><input type="text" id="f_vtype" readonly style="opacity:.7;cursor:not-allowed;color:var(--ac);font-weight:600"></div>
       <div class="formgroup"><label>Job Card No <span style="color:#f87171">*</span></label><select id="f_jobcard"><option value="">Select job card...</option></select></div>
       <div class="formgroup"><label>Driver Name <span style="color:#f87171">*</span></label><select id="f_driver"><option value="">Select driver...</option></select></div>
