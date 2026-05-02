@@ -1526,10 +1526,11 @@ async function saveRecord(){
   var reqby    = document.getElementById('f_reqby').value;
   var supVal   = (()=>{ var c=document.getElementById('f_supplier_custom'); if(c&&c.value) return c.value; var s=document.getElementById('f_supplier'); return s?s.value:''; })();
 
+  var isWorkshopTruck = (truck||'').toUpperCase().includes('WORKSHOP');
   if (!truck) missing.push('Truck / Vehicle No');
-  if (!driver) missing.push('Driver Name');
-  if (!jobcard) missing.push('Job Card No');
-  if (!desc) missing.push('Spare Part / Description');
+  if (!isWorkshopTruck && !driver) missing.push('Driver Name');
+  if (!isWorkshopTruck && !jobcard) missing.push('Job Card No');
+  if (!isWorkshopTruck && !desc) missing.push('Spare Part / Description');
   if (!qty) missing.push('Qty');
   if (!cost) missing.push('Total Amount');
   if (!category) missing.push('Category');
