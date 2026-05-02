@@ -492,6 +492,14 @@ body { touch-action: pan-x pan-y pinch-zoom; }
 
 /* Action button spacing in JC tables */
 .jcs-prev, .jcs-pdf, .jcs-view, .jcs-dl, .jcs-rep, .jcs-att, .jcs-del { margin:1px 2px !important; }
+
+/* Muted/disabled form group */
+.formgroup.muted label { opacity: 0.4; }
+.formgroup.muted input,
+.formgroup.muted select,
+.formgroup.muted textarea { opacity: 0.35; background:#f0f0f2 !important; color:#999 !important; pointer-events:none !important; cursor:not-allowed !important; }
+.formgroup.muted .ts-wrapper { opacity: 0.35; pointer-events:none !important; cursor:not-allowed !important; }
+.formgroup.muted .ts-control { background:#f0f0f2 !important; color:#999 !important; }
 </style>
 
 
@@ -1876,33 +1884,15 @@ function muteReqFields(mute) {
   fields.forEach(function(id) {
     var el = document.getElementById(id);
     if (!el) return;
-    var wrapper = el.closest('.formgroup');
+    var fg = el.closest ? el.closest('.formgroup') : null;
+    if (!fg) { var p = el.parentNode; if (p && p.classList && p.classList.contains('formgroup')) fg = p; }
     if (mute) {
-      el.disabled = true;
-      el.style.opacity = '0.4';
-      el.style.pointerEvents = 'none';
-      el.style.background = '#f0f0f2';
-      if (el.tomselect) {
-        el.tomselect.disable();
-        el.tomselect.wrapper.style.opacity = '0.4';
-        el.tomselect.wrapper.style.pointerEvents = 'none';
-      }
-      if (wrapper) wrapper.style.opacity = '0.5';
-      // Clear values
+      if (fg) fg.classList.add('muted');
       if (id === 'f_vtype') el.value = '';
-      if (id === 'f_jobcard' && el.tomselect) el.tomselect.setValue('', true);
-      if (id === 'f_driver' && el.tomselect) el.tomselect.setValue('', true);
+      if (id === 'f_jobcard' && el.tomselect) { try { el.tomselect.setValue('', true); } catch(e){} }
+      if (id === 'f_driver' && el.tomselect) { try { el.tomselect.setValue('', true); } catch(e){} }
     } else {
-      el.disabled = false;
-      el.style.opacity = '';
-      el.style.pointerEvents = '';
-      el.style.background = '';
-      if (el.tomselect) {
-        el.tomselect.enable();
-        el.tomselect.wrapper.style.opacity = '';
-        el.tomselect.wrapper.style.pointerEvents = '';
-      }
-      if (wrapper) wrapper.style.opacity = '';
+      if (fg) fg.classList.remove('muted');
     }
   });
 }
