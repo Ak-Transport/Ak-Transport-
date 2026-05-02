@@ -988,6 +988,14 @@ var _sf = document.getElementById('STATUSFILTER'); if(_sf) _sf.addEventListener(
 function applyFilters() {
   // Don't run for non-table views
   if (['dashboard','suppliers','spareparts','jobcards','jcsummary','drivers','vehicles'].includes(currentView)) return;
+  // Ensure orderStatus/clientName are enriched on every record
+  ALL.forEach(function(r){
+    if(r.jobCardNo && (!r.orderStatus && !r.clientName)){
+      var jci=getJCInfo(r.jobCardNo);
+      r.orderStatus=jci.orderStatus;
+      r.clientName=jci.clientName;
+    }
+  });
   const fs = document.getElementById('STATUSFILTER').value;
   let data = ALL.slice();
   if (currentView === 'today') data = data.filter(r => r.priority === 'HIGH PRIORITY' && r.status === 'NOT PAID');
@@ -1048,7 +1056,7 @@ function buildRow(r,isRO){
   const canER=canEditReq(r),canDR=canDeleteReq(r);
   const ac=isRO?'':`<td style="white-space:nowrap;overflow:visible;max-width:none">${canER?`<button class="actbtn e" onclick="editRecord('${r.id}')">✏ Edit</button>`:''} ${canDR?`<button class="actbtn d" onclick="deleteRecord('${r.id}')">🗑</button>`:''} ${r.status==='RECEIVED'?'<span style="font-size:9px;opacity:.4">🔒</span>':''}</td>`;
   return `<tr data-id="${r.id}">
-    <td style="text-align:center;width:36px"><input type="checkbox" class="row-chk" data-id="${r.id}" onchange="onRowCheck()" style="cursor:pointer;width:14px;height:14px;accent-color:var(--ac)"></td>
+    <td style="text-align:center;width:36px"><input type="checkbox" class="row-chk" data-id="${r.id}" onchange="onRowCheck(this)" style="cursor:pointer;width:14px;height:14px;accent-color:var(--ac)"></td>
     <td><span class="reqbadge">${r.reqNo||''}</span></td>
     <td>${fd(r.dateRequested)}</td><td><b>${r.truck||''}</b></td>
     <td style="color:var(--t2);font-size:10px">${r.vehicleType||''}</td>
@@ -1107,7 +1115,6 @@ function buildHeader(){
 function switchView(v){
   currentView=v;
   document.querySelectorAll('.navitem').forEach(n=>n.classList.remove('active'));
-  clearSelection();
   const el=document.getElementById('nav-'+v);if(el)el.classList.add('active');
   const titles={workshop:'Workshop Requisition',today:"High Priority Requests",'RECEIVED':'Received','RECEIVED NOT ISSUED':'Received Not Issued','ON HOLD':'On Hold','PAID NOT RECEIVED':'Paid Not Received','NOT PAID':'Not Paid',suppliers:'Suppliers',spareparts:'Spare Parts',jobcards:'Job Cards',jcsummary:'Job Card Summary',drivers:'Drivers',vehicles:'Vehicles',dashboard:'Dashboard'};
   document.getElementById('viewtitle').textContent=titles[v]||v;
@@ -1727,13 +1734,13 @@ function populateFormDropdowns() {
 
   // 1. SUPPLIER dropdown
   const supSel = document.getElementById('f_supplier');
-  if (supSel && supSel.tagName === 'SELECT') {
-    const cur = supSel.value;
+  if (supSel) {
+    const cur = supSel.tomselect ? supSel.tomselect.getValue() : supSel.value;
+    if (supSel.tomselect) supSel.tomselect.destroy();
     supSel.innerHTML = '<option value="">Select supplier...</option>';
     SUPPLIERS.filter(s => s.status !== 'INACTIVE').forEach(s => {
       const o = document.createElement('option');
-      o.value = s.name;
-      o.textContent = s.code + ' — ' + s.name;
+      o.value = s.name; o.textContent = s.code + ' — ' + s.name;
       supSel.appendChild(o);
     });
     const oc = document.createElement('option');
@@ -1745,27 +1752,29 @@ function populateFormDropdowns() {
   // 2. SPARE PARTS dropdown
   const descSel = document.getElementById('f_desc_select');
   if (descSel) {
+    const curDesc = descSel.tomselect ? descSel.tomselect.getValue() : descSel.value;
+    if (descSel.tomselect) descSel.tomselect.destroy();
     descSel.innerHTML = '<option value="">Select spare part or type custom...</option>';
     SPAREPARTS.filter(p => p.status !== 'INACTIVE').forEach(p => {
       const o = document.createElement('option');
-      o.value = p.name;
-      o.textContent = p.code + ' — ' + p.name;
+      o.value = p.name; o.textContent = p.code + ' — ' + p.name;
       descSel.appendChild(o);
     });
-    const oc = document.createElement('option');
-    oc.value = '__custom__'; oc.textContent = '✏ Type manually...';
-    descSel.appendChild(oc);
+    const oc2 = document.createElement('option');
+    oc2.value = '__custom__'; oc2.textContent = '✏ Type manually...';
+    descSel.appendChild(oc2);
+    if (curDesc) descSel.value = curDesc;
   }
 
   // 3. DRIVER dropdown in requisition form
   const drvSel = document.getElementById('f_driver');
-  if (drvSel && drvSel.tagName === 'SELECT') {
-    const cur = drvSel.value;
+  if (drvSel) {
+    const cur = drvSel.tomselect ? drvSel.tomselect.getValue() : drvSel.value;
+    if (drvSel.tomselect) drvSel.tomselect.destroy();
     drvSel.innerHTML = '<option value="">Select driver...</option>';
     DRIVERS.filter(d => d.status !== 'INACTIVE').forEach(d => {
       const o = document.createElement('option');
-      o.value = d.name;
-      o.textContent = d.name;
+      o.value = d.name; o.textContent = d.name;
       drvSel.appendChild(o);
     });
     if (cur) drvSel.value = cur;
@@ -1774,7 +1783,8 @@ function populateFormDropdowns() {
   // 4. TRUCK/VEHICLE dropdown — populate from VEHICLES
   const truckSel = document.getElementById('f_truck');
   if (truckSel) {
-    const cur = truckSel.value;
+    const cur = truckSel.tomselect ? truckSel.tomselect.getValue() : truckSel.value;
+    if (truckSel.tomselect) truckSel.tomselect.destroy();
     truckSel.innerHTML = '<option value="">Select vehicle...</option>';
     VEHICLES.filter(v => v.status !== 'INACTIVE').forEach(v => {
       const o = document.createElement('option');
@@ -1839,18 +1849,59 @@ function onTruckSelect() {
   if (!sel) return;
   const vtEl = document.getElementById('f_vtype');
   if (!vtEl) return;
-  // Get value from Tom Select if initialized
   const plate = sel.tomselect ? sel.tomselect.getValue() : sel.value;
   if (!plate || plate === '__custom__') {
     vtEl.value = '';
     populateJobCardDropdown('');
+    muteReqFields(false);
     return;
   }
   // Get vehicle type from VEHICLES array
   const v = VEHICLES.find(x => (x.plate||'').toUpperCase() === plate.toUpperCase());
   vtEl.value = v ? (v.vehicleType || '') : '';
-  // Filter job cards for this truck only
-  populateJobCardDropdown(plate);
+  // If truck/vehicle is "WORKSHOP" type or plate contains "WORKSHOP" - mute dependent fields
+  const isWorkshop = (plate||'').toUpperCase().includes('WORKSHOP') ||
+                     (v && (v.vehicleType||'').toUpperCase().includes('WORKSHOP')) ||
+                     (v && (v.plate||'').toUpperCase().includes('WORKSHOP'));
+  muteReqFields(isWorkshop);
+  if (!isWorkshop) populateJobCardDropdown(plate);
+  else populateJobCardDropdown('');
+}
+
+function muteReqFields(mute) {
+  var fields = ['f_vtype','f_jobcard','f_driver'];
+  fields.forEach(function(id) {
+    var el = document.getElementById(id);
+    if (!el) return;
+    var wrapper = el.closest('.formgroup');
+    if (mute) {
+      el.disabled = true;
+      el.style.opacity = '0.4';
+      el.style.pointerEvents = 'none';
+      el.style.background = '#f0f0f2';
+      if (el.tomselect) {
+        el.tomselect.disable();
+        el.tomselect.wrapper.style.opacity = '0.4';
+        el.tomselect.wrapper.style.pointerEvents = 'none';
+      }
+      if (wrapper) wrapper.style.opacity = '0.5';
+      // Clear values
+      if (id === 'f_vtype') el.value = '';
+      if (id === 'f_jobcard' && el.tomselect) el.tomselect.setValue('', true);
+      if (id === 'f_driver' && el.tomselect) el.tomselect.setValue('', true);
+    } else {
+      el.disabled = false;
+      el.style.opacity = '';
+      el.style.pointerEvents = '';
+      el.style.background = '';
+      if (el.tomselect) {
+        el.tomselect.enable();
+        el.tomselect.wrapper.style.opacity = '';
+        el.tomselect.wrapper.style.pointerEvents = '';
+      }
+      if (wrapper) wrapper.style.opacity = '';
+    }
+  });
 }
 
 function populateJobCardDropdown(plate) {
@@ -2096,38 +2147,53 @@ function toDateInput(v){
 }
 function toast(msg,type='in'){const icons={ok:'✅',er:'❌',in:'ℹ️'};const el=document.createElement('div');el.className=`toast ${type}`;el.innerHTML=`<span>${icons[type]}</span><span>${msg}</span>`;document.getElementById('toastbox').appendChild(el);setTimeout(()=>el.remove(),3000);}
 // ── ROW SELECTION ──
+var _selectedIds = new Set();
+
 function toggleAllRows(chkAll) {
-  var boxes = document.querySelectorAll('.row-chk');
-  boxes.forEach(function(b){ b.checked = chkAll.checked; });
-  onRowCheck();
+  _selectedIds.clear();
+  document.querySelectorAll('.row-chk').forEach(function(b){
+    b.checked = chkAll.checked;
+    if (chkAll.checked) _selectedIds.add(b.getAttribute('data-id'));
+  });
+  updateSelectionBar();
 }
 
-function onRowCheck() {
-  var checked = document.querySelectorAll('.row-chk:checked');
+function onRowCheck(chk) {
+  var id = chk ? chk.getAttribute('data-id') : null;
+  if (id) {
+    if (chk.checked) _selectedIds.add(id);
+    else _selectedIds.delete(id);
+  }
+  // Restore all checkboxes to match _selectedIds (in case DOM re-rendered)
+  document.querySelectorAll('.row-chk').forEach(function(b){
+    b.checked = _selectedIds.has(b.getAttribute('data-id'));
+  });
+  updateSelectionBar();
+}
+
+function updateSelectionBar() {
   var bar = document.getElementById('selectionbar');
   var cnt = document.getElementById('sel_count');
-  if (checked.length > 0) {
-    bar.style.display = 'flex';
-    cnt.textContent = checked.length + ' row' + (checked.length > 1 ? 's' : '') + ' selected';
-    // Show PDF button only on NOT PAID or workshop/today views
+  if (_selectedIds.size > 0) {
+    if (bar) bar.style.display = 'flex';
+    if (cnt) cnt.textContent = _selectedIds.size + ' row' + (_selectedIds.size > 1 ? 's' : '') + ' selected';
     var pdfBtn = document.getElementById('btn_pdf_req');
     if (pdfBtn) pdfBtn.style.display = ['workshop','today','NOT PAID'].includes(currentView) ? 'block' : 'none';
   } else {
-    bar.style.display = 'none';
+    if (bar) bar.style.display = 'none';
   }
 }
 
 function clearSelection() {
+  _selectedIds.clear();
   document.querySelectorAll('.row-chk').forEach(function(b){ b.checked = false; });
   var ca = document.getElementById('chk_all'); if (ca) ca.checked = false;
   var bar = document.getElementById('selectionbar'); if (bar) bar.style.display = 'none';
 }
 
 function getSelectedRows() {
-  var ids = [];
-  document.querySelectorAll('.row-chk:checked').forEach(function(b){ ids.push(b.getAttribute('data-id')); });
-  if (ids.length === 0) return filtered.length ? filtered : ALL;
-  return ALL.filter(function(r){ return ids.includes(r.id); });
+  if (_selectedIds.size === 0) return filtered.length ? filtered : ALL;
+  return ALL.filter(function(r){ return _selectedIds.has(r.id); });
 }
 
 function exportSelectedExcel() {
@@ -2150,7 +2216,6 @@ function exportSelectedExcel() {
   XLSX.utils.book_append_sheet(wb, ws, 'Requisitions');
   XLSX.writeFile(wb, 'AK_Requisitions_' + todayStr() + '.xlsx');
   toast('Exported ' + rows.length + ' rows to Excel ✓', 'ok');
-  clearSelection();
 }
 
 function exportSelectedPDF() {
