@@ -5039,14 +5039,33 @@ function doLogout() {
   var uw=document.getElementById('usermenu_wrap'); if(uw) uw.style.display='none';
   var nw=document.getElementById('newwrap'); if(nw) nw.style.display='none';
   document.body.className = document.body.className.replace(/role-\w+/g, '');
+  var ds = document.getElementById('dynamic-role-style'); if (ds) ds.remove();
   setSyncStatus('er');
 }
 
 function applyPermissions() {
   if (!CURRENT_USER) return;
-  // Apply role class to body for CSS-based permission hiding
+  // Apply role class to body
   document.body.className = document.body.className.replace(/role-\w+/g, '');
   document.body.classList.add('role-' + (CURRENT_USER.role||'viewer'));
+
+  // Inject dynamic style for viewer - runs every login, bypasses all cache
+  var existingStyle = document.getElementById('dynamic-role-style');
+  if (existingStyle) existingStyle.remove();
+  if (CURRENT_USER.role === 'viewer') {
+    var style = document.createElement('style');
+    style.id = 'dynamic-role-style';
+    style.textContent = [
+      '.actbtn.e { display:none !important; }',
+      '.actbtn.d { display:none !important; }',
+      '.actbtn.jcr-edit { display:none !important; }',
+      '.actbtn.jcr-del { display:none !important; }',
+      '.jcs-del { display:none !important; }',
+      '#btn_bulk_edit { display:none !important; }',
+      '#newwrap { display:none !important; }'
+    ].join('\n');
+    document.head.appendChild(style);
+  }
   var items = document.querySelectorAll('#newdrop div');
   for (var i=0; i<items.length; i++) {
     var txt = items[i].textContent.trim();
