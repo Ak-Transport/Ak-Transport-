@@ -524,6 +524,14 @@ body { touch-action: pan-x pan-y pinch-zoom; }
 /* Keep Tom Select wrappers for these also non-interactive */
 #f_driver + .ts-wrapper,
 #f_driver ~ .ts-wrapper { pointer-events: none !important; opacity: 0.8; }
+
+/* Hide edit/delete action buttons for viewer role */
+body.role-viewer .actbtn.e,
+body.role-viewer .actbtn.d,
+body.role-viewer .actbtn.jcr-edit,
+body.role-viewer .actbtn.jcr-del,
+body.role-viewer .jcs-del,
+body.role-viewer #btn_bulk_edit { display: none !important; }
 </style>
 
 
@@ -1460,6 +1468,8 @@ function toUpper(v){ return typeof v === 'string' ? v.toUpperCase() : v; }
 
 // Check if current user is staff_jc
 function isStaffJC() { return CURRENT_USER && CURRENT_USER.role === 'staff_jc'; }
+// Check if current user can edit/delete (not viewer)
+function canModify() { return CURRENT_USER && CURRENT_USER.role !== 'viewer'; }
 
 // Enforce BREAKDOWN for staff_jc: lock category field
 function lockCategoryBreakdown(elId) {
@@ -5028,11 +5038,15 @@ function doLogout() {
   }
   var uw=document.getElementById('usermenu_wrap'); if(uw) uw.style.display='none';
   var nw=document.getElementById('newwrap'); if(nw) nw.style.display='none';
+  document.body.className = document.body.className.replace(/role-\w+/g, '');
   setSyncStatus('er');
 }
 
 function applyPermissions() {
   if (!CURRENT_USER) return;
+  // Apply role class to body for CSS-based permission hiding
+  document.body.className = document.body.className.replace(/role-\w+/g, '');
+  document.body.classList.add('role-' + (CURRENT_USER.role||'viewer'));
   var items = document.querySelectorAll('#newdrop div');
   for (var i=0; i<items.length; i++) {
     var txt = items[i].textContent.trim();
