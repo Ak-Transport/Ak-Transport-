@@ -2268,9 +2268,12 @@ function updateSelectionBar() {
     if (bar) bar.style.display = 'flex';
     if (cnt) cnt.textContent = _selectedIds.size + ' row' + (_selectedIds.size > 1 ? 's' : '') + ' selected';
     var pdfBtn = document.getElementById('btn_pdf_req');
+    // PDF print allowed for all roles including viewer
     if (pdfBtn) pdfBtn.style.display = ['workshop','today','NOT PAID'].includes(currentView) ? 'block' : 'none';
     var editBtn = document.getElementById('btn_bulk_edit');
-    if (editBtn) editBtn.style.display = ['workshop','today'].includes(currentView) ? 'block' : 'none';
+    // Only show edit button for roles that can edit (not viewer)
+    var canEdit = CURRENT_USER && ['admin','manager','staff','staff_jc'].includes(CURRENT_USER.role);
+    if (editBtn) editBtn.style.display = (canEdit && ['workshop','today'].includes(currentView)) ? 'block' : 'none';
   } else {
     if (bar) bar.style.display = 'none';
   }
