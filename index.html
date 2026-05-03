@@ -198,7 +198,7 @@ tr:hover td{background:#f0f4ff}
 .loadtxt{color:var(--ac);font-size:14px;font-weight:600}
 
 /* TOAST */
-.toastbox{position:fixed;bottom:24px;right:24px;z-index:9001;display:flex;flex-direction:column;gap:8px}
+.toastbox{position:fixed;top:24px;left:50%;transform:translateX(-50%);z-index:9001;display:flex;flex-direction:column;gap:8px}
 .toast{padding:11px 18px;border-radius:12px;font-size:13px;font-weight:600;animation:slidein .25s ease;box-shadow:0 4px 20px rgba(0,0,0,.12)}
 @keyframes slidein{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
 .tok{background:var(--ac);color:#ffffff}
@@ -507,6 +507,23 @@ body { touch-action: pan-x pan-y pinch-zoom; }
 ::-webkit-scrollbar-thumb { background: #a0a0a8; border-radius: 4px; border: 1px solid #e8e8ed; }
 ::-webkit-scrollbar-thumb:hover { background: #6e6e76; }
 ::-webkit-scrollbar-corner { background: #e8e8ed; }
+
+/* Multi-req Tom Select height consistency */
+#mr_lines_wrap .ts-wrapper { height:38px !important; }
+#mr_lines_wrap .ts-control { min-height:38px !important; height:38px !important; padding-top:0 !important; padding-bottom:0 !important; align-items:center !important; }
+
+/* Category and Driver - auto-filled only, not user-editable in req form */
+#f_category, #f_driver {
+  pointer-events: none !important;
+  background: #f5f5f7 !important;
+  cursor: not-allowed !important;
+  color: var(--ac) !important;
+  font-weight: 600 !important;
+  opacity: 0.8;
+}
+/* Keep Tom Select wrappers for these also non-interactive */
+#f_driver + .ts-wrapper,
+#f_driver ~ .ts-wrapper { pointer-events: none !important; opacity: 0.8; }
 </style>
 
 
@@ -533,7 +550,10 @@ body { touch-action: pan-x pan-y pinch-zoom; }
     <div class="newwrap" id="newwrap" style="display:none">
       <button class="btn bp" onclick="toggleDrop()">+ New &#9662;</button>
       <div class="newdrop" id="newdrop">
-        <div onclick="openAdd();closeDrop()">&#128203; New Requisition</div>
+        <div onclick="openAdd();closeDrop()">📄 Quick Requisition</div>
+        <div onclick="openFreeReq();closeDrop()">📝 Multi Requisition</div>
+        <div onclick="openMultiReq();closeDrop()">🚛 Single-Truck Requisition</div>
+        <div onclick="openSupplierReq();closeDrop()">🏪 Single-Supplier Requisition</div>
         <div onclick="openAddSupplier();closeDrop()">&#127978; New Supplier</div>
         <div onclick="openAddSparePart();closeDrop()">&#128295; New Spare Part</div>
         <div onclick="openAddJobCard();closeDrop()">&#128203; New Job Card</div>
@@ -1436,6 +1456,41 @@ function fmtNum(el) {
   if (!isNaN(num) && num > 0) el.value = num.toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2});
 }
 
+function toUpper(v){ return typeof v === 'string' ? v.toUpperCase() : v; }
+
+// Check if current user is staff_jc
+function isStaffJC() { return CURRENT_USER && CURRENT_USER.role === 'staff_jc'; }
+
+// Enforce BREAKDOWN for staff_jc: lock category field
+function lockCategoryBreakdown(elId) {
+  var el = document.getElementById(elId);
+  if (!el || !isStaffJC()) return;
+  el.value = 'BREAKDOWN';
+  el.disabled = true;
+  el.style.opacity = '0.6';
+  el.style.cursor = 'not-allowed';
+}
+// Lock a specific select element directly (not by id)
+function lockCategoryEl(el) {
+  if (!el || !isStaffJC()) return;
+  el.value = 'BREAKDOWN';
+  el.disabled = true;
+  el.style.opacity = '0.6';
+  el.style.cursor = 'not-allowed';
+}
+function upperRecord(rec){
+  var out = {};
+  // Keys to preserve as-is (dates, numbers, ids, formatted values)
+  var preserve = ['dateRequested','dateReceived','dateIssued','qty','unitPrice','cost','id',
+    'reqNo','signedPdfUrl','signedPdfId','startDate','endDate','expectedReleaseDate',
+    'odometer','duration','orderStatus','clientName'];
+  Object.keys(rec).forEach(function(k){
+    if (preserve.indexOf(k) !== -1) { out[k] = rec[k]; }
+    else if (typeof rec[k] === 'string') { out[k] = rec[k].toUpperCase(); }
+    else { out[k] = rec[k]; }
+  });
+  return out;
+}
 function nextReqNo(){let max=0;ALL.forEach(r=>{const n=parseInt((r.reqNo||'').replace('REQ-',''),10);if(!isNaN(n)&&n>max)max=n;});return'REQ-'+String(max+1).padStart(6,'0');}
 function openAdd(){
   if (!can('req')) { toast('You do not have permission to create requisitions', 'er'); return; }
@@ -1448,6 +1503,8 @@ function openAdd(){
   populateFormDropdowns();
   // Job card shows only "Other" until truck is selected
   populateJobCardDropdown('');
+  // Lock category to BREAKDOWN for staff_jc
+  lockCategoryBreakdown('f_category');
   document.getElementById('recmodal').classList.remove('hidden');
 }
 function editRecord(id){
@@ -1555,6 +1612,14 @@ async function saveRecord(){
   var modal = document.getElementById('recmodal');
   var isWorkshopTruck = (truck||'').toUpperCase().includes('WORKSHOP') ||
     (modal && modal.getAttribute('data-workshop') === '1');
+  // staff_jc can only save BREAKDOWN
+  if (isStaffJC() && cat && cat.toUpperCase() !== 'BREAKDOWN') {
+    toast('Your role only allows BREAKDOWN category requisitions','er'); return;
+  }
+  // staff_jc can only save BREAKDOWN requisitions
+  if (isStaffJC() && cat && cat.toUpperCase() !== 'BREAKDOWN') {
+    toast('Your role only allows BREAKDOWN requisitions','er'); return;
+  }
   if (!truck) missing.push('Truck / Vehicle No');
   if (!isWorkshopTruck && !driver) missing.push('Driver Name');
   if (!isWorkshopTruck && !jobcard) missing.push('Job Card No');
@@ -1621,7 +1686,8 @@ async function saveRecord(){
       closeModal('recmodal');
       updateBadges();applyFilters();
       toast('Saving...','in');
-      callAPI('update',{record:data}).then(function(){
+      var upData = upperRecord(data);
+    callAPI('update',{record:upData}).then(function(){
         toast('Updated ✓','ok');
         loadRecords().then(function(){ updateBadges(); applyFilters(); });
       }).catch(()=>toast('Sync failed','er'));
@@ -1645,7 +1711,9 @@ async function saveRecord(){
       applyFilters();
       updateBadges();
       toast('Saving...','in');
-      callAPI('add',{record:data}).then(function(){
+      callAPI('add',{record:upperRecord(data)}).then(function(res){
+        data = upperRecord(data);
+        if (res && res.id) data.id = res.id;
         toast('Saved ✓','ok');
       }).catch(function(){
         toast('Sync failed - check connection','er');
@@ -2201,6 +2269,8 @@ function updateSelectionBar() {
     if (cnt) cnt.textContent = _selectedIds.size + ' row' + (_selectedIds.size > 1 ? 's' : '') + ' selected';
     var pdfBtn = document.getElementById('btn_pdf_req');
     if (pdfBtn) pdfBtn.style.display = ['workshop','today','NOT PAID'].includes(currentView) ? 'block' : 'none';
+    var editBtn = document.getElementById('btn_bulk_edit');
+    if (editBtn) editBtn.style.display = ['workshop','today'].includes(currentView) ? 'block' : 'none';
   } else {
     if (bar) bar.style.display = 'none';
   }
@@ -2359,6 +2429,1020 @@ function exportSelectedPDF() {
   win.document.close();
 }
 
+// ── MULTI-LINE REQUISITION ──
+var _mrLineCount = 0;
+
+function openMultiReq() {
+  if (!can('req')) { toast('No permission','er'); return; }
+  _mrLineCount = 0;
+  var wrap = document.getElementById('mr_lines_wrap');
+  if (wrap) {
+    // Destroy any existing Tom Select instances in the wrap before clearing
+    wrap.querySelectorAll('select').forEach(function(s){ if(s.tomselect) s.tomselect.destroy(); });
+    wrap.innerHTML = '';
+  }
+  document.getElementById('mr_grand_total').textContent = '0.00';
+  // Reset shared fields
+  ['mr_vtype','mr_category','mr_priority'].forEach(function(id){
+    var el=document.getElementById(id); if(el) el.value='';
+  });
+  // Truck Tom Select with search
+  var trk = document.getElementById('mr_truck');
+  if (trk) {
+    if (trk.tomselect) trk.tomselect.destroy();
+    trk.innerHTML = '<option value="">Search vehicle...</option>';
+    VEHICLES.forEach(function(v){
+      var o=document.createElement('option');
+      o.value=v.plate;
+      o.textContent=v.plate+(v.vehicleType?' ('+v.vehicleType+')':'');
+      trk.appendChild(o);
+    });
+    new TomSelect(trk, {
+      allowEmptyOption:true,
+      placeholder:'Search vehicle...',
+      onChange: function(val){ onMRTruckSelect(val); }
+    });
+  }
+  var dt=document.getElementById('mr_date'); if(dt) dt.value=todayStr();
+  addMRLine();
+  lockCategoryBreakdown('mr_category');
+  document.getElementById('multireqmodal').classList.remove('hidden');
+}
+
+function onMRTruckSelect(plate) {
+  if (!plate) plate = '';
+  var isWS = plate.toUpperCase().includes('WORKSHOP');
+  var v = VEHICLES.find(function(x){ return (x.plate||'').toUpperCase()===plate.toUpperCase(); });
+
+  // Show/hide vehicle type, job card, driver fields when workshop
+  ['mr_vtype_fg','mr_jobcard_fg','mr_driver_fg'].forEach(function(id){
+    var el=document.getElementById(id); if(el) el.style.display=isWS?'none':'';
+  });
+
+  // Vehicle type
+  var vtEl=document.getElementById('mr_vtype');
+  if(vtEl) vtEl.value=isWS?'':(v?(v.vehicleType||''):'');
+
+  // Category — auto WORKSHOP and mute
+  var catEl=document.getElementById('mr_category');
+  if(catEl){
+    if(isWS){ catEl.value='WORKSHOP'; catEl.disabled=true; catEl.style.opacity='0.55'; catEl.style.cursor='not-allowed'; }
+    else{ catEl.disabled=false; catEl.style.opacity=''; catEl.style.cursor=''; }
+  }
+
+  if(isWS) return;
+
+  // Job cards for this truck
+  var jcSel=document.getElementById('mr_jobcard');
+  if(jcSel){
+    jcSel.innerHTML='<option value="">Select...</option>';
+    JOBCARDS.filter(function(j){ return (j.vehicle||'').toUpperCase()===plate.toUpperCase()&&(j.workStatus||'').toUpperCase()!=='COMPLETED'; })
+      .forEach(function(j){ var o=document.createElement('option'); o.value=j.code; o.textContent=j.code; jcSel.appendChild(o); });
+    var oc=document.createElement('option'); oc.value='OTHER'; oc.textContent='✏ Other'; jcSel.appendChild(oc);
+  }
+  // Drivers
+  var drvSel=document.getElementById('mr_driver');
+  if(drvSel){
+    drvSel.innerHTML='<option value="">Select...</option>';
+    DRIVERS.filter(function(d){ return d.status!=='INACTIVE'; })
+      .forEach(function(d){ var o=document.createElement('option'); o.value=d.name; o.textContent=d.name; drvSel.appendChild(o); });
+  }
+}
+
+function onMRJCSelect() {
+  var jcEl=document.getElementById('mr_jobcard');
+  var j=JOBCARDS.find(function(x){ return x.code===(jcEl?jcEl.value:''); });
+  if(!j) return;
+  var drvSel=document.getElementById('mr_driver'); if(drvSel&&j.driverName) drvSel.value=j.driverName;
+  var catEl=document.getElementById('mr_category'); if(catEl&&j.category) catEl.value=j.category;
+}
+
+function addMRLine() {
+  _mrLineCount++;
+  var n = _mrLineCount;
+  var wrap = document.getElementById('mr_lines_wrap');
+  if (!wrap) { console.error('mr_lines_wrap not found'); return; }
+
+  var supOpts = '<option value="">Select supplier...</option>';
+  SUPPLIERS.filter(function(s){return s.status!=='INACTIVE';}).forEach(function(s){ supOpts+='<option value="'+s.name+'">'+s.name+'</option>'; });
+
+  var partOpts = '<option value="">Select spare part...</option>';
+  SPAREPARTS.filter(function(p){return p.status!=='INACTIVE';}).forEach(function(p){ partOpts+='<option value="'+p.name+'">'+p.code+' — '+p.name+'</option>'; });
+
+  // Consistent field height: all inputs/selects 38px, Tom Select wrapper matched via CSS
+  var fldStyle = 'width:100%;height:38px;padding:0 10px;font-size:13px;border:1.5px solid #d2d2d7;border-radius:7px;background:#fff;box-sizing:border-box;font-family:Inter,sans-serif;line-height:38px';
+  var fldStyleDate = 'width:100%;height:38px;padding:0 8px;font-size:13px;border:1.5px solid #d2d2d7;border-radius:7px;background:#fff;box-sizing:border-box;font-family:Inter,sans-serif';
+  var fg = function(lbl,html,star){
+    return '<div style="display:flex;flex-direction:column;gap:5px">'
+      +'<label style="font-size:10px;font-weight:700;color:#515154;text-transform:uppercase;letter-spacing:.06em;white-space:nowrap">'+lbl+(star?' <span style="color:#f87171">*</span>':'')+'</label>'
+      +'<div style="height:38px;display:flex;align-items:center">'+html+'</div>'
+      +'</div>';
+  };
+  var fgTA = function(lbl,html){
+    return '<div style="display:flex;flex-direction:column;gap:5px">'
+      +'<label style="font-size:10px;font-weight:700;color:#515154;text-transform:uppercase;letter-spacing:.06em">Remarks</label>'
+      +html+'</div>';
+  };
+
+  var card = document.createElement('div');
+  card.id = 'mr_line_'+n;
+  card.style.cssText = 'border:1.5px solid #dde3f0;border-radius:12px;padding:16px;margin-bottom:14px;background:#fff;position:relative;box-shadow:0 1px 4px rgba(0,0,0,.04)';
+
+  card.innerHTML =
+    // Line badge + delete
+    '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;padding-bottom:12px;border-bottom:1px solid #f0f0f4">'
+    +'<span style="font-size:11px;font-weight:700;color:var(--ac);background:rgba(10,45,110,.08);padding:3px 10px;border-radius:20px">Line '+n+'</span>'
+    +(n>1?'<button onclick="removeMRLine('+n+')" style="background:none;border:none;cursor:pointer;color:#b91c1c;font-size:13px;font-weight:600;padding:4px 10px;border-radius:6px;border:1px solid #fecaca;background:#fff5f5">✕ Remove</button>':'')
+    +'</div>'
+    // ROW 1: Description | Qty | Unit Price | Total | Supplier
+    +'<div style="display:grid;grid-template-columns:3fr 90px 150px 150px 2fr;gap:16px;margin-bottom:16px;align-items:end">'
+    +fg('Spare Part / Description',
+      '<select id="mr_desc_'+n+'" onchange="onMRDescChange('+n+')" style="'+fldStyle+';height:38px">'+partOpts+'<option value="__custom__">✏ Enter manually...</option></select>'
+      +'<input type="text" id="mr_desc_txt_'+n+'" placeholder="Type description / spare part..." style="'+fldStyle+';margin-top:4px;display:none">',
+    true)
+    +fg('Qty','<input type="number" id="mr_qty_'+n+'" min="1" value="1" oninput="calcMRLine('+n+')" style="'+fldStyle+'">',true)
+    +fg('Unit Price','<input type="number" id="mr_up_'+n+'" placeholder="0.00" min="0" oninput="calcMRLine('+n+')" style="'+fldStyle+'">',false)
+    +fg('Total Amount','<input type="text" id="mr_total_'+n+'" readonly style="width:100%;height:38px;padding:0 10px;font-size:13px;border:1.5px solid #e2e2e7;border-radius:7px;background:#f5f5f7;font-weight:700;color:var(--ac);cursor:not-allowed;box-sizing:border-box">',false)
+    +fg('Supplier','<select id="mr_sup_'+n+'" style="'+fldStyle+';height:38px">'+supOpts+'</select>',true)
+    +'</div>'
+    // ROW 2: LPO | Status | Payment | Date Received | Date Issued | Requested By | Remarks
+    +'<div style="display:grid;grid-template-columns:110px 170px 145px 150px 150px 185px 1fr;gap:16px;align-items:end">'
+    +fg('LPO No','<input type="text" id="mr_lpo_'+n+'" placeholder="PO-..." style="'+fldStyle+';text-transform:uppercase">',false)
+    +fg('Status','<select id="mr_status_'+n+'" style="'+fldStyle+'"><option value="NOT PAID">NOT PAID</option><option value="ON HOLD">ON HOLD</option><option value="PAID NOT RECEIVED">PAID NOT RECEIVED</option><option value="RECEIVED NOT ISSUED">RECEIVED NOT ISSUED</option><option value="RECEIVED">RECEIVED</option></select>',true)
+    +fg('Payment Mode','<select id="mr_pay_'+n+'" style="'+fldStyle+'"><option value="">Select...</option><option>CASH</option><option>CHEQUE</option><option>BANK TRANSFER</option><option>MPESA</option><option>CREDIT</option></select>',false)
+    +fg('Date Received','<input type="date" id="mr_datercvd_'+n+'" style="'+fldStyleDate+'">',false)
+    +fg('Date Issued','<input type="date" id="mr_dateissued_'+n+'" style="'+fldStyleDate+'">',false)
+    +fg('Requested By','<select id="mr_reqby_'+n+'" style="'+fldStyle+'"><option value="">Select...</option><option>SABRI ABRI</option><option>RAMADHAN LUDEGE</option><option>MUSTAKIM RAMADHAN</option><option>MOHAMED AL JABRY</option></select>',true)
+    +'<div style="display:flex;flex-direction:column;gap:5px"><label style="font-size:10px;font-weight:700;color:#515154;text-transform:uppercase;letter-spacing:.06em">Remarks</label><textarea id="mr_remarks_'+n+'" placeholder="Remarks..." style="width:100%;height:60px;padding:8px 10px;font-size:13px;border:1.5px solid #d2d2d7;border-radius:7px;background:#fff;resize:vertical;box-sizing:border-box;font-family:Inter,sans-serif"></textarea></div>'
+    +'</div>';
+
+  wrap.appendChild(card);
+
+  // Tom Select with search for supplier (create enabled for manual entry)
+  // Description: plain select with manual text fallback (no Tom Select - has its own toggle)
+  var descEl = document.getElementById('mr_desc_'+n);
+  if (descEl) {
+    new TomSelect(descEl, {
+      allowEmptyOption: true,
+      placeholder: 'Search spare part...',
+      dropdownParent: 'body',
+      onChange: function(val){ onMRDescChange(n); }
+    });
+  }
+  new TomSelect(document.getElementById('mr_sup_'+n), {
+    allowEmptyOption:true, placeholder:'Search or type supplier...', create:true, dropdownParent:'body'
+  });
+}
+
+
+function onMRDescChange(n){
+  var s=document.getElementById('mr_desc_'+n);
+  var t=document.getElementById('mr_desc_txt_'+n);
+  if(!s||!t)return;
+  if(s.value==='__custom__'){
+    s.style.display='none';
+    t.style.display='block';
+    t.style.height='38px';
+    t.focus();
+  } else {
+    t.style.display='none';
+    s.style.display='block';
+  }
+}
+function onMRSupChange(n){
+  var s=document.getElementById('mr_sup_'+n),t=document.getElementById('mr_sup_txt_'+n);
+  if(!s||!t)return;
+  if(s.value==='__custom__'){s.style.display='none';t.style.display='block';t.focus();}
+  else{t.style.display='none';s.style.display='block';}
+}
+function calcMRLine(n){
+  var qty=parseFloat(document.getElementById('mr_qty_'+n).value)||0;
+  var up=parseFloat(document.getElementById('mr_up_'+n).value)||0;
+  var tot=qty*up;
+  var el=document.getElementById('mr_total_'+n);
+  if(el) el.value=tot>0?tot.toLocaleString('en-US',{minimumFractionDigits:2}):'';
+  calcMRGrandTotal();
+}
+function calcMRGrandTotal(){
+  var g=0;
+  for(var i=1;i<=_mrLineCount;i++){var el=document.getElementById('mr_total_'+i);if(el)g+=parseFloat((el.value||'').replace(/,/g,''))||0;}
+  document.getElementById('mr_grand_total').textContent=g.toLocaleString('en-US',{minimumFractionDigits:2});
+}
+function removeMRLine(n){
+  var el=document.getElementById('mr_line_'+n); if(el)el.remove(); calcMRGrandTotal();
+}
+
+async function saveMultiReq(){
+  var trk = document.getElementById('mr_truck');
+  var truck = trk && trk.tomselect ? trk.tomselect.getValue() : (trk ? trk.value : '');
+  var isMRWorkshop = (truck||'').toUpperCase().includes('WORKSHOP');
+  var vtype   = isMRWorkshop ? '' : (document.getElementById('mr_vtype')||{}).value||'';
+  var jcEl    = document.getElementById('mr_jobcard');
+  var jobcard = isMRWorkshop ? '' : (jcEl ? jcEl.value : '');
+  var drvEl   = document.getElementById('mr_driver');
+  var driver  = isMRWorkshop ? '' : (drvEl ? drvEl.value : '');
+  var cat      = (document.getElementById('mr_category')||{}).value||'';
+  var date     = (document.getElementById('mr_date')||{}).value||'';
+  var priority = (document.getElementById('mr_priority')||{}).value||'';
+
+  if (!truck)    { toast('Please select Truck / Vehicle No','er'); return; }
+  if (!cat)      { toast('Please select Category','er'); return; }
+  if (!date)     { toast('Please enter Date Requested','er'); return; }
+  if (!priority) { toast('Please select Priority','er'); return; }
+
+  // Collect and validate lines
+  var lines = [];
+  for (var i = 1; i <= _mrLineCount; i++) {
+    if (!document.getElementById('mr_line_'+i)) continue;
+    var descEl = document.getElementById('mr_desc_'+i);
+    var descTxt = document.getElementById('mr_desc_txt_'+i);
+    var desc = '';
+    if (descTxt && descTxt.style.display !== 'none') desc = descTxt.value.trim();
+    else if (descEl && descEl.tomselect) desc = descEl.tomselect.getValue()||'';
+    else if (descEl) desc = descEl.value||'';
+    if (!desc) { toast('Line '+i+': Description required','er'); return; }
+
+    var supEl = document.getElementById('mr_sup_'+i);
+    var sup = supEl && supEl.tomselect ? supEl.tomselect.getValue()||'' : (supEl ? supEl.value||'' : '');
+    if (!sup) { toast('Line '+i+': Supplier required','er'); return; }
+
+    var lpo = ((document.getElementById('mr_lpo_'+i)||{}).value||'').toUpperCase();
+    if (lpo && !/^PO-/.test(lpo)) { toast('Line '+i+': LPO must start with PO-','er'); return; }
+
+    var reqby = (document.getElementById('mr_reqby_'+i)||{}).value||'';
+    if (!reqby) { toast('Line '+i+': Requested By required','er'); return; }
+
+    var mQty  = (document.getElementById('mr_qty_'+i)||{}).value||'';
+    var mCost = parseFloat(((document.getElementById('mr_total_'+i)||{}).value||'').replace(/,/g,''))||0;
+    var mStat = (document.getElementById('mr_status_'+i)||{}).value||'';
+    var mPay  = (document.getElementById('mr_pay_'+i)||{}).value||'';
+    if(!mQty)   { toast('Line '+i+': Qty is required','er'); return; }
+    var mUp = (document.getElementById('mr_up_'+i)||{}).value||'';
+    if(!mUp || parseFloat(mUp)<=0) { toast('Line '+i+': Unit Price is required','er'); return; }
+    if(!mCost)  { toast('Line '+i+': Total Amount is required','er'); return; }
+    if(!mStat)  { toast('Line '+i+': Status is required','er'); return; }
+    if(!mPay)   { toast('Line '+i+': Payment Mode is required','er'); return; }
+    if(mStat==='RECEIVED'){
+      if(!(document.getElementById('mr_datercvd_'+i)||{}).value)  { toast('Line '+i+': Date Received required when RECEIVED','er'); return; }
+      if(!(document.getElementById('mr_dateissued_'+i)||{}).value) { toast('Line '+i+': Date Issued required when RECEIVED','er'); return; }
+      if(!(document.getElementById('mr_remarks_'+i)||{}).value)    { toast('Line '+i+': Remarks required when RECEIVED','er'); return; }
+    }
+    lines.push({
+      desc:desc, qty:mQty,
+      unitPrice:(document.getElementById('mr_up_'+i)||{}).value||'0',
+      cost:mCost, supplier:sup, lpo:lpo, status:mStat, payment:mPay,
+      dateRcvd:(document.getElementById('mr_datercvd_'+i)||{}).value||'',
+      dateIssued:(document.getElementById('mr_dateissued_'+i)||{}).value||'',
+      remarks:(document.getElementById('mr_remarks_'+i)||{}).value||'',
+      reqby:reqby
+    });
+  }
+  if (!lines.length) { toast('Add at least one line','er'); return; }
+
+  var btn = document.getElementById('mr_save_btn');
+  if (btn) { btn.disabled=true; btn.textContent='Saving '+lines.length+' line(s)...'; }
+
+  // Build records with sequential req numbers
+  var tempMax = 0;
+  ALL.forEach(function(r){ var n=parseInt((r.reqNo||'').replace('REQ-',''),10); if(!isNaN(n)&&n>tempMax) tempMax=n; });
+  var records = lines.map(function(l){
+    tempMax++;
+    return { reqNo:'REQ-'+String(tempMax).padStart(6,'0'), dateRequested:date, truck:truck, vehicleType:vtype, driverName:driver, priority:priority, jobCardNo:jobcard==='OTHER'?'':jobcard, lpoNo:l.lpo, description:l.desc, qty:l.qty, unitPrice:l.unitPrice, cost:l.cost, supplier:l.supplier, dateReceived:l.dateRcvd, status:l.status, paymentMode:l.payment, category:cat, requestedBy:l.reqby, remarks:l.remarks, dateIssued:l.dateIssued };
+  });
+
+  var saved = 0, failed = 0;
+  // Save sequentially using existing 'add' action (no Code.gs changes needed)
+  for (var fb=0; fb<records.length; fb++) {
+    try {
+      if (fb>0) await new Promise(function(r){ setTimeout(r,800); });
+      if (btn) btn.textContent='Saving '+(fb+1)+' of '+records.length+'...';
+      var r2 = await callAPI('add', { record: upperRecord(records[fb]) });
+      if (r2 && r2.success !== false) {
+        var newRec = Object.assign({}, records[fb]);
+        newRec.id = r2.id || (Date.now()+'_'+fb);
+        if (newRec.jobCardNo) { var jci=getJCInfo(newRec.jobCardNo); newRec.orderStatus=jci.orderStatus; newRec.clientName=jci.clientName; }
+        ALL.push(newRec);
+        saved++;
+      } else {
+        console.error('Line '+(fb+1)+' failed:', r2);
+        failed++;
+      }
+    } catch(e2) {
+      console.error('Line '+(fb+1)+' error:', e2.message||e2);
+      failed++;
+    }
+  }
+
+  if (btn) { btn.disabled=false; btn.textContent='💾 Save All Lines'; }
+  closeModal('multireqmodal');
+  if (saved > 0) {
+    toast('Saved '+saved+' requisition'+(saved>1?'s':'')+' ✓','ok');
+    // Force reload from server to get fresh data with proper ids
+    showLoad('Refreshing data...');
+    loadAppData();
+  }
+  if (failed > 0) toast(failed+' line(s) failed to save','er');
+}
+
+
+// ── SINGLE-SUPPLIER REQUISITION ──
+var _ssrLineCount = 0;
+
+function openSupplierReq() {
+  if (!can('req')) { toast('No permission','er'); return; }
+  _ssrLineCount = 0;
+  var wrap = document.getElementById('ssr_lines_wrap');
+  if (wrap) {
+    wrap.querySelectorAll('select').forEach(function(s){ if(s.tomselect) s.tomselect.destroy(); });
+    wrap.innerHTML = '';
+  }
+  document.getElementById('ssr_grand_total').textContent = '0.00';
+  var dtEl=document.getElementById('ssr_date'); if(dtEl) dtEl.value=todayStr();
+  var payEl=document.getElementById('ssr_payment'); if(payEl) payEl.value='';
+  // Supplier Tom Select
+  var sup = document.getElementById('ssr_supplier');
+  if (sup) {
+    if (sup.tomselect) sup.tomselect.destroy();
+    sup.innerHTML = '<option value="">Select supplier...</option>';
+    SUPPLIERS.filter(function(s){return s.status!=='INACTIVE';}).forEach(function(s){
+      var o=document.createElement('option'); o.value=s.name; o.textContent=s.name; sup.appendChild(o);
+    });
+    new TomSelect(sup, { allowEmptyOption:true, placeholder:'Search or type supplier...', create:true, dropdownParent:'body' });
+  }
+  addSSRLine();
+  document.getElementById('ssreqmodal').classList.remove('hidden');
+}
+
+function addSSRLine() {
+  _ssrLineCount++;
+  var n = _ssrLineCount;
+  var wrap = document.getElementById('ssr_lines_wrap');
+  if (!wrap) return;
+
+  var partOpts = '<option value="">Select spare part...</option>';
+  SPAREPARTS.filter(function(p){return p.status!=='INACTIVE';}).forEach(function(p){
+    partOpts += '<option value="'+p.name+'">'+p.code+' — '+p.name+'</option>';
+  });
+
+  var truckOpts = '<option value="">Search vehicle...</option>';
+  VEHICLES.forEach(function(v){ truckOpts += '<option value="'+v.plate+'">'+v.plate+(v.vehicleType?' ('+v.vehicleType+')':'')+'</option>'; });
+
+  var fs = 'width:100%;height:38px;padding:0 10px;font-size:13px;border:1.5px solid #d2d2d7;border-radius:7px;background:#fff;box-sizing:border-box;font-family:Inter,sans-serif';
+  var fg = function(lbl, html, star) {
+    return '<div style="display:flex;flex-direction:column;gap:5px">'
+      + '<label style="font-size:10px;font-weight:700;color:#515154;text-transform:uppercase;letter-spacing:.06em;white-space:nowrap">'
+      + lbl + (star ? ' <span style="color:#f87171">*</span>' : '') + '</label>'
+      + '<div style="min-height:38px;display:flex;align-items:center">' + html + '</div></div>';
+  };
+
+  var card = document.createElement('div');
+  card.id = 'ssr_line_' + n;
+  card.style.cssText = 'border:1.5px solid #dde3f0;border-radius:12px;padding:16px;margin-bottom:16px;background:#fff;box-shadow:0 1px 4px rgba(0,0,0,.04)';
+
+  card.innerHTML =
+    // Badge + remove button
+    '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;padding-bottom:12px;border-bottom:1px solid #f0f0f4">'
+    + '<span style="font-size:11px;font-weight:700;color:var(--ac);background:rgba(10,45,110,.08);padding:3px 10px;border-radius:20px">Line ' + n + '</span>'
+    + (n > 1 ? '<button onclick="removeSSRLine('+n+')" style="background:#fff5f5;border:1px solid #fecaca;cursor:pointer;color:#b91c1c;font-size:13px;font-weight:600;padding:4px 10px;border-radius:6px">✕ Remove</button>' : '')
+    + '</div>'
+    // ROW 1: Truck | Vehicle Type | Job Card | Driver
+    + '<div style="display:grid;grid-template-columns:2fr 1.5fr 1.5fr 1.5fr;gap:16px;margin-bottom:16px">'
+    + fg('Truck / Vehicle No', '<select id="ssr_truck_'+n+'" style="'+fs+'">'+truckOpts+'</select>', true)
+    + '<div id="ssr_vtype_fg_'+n+'" style="display:flex;flex-direction:column;gap:5px"><label style="font-size:10px;font-weight:700;color:#515154;text-transform:uppercase;letter-spacing:.06em">Vehicle Type</label><div style="min-height:38px;display:flex;align-items:center"><input type="text" id="ssr_vtype_'+n+'" readonly style="'+fs+';opacity:.6;cursor:not-allowed;color:var(--ac);font-weight:600"></div></div>'
+    + '<div id="ssr_jobcard_fg_'+n+'" style="display:flex;flex-direction:column;gap:5px"><label style="font-size:10px;font-weight:700;color:#515154;text-transform:uppercase;letter-spacing:.06em">Job Card No</label><div style="min-height:38px;display:flex;align-items:center"><select id="ssr_jobcard_'+n+'" onchange="onSSRJCLineSelect('+n+')" style="'+fs+'"><option value="">Select...</option></select></div></div>'
+    + '<div id="ssr_driver_fg_'+n+'" style="display:flex;flex-direction:column;gap:5px"><label style="font-size:10px;font-weight:700;color:#515154;text-transform:uppercase;letter-spacing:.06em">Driver Name</label><div style="min-height:38px;display:flex;align-items:center"><select id="ssr_driver_'+n+'" style="'+fs+'"><option value="">Select...</option></select></div></div>'
+    + '</div>'
+    // ROW 2: Category | Priority | Requested By | Spare Part / Description
+    + '<div style="display:grid;grid-template-columns:1fr 1fr 1fr 2.5fr;gap:16px;margin-bottom:16px">'
+    + fg('Category', '<select id="ssr_category_'+n+'" style="'+fs+'"><option value="">Select...</option><option>WORKSHOP</option><option>BREAKDOWN</option></select>', true)
+    + fg('Priority', '<select id="ssr_priority_'+n+'" style="'+fs+'"><option value="">Select...</option><option>HIGH PRIORITY</option><option>NORMAL</option></select>', true)
+    + fg('Requested By', '<select id="ssr_reqby_'+n+'" style="'+fs+'"><option value="">Select...</option><option>SABRI ABRI</option><option>RAMADHAN LUDEGE</option><option>MUSTAKIM RAMADHAN</option><option>MOHAMED AL JABRY</option></select>', true)
+    + fg('Spare Part / Description',
+        '<select id="ssr_desc_'+n+'" onchange="onSSRDescChange('+n+')" style="'+fs+'">'+partOpts+'<option value="__custom__">✏ Enter manually...</option></select>'
+        + '<input type="text" id="ssr_desc_txt_'+n+'" placeholder="Type description..." style="'+fs+';margin-top:4px;display:none">', true)
+    + '</div>'
+    // ROW 3: Qty | Unit Price | Total | LPO | Status | Date Received | Date Issued | Remarks
+    + '<div style="display:grid;grid-template-columns:80px 130px 130px 110px 160px 145px 145px 1fr;gap:16px">'
+    + fg('Qty', '<input type="number" id="ssr_qty_'+n+'" min="1" value="1" oninput="calcSSRLine('+n+')" style="'+fs+'">', true)
+    + fg('Unit Price', '<input type="number" id="ssr_up_'+n+'" placeholder="0.00" min="0" oninput="calcSSRLine('+n+')" style="'+fs+'">', false)
+    + fg('Total Amount', '<input type="text" id="ssr_total_'+n+'" readonly style="'+fs.replace('#fff','#f5f5f7')+';font-weight:700;color:var(--ac);cursor:not-allowed">', false)
+    + fg('LPO No', '<input type="text" id="ssr_lpo_'+n+'" placeholder="PO-..." style="'+fs+';text-transform:uppercase">', false)
+    + fg('Status', '<select id="ssr_status_'+n+'" style="'+fs+'"><option value="NOT PAID">NOT PAID</option><option value="ON HOLD">ON HOLD</option><option value="PAID NOT RECEIVED">PAID NOT RECEIVED</option><option value="RECEIVED NOT ISSUED">RECEIVED NOT ISSUED</option><option value="RECEIVED">RECEIVED</option></select>', true)
+    + fg('Date Received', '<input type="date" id="ssr_datercvd_'+n+'" style="'+fs+'">', false)
+    + fg('Date Issued', '<input type="date" id="ssr_dateissued_'+n+'" style="'+fs+'">', false)
+    + '<div style="display:flex;flex-direction:column;gap:5px"><label style="font-size:10px;font-weight:700;color:#515154;text-transform:uppercase;letter-spacing:.06em">Remarks</label>'
+    + '<textarea id="ssr_remarks_'+n+'" placeholder="Remarks..." style="width:100%;height:62px;padding:8px 10px;font-size:13px;border:1.5px solid #d2d2d7;border-radius:7px;background:#fff;resize:vertical;box-sizing:border-box;font-family:Inter,sans-serif"></textarea></div>'
+    + '</div>';
+
+  wrap.appendChild(card);
+
+  // Lock category to BREAKDOWN for staff_jc
+  lockCategoryEl(document.getElementById('ssr_category_' + n));
+  // Tom Select with search for truck
+  new TomSelect(document.getElementById('ssr_truck_' + n), {
+    allowEmptyOption: true,
+    placeholder: 'Search vehicle...',
+    onChange: function(val) { onSSRLineTruckChange(n, val); }
+  });
+
+  // Tom Select for description
+  new TomSelect(document.getElementById('ssr_desc_' + n), {
+    allowEmptyOption: true, placeholder: 'Search spare part...', dropdownParent: 'body',
+    onChange: function() { onSSRDescChange(n); }
+  });
+}
+
+
+function onSSRLineTruckChange(n, plate) {
+  if (plate === undefined) {
+    var sel = document.getElementById('ssr_truck_' + n);
+    plate = sel ? sel.value : '';
+  }
+  var isWS = (plate||'').toUpperCase().includes('WORKSHOP');
+  var v = VEHICLES.find(function(x){ return (x.plate||'').toUpperCase() === plate.toUpperCase(); });
+  // Vehicle Type
+  var vtEl = document.getElementById('ssr_vtype_' + n); if(vtEl) vtEl.value = isWS ? '' : (v ? v.vehicleType||'' : '');
+  // Category
+  var catEl = document.getElementById('ssr_category_' + n);
+  if(catEl){ if(isWS){ catEl.value='WORKSHOP'; catEl.disabled=true; catEl.style.opacity='0.55'; } else { catEl.disabled=false; catEl.style.opacity=''; } }
+  // Job Cards
+  var jcSel = document.getElementById('ssr_jobcard_' + n);
+  if(jcSel){
+    jcSel.innerHTML = '<option value="">Select...</option>';
+    if(!isWS && plate) {
+      JOBCARDS.filter(function(j){ return (j.vehicle||'').toUpperCase()===plate.toUpperCase() && (j.workStatus||'').toUpperCase()!=='COMPLETED'; })
+        .forEach(function(j){ var o=document.createElement('option'); o.value=j.code; o.textContent=j.code; jcSel.appendChild(o); });
+      var oc=document.createElement('option'); oc.value='OTHER'; oc.textContent='✏ Other'; jcSel.appendChild(oc);
+    }
+  }
+  // Drivers
+  var drvSel = document.getElementById('ssr_driver_' + n);
+  if(drvSel && !isWS){
+    drvSel.innerHTML = '<option value="">Select...</option>';
+    DRIVERS.filter(function(d){ return d.status!=='INACTIVE'; }).forEach(function(d){ var o=document.createElement('option'); o.value=d.name; o.textContent=d.name; drvSel.appendChild(o); });
+  }
+}
+
+function onSSRJCLineSelect(n){
+  var jcEl = document.getElementById('ssr_jobcard_'+n);
+  if (!jcEl) return;
+  var j = JOBCARDS.find(function(x){ return x.code === jcEl.value; });
+  if (!j) return;
+  // Auto-fill driver
+  var drvEl = document.getElementById('ssr_driver_'+n);
+  if (drvEl && j.driverName) drvEl.value = j.driverName;
+  // Auto-fill category
+  var catEl = document.getElementById('ssr_category_'+n);
+  if (catEl && j.category) catEl.value = j.category;
+}
+
+function onSSRDescChange(n){
+  var s=document.getElementById('ssr_desc_'+n), t=document.getElementById('ssr_desc_txt_'+n);
+  if(!s||!t) return;
+  if(s.value==='__custom__'){ s.style.display='none'; t.style.display='block'; t.style.height='38px'; t.focus(); }
+  else { t.style.display='none'; s.style.display='block'; }
+}
+
+function calcSSRLine(n){
+  var qty=parseFloat((document.getElementById('ssr_qty_'+n)||{}).value)||0;
+  var up=parseFloat((document.getElementById('ssr_up_'+n)||{}).value)||0;
+  var tot=qty*up;
+  var el=document.getElementById('ssr_total_'+n); if(el) el.value=tot>0?tot.toLocaleString('en-US',{minimumFractionDigits:2}):'';
+  var g=0;
+  for(var i=1;i<=_ssrLineCount;i++){ var e=document.getElementById('ssr_total_'+i); if(e)g+=parseFloat((e.value||'').replace(/,/g,''))||0; }
+  var gt=document.getElementById('ssr_grand_total'); if(gt) gt.textContent=g.toLocaleString('en-US',{minimumFractionDigits:2});
+}
+
+function removeSSRLine(n){ var el=document.getElementById('ssr_line_'+n); if(el)el.remove(); calcSSRLine(0); }
+
+async function saveSSReq(){
+  var supEl=document.getElementById('ssr_supplier');
+  var sup=supEl&&supEl.tomselect?supEl.tomselect.getValue():(supEl?supEl.value:'');
+  var date=(document.getElementById('ssr_date')||{}).value||'';
+  var payment=(document.getElementById('ssr_payment')||{}).value||'';
+
+  if(!sup)     {toast('Please select Supplier','er');return;}
+  if(!date)    {toast('Please enter Date Requested','er');return;}
+  if(!payment) {toast('Please select Payment Mode','er');return;}
+
+  var lines=[];
+  for(var i=1;i<=_ssrLineCount;i++){
+    if(!document.getElementById('ssr_line_'+i)) continue;
+    var truck=(document.getElementById('ssr_truck_'+i)||{}).value||'';
+    if(!truck){toast('Line '+i+': Truck is required','er');return;}
+    var cat=(document.getElementById('ssr_category_'+i)||{}).value||'';
+    if(!cat){toast('Line '+i+': Category is required','er');return;}
+    if(isStaffJC() && cat.toUpperCase()!=='BREAKDOWN'){toast('Line '+i+': Your role only allows BREAKDOWN category','er');return;}
+    if(isStaffJC() && cat.toUpperCase()!=='BREAKDOWN'){toast('Line '+i+': Your role only allows BREAKDOWN category','er');return;}
+    var priority=(document.getElementById('ssr_priority_'+i)||{}).value||'';
+    if(!priority){toast('Line '+i+': Priority is required','er');return;}
+    var reqby=(document.getElementById('ssr_reqby_'+i)||{}).value||'';
+    if(!reqby){toast('Line '+i+': Requested By is required','er');return;}
+    var descEl=document.getElementById('ssr_desc_'+i);
+    var descTxt=document.getElementById('ssr_desc_txt_'+i);
+    var desc='';
+    if(descTxt&&descTxt.style.display!=='none') desc=descTxt.value.trim();
+    else if(descEl&&descEl.tomselect) desc=descEl.tomselect.getValue()||'';
+    else if(descEl) desc=descEl.value||'';
+    if(!desc){toast('Line '+i+': Description is required','er');return;}
+    var lpo=((document.getElementById('ssr_lpo_'+i)||{}).value||'').toUpperCase();
+    if(lpo&&!/^PO-/.test(lpo)){toast('Line '+i+': LPO must start with PO-','er');return;}
+    var isWS=(truck||'').toUpperCase().includes('WORKSHOP');
+    var vtype=isWS?'':(document.getElementById('ssr_vtype_'+i)||{}).value||'';
+    var jcEl=document.getElementById('ssr_jobcard_'+i); var jobcard=isWS?'':(jcEl?jcEl.value:'');
+    var drvEl=document.getElementById('ssr_driver_'+i); var driver=isWS?'':(drvEl?drvEl.value:'');
+    var sQty  = (document.getElementById('ssr_qty_'+i)||{}).value||'';
+    var sCost = parseFloat(((document.getElementById('ssr_total_'+i)||{}).value||'').replace(/,/g,''))||0;
+    var sStat = (document.getElementById('ssr_status_'+i)||{}).value||'';
+    if(!sQty)  { toast('Line '+i+': Qty is required','er'); return; }
+    var sUp = (document.getElementById('ssr_up_'+i)||{}).value||'';
+    if(!sUp || parseFloat(sUp)<=0) { toast('Line '+i+': Unit Price is required','er'); return; }
+    if(!sCost) { toast('Line '+i+': Total Amount is required','er'); return; }
+    if(!sStat) { toast('Line '+i+': Status is required','er'); return; }
+    if(sStat==='RECEIVED'){
+      if(!(document.getElementById('ssr_datercvd_'+i)||{}).value)  { toast('Line '+i+': Date Received required when RECEIVED','er'); return; }
+      if(!(document.getElementById('ssr_dateissued_'+i)||{}).value) { toast('Line '+i+': Date Issued required when RECEIVED','er'); return; }
+      if(!(document.getElementById('ssr_remarks_'+i)||{}).value)    { toast('Line '+i+': Remarks required when RECEIVED','er'); return; }
+    }
+    lines.push({
+      truck:truck, vtype:vtype, jobcard:jobcard, driver:driver, cat:cat,
+      priority:priority, reqby:reqby, desc:desc, lpo:lpo, qty:sQty,
+      unitPrice:(document.getElementById('ssr_up_'+i)||{}).value||'0',
+      cost:sCost, status:sStat,
+      dateRcvd:(document.getElementById('ssr_datercvd_'+i)||{}).value||'',
+      dateIssued:(document.getElementById('ssr_dateissued_'+i)||{}).value||'',
+      remarks:(document.getElementById('ssr_remarks_'+i)||{}).value||''
+    });
+  }
+  if(!lines.length){toast('Add at least one line','er');return;}
+
+  var btn=document.getElementById('ssr_save_btn');
+  if(btn){btn.disabled=true;btn.textContent='Saving '+lines.length+' line(s)...';}
+
+  var tempMax=0;
+  ALL.forEach(function(r){var nm=parseInt((r.reqNo||'').replace('REQ-',''),10);if(!isNaN(nm)&&nm>tempMax)tempMax=nm;});
+
+  var saved=0, failed=0;
+  for(var li=0;li<lines.length;li++){
+    var l=lines[li]; tempMax++;
+    var data={
+      reqNo:'REQ-'+String(tempMax).padStart(6,'0'),
+      dateRequested:date, truck:l.truck, vehicleType:l.vtype, driverName:l.driver,
+      priority:l.priority, jobCardNo:l.jobcard==='OTHER'?'':l.jobcard,
+      lpoNo:l.lpo, description:l.desc, qty:l.qty, unitPrice:l.unitPrice, cost:l.cost,
+      supplier:sup, dateReceived:l.dateRcvd, status:l.status, paymentMode:payment,
+      category:l.cat, requestedBy:l.reqby, remarks:l.remarks, dateIssued:l.dateIssued
+    };
+    try{
+      if(li>0) await new Promise(function(r){setTimeout(r,800);});
+      if(btn) btn.textContent='Saving '+(li+1)+' of '+lines.length+'...';
+      var res=await callAPI('add',{record:upperRecord(data)});
+      if(res&&res.success!==false){
+        var rec=Object.assign({id:res.id||(Date.now()+'_'+li)},data);
+        if(rec.jobCardNo){var jci=getJCInfo(rec.jobCardNo);rec.orderStatus=jci.orderStatus;rec.clientName=jci.clientName;}
+        ALL.push(rec); saved++;
+      } else failed++;
+    } catch(e){ console.error(e); failed++; }
+  }
+
+  if(btn){btn.disabled=false;btn.textContent='💾 Save All Lines';}
+  closeModal('ssreqmodal');
+  if(saved>0){toast('Saved '+saved+' requisition'+(saved>1?'s':'')+' ✓','ok');showLoad('Refreshing data...');loadAppData();}
+  if(failed>0) toast(failed+' line(s) failed','er');
+}
+
+
+// ── BULK EDIT ──
+function openBulkEdit() {
+  var rows = getSelectedRows();
+  if (!rows.length) { toast('No rows selected','er'); return; }
+  var wrap = document.getElementById('bulk_edit_lines');
+  if (!wrap) return;
+  wrap.innerHTML = '';
+
+  var fs = 'width:100%;height:38px;padding:0 10px;font-size:13px;border:1.5px solid #d2d2d7;border-radius:7px;background:#fff;box-sizing:border-box;font-family:Inter,sans-serif';
+  var fsTa = 'width:100%;height:60px;padding:8px 10px;font-size:13px;border:1.5px solid #d2d2d7;border-radius:7px;background:#fff;resize:vertical;box-sizing:border-box;font-family:Inter,sans-serif';
+  var fg = function(lbl, html, star) {
+    return '<div style="display:flex;flex-direction:column;gap:5px">'
+      + '<label style="font-size:10px;font-weight:700;color:#515154;text-transform:uppercase;letter-spacing:.06em">'
+      + lbl + (star ? ' <span style="color:#f87171">*</span>' : '') + '</label>'
+      + '<div style="min-height:38px">' + html + '</div></div>';
+  };
+
+  // Hide selection bar when edit form opens
+  var bar = document.getElementById('selectionbar'); if (bar) bar.style.display = 'none';
+
+  // staff_jc: block if any record is NOT BREAKDOWN
+  if (isStaffJC()) {
+    var nonBreakdown = rows.filter(function(r){ return (r.category||'').toUpperCase() !== 'BREAKDOWN'; });
+    if (nonBreakdown.length > 0) {
+      var nbNos = nonBreakdown.map(function(r){ return (r.reqNo||r.id)+' ('+r.category+')'; }).join(', ');
+      alert('Your role only allows editing BREAKDOWN requisitions.\n\nThe following records cannot be edited:\n\n' + nbNos + '\n\nPlease uncheck them before clicking Edit Selected.');
+      return;
+    }
+  }
+
+  // Block if any selected record has status RECEIVED
+  var receivedRows = rows.filter(function(r){ return (r.status||'').toUpperCase()==='RECEIVED'; });
+  if (receivedRows.length > 0) {
+    var reqNos = receivedRows.map(function(r){ return r.reqNo||r.id; }).join(', ');
+    alert('The following record(s) have status RECEIVED and cannot be edited:\n\n' + reqNos + '\n\nPlease uncheck them before clicking Edit Selected.');
+    return;
+  }
+
+  rows.forEach(function(r, idx) {
+    var n = idx;
+    var isWS = (r.truck||'').toUpperCase().includes('WORKSHOP');
+
+    // Build supplier options
+    var savedSup = (r.supplier||'').toUpperCase();
+    var supOpts = '<option value="">Select...</option>';
+    var supMatched = false;
+    SUPPLIERS.filter(function(s){return s.status!=='INACTIVE';}).forEach(function(s){
+      var isSelected = s.name.toUpperCase() === savedSup;
+      if (isSelected) supMatched = true;
+      supOpts += '<option value="'+s.name+'"'+(isSelected?' selected':'')+'>'+s.name+'</option>';
+    });
+    // If saved supplier not in list, add it as custom selected option
+    if (!supMatched && savedSup) {
+      supOpts += '<option value="'+r.supplier+'" selected>'+r.supplier+'</option>';
+    }
+    supOpts += '<option value="__custom__">✏ Type...</option>';
+
+    var statusSel = function(curVal, id) {
+      var opts = ['NOT PAID','ON HOLD','PAID NOT RECEIVED','RECEIVED NOT ISSUED','RECEIVED'];
+      return '<select id="'+id+'" style="'+fs+'">'+opts.map(function(o){ return '<option value="'+o+'"'+(curVal===o?' selected':'')+'>'+o+'</option>'; }).join('')+'</select>';
+    };
+    var paySel = function(curVal, id) {
+      var opts = ['','CASH','CHEQUE','BANK TRANSFER','MPESA','CREDIT'];
+      return '<select id="'+id+'" style="'+fs+'">'+opts.map(function(o){ return '<option value="'+o+'"'+(curVal===o?' selected':'')+'>'+o||'Select...'+'</option>'; }).join('')+'</select>';
+    };
+    var reqbySel = function(curVal, id) {
+      var opts = ['','SABRI ABRI','RAMADHAN LUDEGE','MUSTAKIM RAMADHAN','MOHAMED AL JABRY'];
+      return '<select id="'+id+'" style="'+fs+'">'+opts.map(function(o){ return '<option value="'+o+'"'+(curVal===o?' selected':'')+'>'+o||'Select...'+'</option>'; }).join('')+'</select>';
+    };
+
+    var card = document.createElement('div');
+    card.id = 'be_card_' + n;
+    card.setAttribute('data-id', r.id);
+    card.style.cssText = 'border:1.5px solid #dde3f0;border-radius:12px;padding:16px;margin-bottom:16px;background:#fff;box-shadow:0 1px 4px rgba(0,0,0,.04)';
+
+    card.innerHTML =
+      // Header
+      '<div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;padding-bottom:12px;border-bottom:1px solid #f0f0f4">'
+      + '<span style="font-size:11px;font-weight:700;color:var(--ac);background:rgba(10,45,110,.08);padding:3px 10px;border-radius:20px">' + (r.reqNo||'REQ-?') + '</span>'
+      + '<span style="font-size:12px;color:var(--t2)">' + (r.truck||'') + '</span>'
+      + '<span style="font-size:12px;color:var(--t3)">' + (r.dateRequested||'') + '</span>'
+      + '</div>'
+      // Row 1: Description | Qty | Unit Price | Total | Supplier | LPO
+      + '<div style="display:grid;grid-template-columns:3fr 80px 120px 120px 2fr 120px;gap:14px;margin-bottom:14px">'
+      + fg('Spare Part / Description', '<input type="text" id="be_desc_'+n+'" value="'+(r.description||'')+'" style="'+fs+'" placeholder="Description">', true)
+      + fg('Qty', '<input type="number" id="be_qty_'+n+'" value="'+(r.qty||'1')+'" min="1" oninput="calcBELine('+n+')" style="'+fs+'">', true)
+      + fg('Unit Price', '<input type="number" id="be_up_'+n+'" value="'+(r.unitPrice||'')+'" min="0" oninput="calcBELine('+n+')" style="'+fs+'">', true)
+      + fg('Total Amount', '<input type="text" id="be_total_'+n+'" value="'+(r.cost?Number(r.cost).toLocaleString():'')+'" readonly style="'+fs.replace('#fff','#f5f5f7')+';font-weight:700;color:var(--ac);cursor:not-allowed">', false)
+      + fg('Supplier', '<select id="be_sup_'+n+'" style="'+fs+'">'+supOpts+'</select>', true)
+      + fg('LPO No', '<input type="text" id="be_lpo_'+n+'" value="'+(r.lpoNo||'')+'" style="'+fs+';text-transform:uppercase" placeholder="PO-...">', false)
+      + '</div>'
+      // Row 2: Status | Payment | Requested By | Date Requested | Date Received | Date Issued | Remarks
+      + '<div style="display:grid;grid-template-columns:160px 140px 180px 140px 140px 140px 1fr;gap:14px">'
+      + fg('Status', statusSel(r.status||'NOT PAID', 'be_status_'+n), true)
+      + fg('Payment Mode', paySel(r.paymentMode||'', 'be_pay_'+n), true)
+      + fg('Requested By', reqbySel(r.requestedBy||'', 'be_reqby_'+n), true)
+      + fg('Date Requested', '<input type="date" id="be_date_'+n+'" value="'+(r.dateRequested||'')+'" style="'+fs+'">', false)
+      + fg('Date Received', '<input type="date" id="be_datercvd_'+n+'" value="'+(r.dateReceived||'')+'" style="'+fs+'">', false)
+      + fg('Date Issued', '<input type="date" id="be_dateissued_'+n+'" value="'+(r.dateIssued||'')+'" style="'+fs+'">', false)
+      + '<div style="display:flex;flex-direction:column;gap:5px"><label style="font-size:10px;font-weight:700;color:#515154;text-transform:uppercase;letter-spacing:.06em">Remarks</label>'
+      + '<textarea id="be_remarks_'+n+'" style="'+fsTa+'">'+(r.remarks||'')+'</textarea></div>'
+      + '</div>';
+
+    wrap.appendChild(card);
+  });
+
+  // Store row ids for save
+  wrap.setAttribute('data-count', rows.length);
+  wrap.setAttribute('data-ids', JSON.stringify(rows.map(function(r){ return r.id; })));
+
+  document.getElementById('bulkeditmodal').classList.remove('hidden');
+}
+
+function calcBELine(n) {
+  var qty = parseFloat((document.getElementById('be_qty_'+n)||{}).value)||0;
+  var up  = parseFloat((document.getElementById('be_up_'+n)||{}).value)||0;
+  var tot = qty * up;
+  var el = document.getElementById('be_total_'+n);
+  if (el) el.value = tot > 0 ? tot.toLocaleString('en-US',{minimumFractionDigits:2}) : '';
+}
+
+async function saveBulkEdit() {
+  var wrap = document.getElementById('bulk_edit_lines');
+  if (!wrap) return;
+  var count = parseInt(wrap.getAttribute('data-count'))||0;
+  var ids = JSON.parse(wrap.getAttribute('data-ids')||'[]');
+  var btn = document.getElementById('bulk_save_btn');
+
+  // Validate and build records
+  var updates = [];
+  for (var n = 0; n < count; n++) {
+    var id = ids[n];
+    var orig = ALL.find(function(r){ return r.id === id; });
+    if (!orig) continue;
+    var desc  = (document.getElementById('be_desc_'+n)||{}).value||'';
+    var qty   = (document.getElementById('be_qty_'+n)||{}).value||'';
+    var up    = (document.getElementById('be_up_'+n)||{}).value||'';
+    var supEl = document.getElementById('be_sup_'+n);
+    var sup   = supEl ? supEl.value : '';
+    var stat  = (document.getElementById('be_status_'+n)||{}).value||'';
+    var pay   = (document.getElementById('be_pay_'+n)||{}).value||'';
+    var reqby = (document.getElementById('be_reqby_'+n)||{}).value||'';
+    var lpo   = ((document.getElementById('be_lpo_'+n)||{}).value||'').toUpperCase();
+    var total = parseFloat(((document.getElementById('be_total_'+n)||{}).value||'').replace(/,/g,''))||0;
+
+    if (!desc)  { toast('Record '+(n+1)+': Description is required','er'); return; }
+    if (!qty)   { toast('Record '+(n+1)+': Qty is required','er'); return; }
+    if (!up || parseFloat(up)<=0) { toast('Record '+(n+1)+': Unit Price is required','er'); return; }
+    if (!total) { toast('Record '+(n+1)+': Total Amount is required','er'); return; }
+    if (!sup || sup==='__custom__') { toast('Record '+(n+1)+': Supplier is required','er'); return; }
+    if (!stat)  { toast('Record '+(n+1)+': Status is required','er'); return; }
+    if (!pay)   { toast('Record '+(n+1)+': Payment Mode is required','er'); return; }
+    if (!reqby) { toast('Record '+(n+1)+': Requested By is required','er'); return; }
+    if (lpo && !/^PO-/.test(lpo)) { toast('Record '+(n+1)+': LPO must start with PO-','er'); return; }
+    if (stat==='RECEIVED'){
+      var isWSRec = (orig.truck||'').toUpperCase().includes('WORKSHOP');
+      if (!isWSRec && !(orig.vehicleType||'')){
+        // vehicle type required for non-workshop when RECEIVED - but it's on the record not editable here
+      }
+      if (!(document.getElementById('be_datercvd_'+n)||{}).value)  { toast('Record '+(n+1)+': Date Received is required when status is RECEIVED','er'); return; }
+      if (!(document.getElementById('be_dateissued_'+n)||{}).value) { toast('Record '+(n+1)+': Date Issued is required when status is RECEIVED','er'); return; }
+      if (!(document.getElementById('be_remarks_'+n)||{}).value)    { toast('Record '+(n+1)+': Remarks is required when status is RECEIVED','er'); return; }
+      if (!lpo) { toast('Record '+(n+1)+': LPO No is required when status is RECEIVED','er'); return; }
+    }
+
+    var updated = Object.assign({}, orig, {
+      description: desc, qty: qty, unitPrice: up, cost: total,
+      supplier: sup, lpoNo: lpo, status: stat, paymentMode: pay,
+      requestedBy: reqby,
+      dateRequested: (document.getElementById('be_date_'+n)||{}).value || orig.dateRequested,
+      dateReceived:  (document.getElementById('be_datercvd_'+n)||{}).value || '',
+      dateIssued:    (document.getElementById('be_dateissued_'+n)||{}).value || '',
+      remarks:       (document.getElementById('be_remarks_'+n)||{}).value || ''
+    });
+    updates.push(updated);
+  }
+
+  if (!updates.length) { toast('Nothing to save','er'); return; }
+  if (btn) { btn.disabled=true; btn.textContent='Saving...'; }
+
+  var saved=0, failed=0;
+  for (var ui=0; ui<updates.length; ui++) {
+    try {
+      if (ui>0) await new Promise(function(r){ setTimeout(r,600); });
+      if (btn) btn.textContent='Saving '+(ui+1)+' of '+updates.length+'...';
+      var upRec = upperRecord(updates[ui]);
+      var res = await callAPI('update', { record: upRec });
+      if (res && res.success!==false) {
+        // Store uppercased version in ALL so next edit shows correct values
+        var idx2 = ALL.findIndex(function(r){ return r.id===updates[ui].id; });
+        if (idx2 !== -1) ALL[idx2] = upRec;
+        saved++;
+      } else failed++;
+    } catch(e) { console.error(e); failed++; }
+  }
+
+  if (btn) { btn.disabled=false; btn.textContent='💾 Save All Changes'; }
+  closeModal('bulkeditmodal');
+  clearSelection();
+  buildHeader(); applyFilters(); updateBadges();
+  if (saved>0) toast('Updated '+saved+' record'+(saved>1?'s':'')+' ✓','ok');
+  if (failed>0) toast(failed+' record(s) failed','er');
+  // Restore selection bar state
+  updateSelectionBar();
+}
+
+// ── FREE MULTI REQUISITION ──
+var _freeLineCount = 0;
+
+function openFreeReq() {
+  if (!can('req')) { toast('No permission','er'); return; }
+  _freeLineCount = 0;
+  var wrap = document.getElementById('free_lines_wrap');
+  if (wrap) {
+    wrap.querySelectorAll('select').forEach(function(s){ if(s.tomselect) s.tomselect.destroy(); });
+    wrap.innerHTML = '';
+  }
+  document.getElementById('free_grand_total').textContent = '0.00';
+  addFreeReqLine();
+  document.getElementById('freereqmodal').classList.remove('hidden');
+}
+
+function addFreeReqLine() {
+  _freeLineCount++;
+  var n = _freeLineCount;
+  var wrap = document.getElementById('free_lines_wrap');
+  if (!wrap) return;
+
+  var partOpts = '<option value="">Select spare part...</option>';
+  SPAREPARTS.filter(function(p){return p.status!=='INACTIVE';}).forEach(function(p){
+    partOpts += '<option value="'+p.name+'">'+p.code+' — '+p.name+'</option>';
+  });
+  var supOpts = '<option value="">Select supplier...</option>';
+  SUPPLIERS.filter(function(s){return s.status!=='INACTIVE';}).forEach(function(s){
+    supOpts += '<option value="'+s.name+'">'+s.name+'</option>';
+  });
+  var truckOpts = '<option value="">Search vehicle...</option>';
+  VEHICLES.forEach(function(v){ truckOpts += '<option value="'+v.plate+'">'+v.plate+(v.vehicleType?' ('+v.vehicleType+')':'')+'</option>'; });
+
+  var fs = 'width:100%;height:38px;padding:0 10px;font-size:13px;border:1.5px solid #d2d2d7;border-radius:7px;background:#fff;box-sizing:border-box;font-family:Inter,sans-serif';
+  var fg = function(lbl, html, star) {
+    return '<div style="display:flex;flex-direction:column;gap:5px">'
+      + '<label style="font-size:10px;font-weight:700;color:#515154;text-transform:uppercase;letter-spacing:.06em;white-space:nowrap">'
+      + lbl + (star ? ' <span style="color:#f87171">*</span>' : '') + '</label>'
+      + '<div style="min-height:38px;display:flex;align-items:center">' + html + '</div></div>';
+  };
+
+  var card = document.createElement('div');
+  card.id = 'fr_line_' + n;
+  card.style.cssText = 'border:1.5px solid #dde3f0;border-radius:12px;padding:16px;margin-bottom:16px;background:#fff;box-shadow:0 1px 4px rgba(0,0,0,.04)';
+
+  card.innerHTML =
+    '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;padding-bottom:12px;border-bottom:1px solid #f0f0f4">'
+    + '<span style="font-size:11px;font-weight:700;color:var(--ac);background:rgba(10,45,110,.08);padding:3px 10px;border-radius:20px">Line ' + n + '</span>'
+    + (n > 1 ? '<button onclick="removeFreeReqLine('+n+')" style="background:#fff5f5;border:1px solid #fecaca;cursor:pointer;color:#b91c1c;font-size:13px;font-weight:600;padding:4px 10px;border-radius:6px">✕ Remove</button>' : '')
+    + '</div>'
+    // ROW 1: Truck | Vehicle Type | Job Card | Driver | Category | Priority | Requested By
+    + '<div style="display:grid;grid-template-columns:repeat(7,1fr);gap:14px;margin-bottom:14px">'
+    + fg('Truck / Vehicle No', '<select id="fr_truck_'+n+'" style="'+fs+'">'+truckOpts+'</select>', true)
+    + '<div id="fr_vtype_fg_'+n+'" style="display:flex;flex-direction:column;gap:5px"><label style="font-size:10px;font-weight:700;color:#515154;text-transform:uppercase;letter-spacing:.06em">Vehicle Type</label><div style="min-height:38px;display:flex;align-items:center"><input type="text" id="fr_vtype_'+n+'" readonly style="'+fs+';opacity:.6;cursor:not-allowed;color:var(--ac);font-weight:600"></div></div>'
+    + '<div id="fr_jobcard_fg_'+n+'" style="display:flex;flex-direction:column;gap:5px"><label style="font-size:10px;font-weight:700;color:#515154;text-transform:uppercase;letter-spacing:.06em">Job Card No</label><div style="min-height:38px;display:flex;align-items:center"><select id="fr_jobcard_'+n+'" onchange="onFRJCSelect('+n+')" style="'+fs+'"><option value="">Select...</option></select></div></div>'
+    + '<div id="fr_driver_fg_'+n+'" style="display:flex;flex-direction:column;gap:5px"><label style="font-size:10px;font-weight:700;color:#515154;text-transform:uppercase;letter-spacing:.06em">Driver Name</label><div style="min-height:38px;display:flex;align-items:center"><select id="fr_driver_'+n+'" style="'+fs+'"><option value="">Select...</option></select></div></div>'
+    + fg('Category', '<select id="fr_category_'+n+'" style="'+fs+'"><option value="">Select...</option><option>WORKSHOP</option><option>BREAKDOWN</option></select>', true)
+    + fg('Priority', '<select id="fr_priority_'+n+'" style="'+fs+'"><option value="">Select...</option><option>HIGH PRIORITY</option><option>NORMAL</option></select>', true)
+    + fg('Requested By', '<select id="fr_reqby_'+n+'" style="'+fs+'"><option value="">Select...</option><option>SABRI ABRI</option><option>RAMADHAN LUDEGE</option><option>MUSTAKIM RAMADHAN</option><option>MOHAMED AL JABRY</option></select>', true)
+    + '</div>'
+    // ROW 2: Spare Part | Qty | Unit Price | Total | Supplier | LPO | Date Requested
+    + '<div style="display:grid;grid-template-columns:2.5fr 80px 130px 130px 1.8fr 110px 140px;gap:14px;margin-bottom:14px">'
+    + fg('Spare Part / Description',
+        '<select id="fr_desc_'+n+'" onchange="onFRDescChange('+n+')" style="'+fs+'">'+partOpts+'<option value="__custom__">✏ Enter manually...</option></select>'
+        + '<input type="text" id="fr_desc_txt_'+n+'" placeholder="Type description..." style="'+fs+';margin-top:4px;display:none">', true)
+    + fg('Qty', '<input type="number" id="fr_qty_'+n+'" min="1" value="1" oninput="calcFRLine('+n+')" style="'+fs+'">', true)
+    + fg('Unit Price', '<input type="number" id="fr_up_'+n+'" placeholder="0.00" min="0" oninput="calcFRLine('+n+')" style="'+fs+'">', true)
+    + fg('Total Amount', '<input type="text" id="fr_total_'+n+'" readonly style="'+fs.replace('#fff','#f5f5f7')+';font-weight:700;color:var(--ac);cursor:not-allowed">', false)
+    + fg('Supplier', '<select id="fr_sup_'+n+'" style="'+fs+'">'+supOpts+'<option value="__custom__">✏ Type...</option></select>', true)
+    + fg('LPO No', '<input type="text" id="fr_lpo_'+n+'" placeholder="PO-..." style="'+fs+';text-transform:uppercase">', false)
+    + fg('Date Requested', '<input type="date" id="fr_date_'+n+'" style="'+fs+'">', true)
+    + '</div>'
+    // ROW 3: Status | Payment | Date Received | Date Issued | Remarks
+    + '<div style="display:grid;grid-template-columns:160px 145px 145px 145px 1fr;gap:14px">'
+    + fg('Status', '<select id="fr_status_'+n+'" style="'+fs+'"><option value="NOT PAID">NOT PAID</option><option value="ON HOLD">ON HOLD</option><option value="PAID NOT RECEIVED">PAID NOT RECEIVED</option><option value="RECEIVED NOT ISSUED">RECEIVED NOT ISSUED</option><option value="RECEIVED">RECEIVED</option></select>', true)
+    + fg('Payment Mode', '<select id="fr_pay_'+n+'" style="'+fs+'"><option value="">Select...</option><option>CASH</option><option>CHEQUE</option><option>BANK TRANSFER</option><option>MPESA</option><option>CREDIT</option></select>', true)
+    + fg('Date Received', '<input type="date" id="fr_datercvd_'+n+'" style="'+fs+'">', false)
+    + fg('Date Issued', '<input type="date" id="fr_dateissued_'+n+'" style="'+fs+'">', false)
+    + '<div style="display:flex;flex-direction:column;gap:5px"><label style="font-size:10px;font-weight:700;color:#515154;text-transform:uppercase;letter-spacing:.06em">Remarks</label>'
+    + '<textarea id="fr_remarks_'+n+'" placeholder="Remarks..." style="width:100%;height:62px;padding:8px 10px;font-size:13px;border:1.5px solid #d2d2d7;border-radius:7px;background:#fff;resize:vertical;box-sizing:border-box;font-family:Inter,sans-serif"></textarea></div>'
+    + '</div>';
+
+  wrap.appendChild(card);
+
+  // Tom Select for truck and supplier and description
+  new TomSelect(document.getElementById('fr_truck_' + n), {
+    allowEmptyOption: true, placeholder: 'Search vehicle...',
+    onChange: function(val) { onFRTruckChange(n, val); }
+  });
+  new TomSelect(document.getElementById('fr_sup_' + n), {
+    allowEmptyOption: true, placeholder: 'Search or type supplier...', create: true, dropdownParent: 'body'
+  });
+  new TomSelect(document.getElementById('fr_desc_' + n), {
+    allowEmptyOption: true, placeholder: 'Search spare part...', dropdownParent: 'body',
+    onChange: function() { onFRDescChange(n); }
+  });
+
+  // Set today's date
+  var dtEl = document.getElementById('fr_date_' + n); if(dtEl) dtEl.value = todayStr();
+  // Lock category to BREAKDOWN for staff_jc
+  lockCategoryEl(document.getElementById('fr_category_' + n));
+}
+
+function onFRTruckChange(n, plate) {
+  if (!plate) plate = '';
+  var isWS = plate.toUpperCase().includes('WORKSHOP');
+  var v = VEHICLES.find(function(x){ return (x.plate||'').toUpperCase()===plate.toUpperCase(); });
+  var vtEl = document.getElementById('fr_vtype_'+n); if(vtEl) vtEl.value = isWS ? '' : (v ? v.vehicleType||'' : '');
+  ['fr_vtype_fg_'+n,'fr_jobcard_fg_'+n,'fr_driver_fg_'+n].forEach(function(id){ var el=document.getElementById(id); if(el) el.style.display=isWS?'none':''; });
+  var catEl=document.getElementById('fr_category_'+n);
+  if(catEl){ if(isWS){catEl.value='WORKSHOP';catEl.disabled=true;catEl.style.opacity='0.55';} else{catEl.disabled=false;catEl.style.opacity='';} }
+  if(isWS) return;
+  var jcSel=document.getElementById('fr_jobcard_'+n);
+  if(jcSel){
+    jcSel.innerHTML='<option value="">Select...</option>';
+    JOBCARDS.filter(function(j){ return (j.vehicle||'').toUpperCase()===plate.toUpperCase()&&(j.workStatus||'').toUpperCase()!=='COMPLETED'; })
+      .forEach(function(j){ var o=document.createElement('option'); o.value=j.code; o.textContent=j.code; jcSel.appendChild(o); });
+    var oc=document.createElement('option'); oc.value='OTHER'; oc.textContent='✏ Other'; jcSel.appendChild(oc);
+  }
+  var drvSel=document.getElementById('fr_driver_'+n);
+  if(drvSel){
+    drvSel.innerHTML='<option value="">Select...</option>';
+    DRIVERS.filter(function(d){return d.status!=='INACTIVE';}).forEach(function(d){ var o=document.createElement('option'); o.value=d.name; o.textContent=d.name; drvSel.appendChild(o); });
+  }
+}
+
+function onFRJCSelect(n){
+  var jcEl=document.getElementById('fr_jobcard_'+n);
+  var j=JOBCARDS.find(function(x){ return x.code===(jcEl?jcEl.value:''); });
+  if(!j) return;
+  var drvEl=document.getElementById('fr_driver_'+n); if(drvEl&&j.driverName) drvEl.value=j.driverName;
+  var catEl=document.getElementById('fr_category_'+n); if(catEl&&j.category) catEl.value=j.category;
+}
+
+function onFRDescChange(n){
+  var s=document.getElementById('fr_desc_'+n), t=document.getElementById('fr_desc_txt_'+n);
+  if(!s||!t) return;
+  if(s.value==='__custom__'){s.style.display='none';t.style.display='block';t.style.height='38px';t.focus();}
+  else{t.style.display='none';s.style.display='block';}
+}
+function calcFRLine(n){
+  var qty=parseFloat((document.getElementById('fr_qty_'+n)||{}).value)||0;
+  var up=parseFloat((document.getElementById('fr_up_'+n)||{}).value)||0;
+  var tot=qty*up;
+  var el=document.getElementById('fr_total_'+n); if(el) el.value=tot>0?tot.toLocaleString('en-US',{minimumFractionDigits:2}):'';
+  var g=0; for(var i=1;i<=_freeLineCount;i++){var e=document.getElementById('fr_total_'+i);if(e)g+=parseFloat((e.value||'').replace(/,/g,''))||0;}
+  var gt=document.getElementById('free_grand_total'); if(gt) gt.textContent=g.toLocaleString('en-US',{minimumFractionDigits:2});
+}
+function removeFreeReqLine(n){ var el=document.getElementById('fr_line_'+n); if(el)el.remove(); calcFRLine(0); }
+
+async function saveFreeReq(){
+  var lines=[];
+  for(var i=1;i<=_freeLineCount;i++){
+    if(!document.getElementById('fr_line_'+i)) continue;
+    var truckEl=document.getElementById('fr_truck_'+i);
+    var truck=truckEl&&truckEl.tomselect?truckEl.tomselect.getValue():(truckEl?truckEl.value:'');
+    if(!truck){toast('Line '+i+': Truck / Vehicle No is required','er');return;}
+    var isWS=(truck||'').toUpperCase().includes('WORKSHOP');
+    var cat=(document.getElementById('fr_category_'+i)||{}).value||'';
+    if(!cat){toast('Line '+i+': Category is required','er');return;}
+    var priority=(document.getElementById('fr_priority_'+i)||{}).value||'';
+    if(!priority){toast('Line '+i+': Priority is required','er');return;}
+    var reqby=(document.getElementById('fr_reqby_'+i)||{}).value||'';
+    if(!reqby){toast('Line '+i+': Requested By is required','er');return;}
+    var descEl=document.getElementById('fr_desc_'+i);
+    var descTxt=document.getElementById('fr_desc_txt_'+i);
+    var desc='';
+    if(descTxt&&descTxt.style.display!=='none') desc=descTxt.value.trim();
+    else if(descEl&&descEl.tomselect) desc=descEl.tomselect.getValue()||'';
+    else if(descEl) desc=descEl.value||'';
+    if(!desc){toast('Line '+i+': Description is required','er');return;}
+    var qty=(document.getElementById('fr_qty_'+i)||{}).value||'';
+    if(!qty){toast('Line '+i+': Qty is required','er');return;}
+    var up=(document.getElementById('fr_up_'+i)||{}).value||'';
+    if(!up||parseFloat(up)<=0){toast('Line '+i+': Unit Price is required','er');return;}
+    var cost=parseFloat(((document.getElementById('fr_total_'+i)||{}).value||'').replace(/,/g,''))||0;
+    if(!cost){toast('Line '+i+': Total Amount is required','er');return;}
+    var supEl=document.getElementById('fr_sup_'+i);
+    var sup=supEl&&supEl.tomselect?supEl.tomselect.getValue():(supEl?supEl.value:'');
+    if(!sup){toast('Line '+i+': Supplier is required','er');return;}
+    var pay=(document.getElementById('fr_pay_'+i)||{}).value||'';
+    if(!pay){toast('Line '+i+': Payment Mode is required','er');return;}
+    var stat=(document.getElementById('fr_status_'+i)||{}).value||'';
+    if(!stat){toast('Line '+i+': Status is required','er');return;}
+    var date=(document.getElementById('fr_date_'+i)||{}).value||'';
+    if(!date){toast('Line '+i+': Date Requested is required','er');return;}
+    if(!isWS){
+      var driver=(document.getElementById('fr_driver_'+i)||{}).value||'';
+      if(!driver){toast('Line '+i+': Driver Name is required','er');return;}
+    }
+    var lpo=((document.getElementById('fr_lpo_'+i)||{}).value||'').toUpperCase();
+    if(lpo&&!/^PO-/.test(lpo)){toast('Line '+i+': LPO must start with PO-','er');return;}
+    if(stat==='RECEIVED'){
+      if(!(document.getElementById('fr_datercvd_'+i)||{}).value){toast('Line '+i+': Date Received required when RECEIVED','er');return;}
+      if(!(document.getElementById('fr_dateissued_'+i)||{}).value){toast('Line '+i+': Date Issued required when RECEIVED','er');return;}
+      if(!(document.getElementById('fr_remarks_'+i)||{}).value){toast('Line '+i+': Remarks required when RECEIVED','er');return;}
+    }
+    var vtype=isWS?'':(document.getElementById('fr_vtype_'+i)||{}).value||'';
+    var jcEl=document.getElementById('fr_jobcard_'+i); var jobcard=isWS?'':(jcEl?jcEl.value:'');
+    var drvEl=document.getElementById('fr_driver_'+i); var driver2=isWS?'':(drvEl?drvEl.value:'');
+    lines.push({ truck:truck, vtype:vtype, jobcard:jobcard, driver:driver2, cat:cat, priority:priority, reqby:reqby, desc:desc, qty:qty, unitPrice:up, cost:cost, supplier:sup, lpo:lpo, status:stat, payment:pay, date:date, dateRcvd:(document.getElementById('fr_datercvd_'+i)||{}).value||'', dateIssued:(document.getElementById('fr_dateissued_'+i)||{}).value||'', remarks:(document.getElementById('fr_remarks_'+i)||{}).value||'' });
+  }
+  if(!lines.length){toast('Add at least one line','er');return;}
+
+  var btn=document.getElementById('free_save_btn');
+  if(btn){btn.disabled=true;btn.textContent='Saving '+lines.length+' line(s)...';}
+  var tempMax=0;
+  ALL.forEach(function(r){var nm=parseInt((r.reqNo||'').replace('REQ-',''),10);if(!isNaN(nm)&&nm>tempMax)tempMax=nm;});
+  var saved=0, failed=0;
+  for(var li=0;li<lines.length;li++){
+    var l=lines[li]; tempMax++;
+    var data={ reqNo:'REQ-'+String(tempMax).padStart(6,'0'), dateRequested:l.date, truck:l.truck, vehicleType:l.vtype, driverName:l.driver, priority:l.priority, jobCardNo:l.jobcard==='OTHER'?'':l.jobcard, lpoNo:l.lpo, description:l.desc, qty:l.qty, unitPrice:l.unitPrice, cost:l.cost, supplier:l.supplier, dateReceived:l.dateRcvd, status:l.status, paymentMode:l.payment, category:l.cat, requestedBy:l.reqby, remarks:l.remarks, dateIssued:l.dateIssued };
+    try{
+      if(li>0) await new Promise(function(r){setTimeout(r,800);});
+      if(btn) btn.textContent='Saving '+(li+1)+' of '+lines.length+'...';
+      var res=await callAPI('add',{record:upperRecord(data)});
+      if(res&&res.success!==false){ ALL.push(Object.assign({id:res.id||(Date.now()+'_'+li)},upperRecord(data))); saved++; } else failed++;
+    } catch(e){ console.error(e); failed++; }
+  }
+  if(btn){btn.disabled=false;btn.textContent='💾 Save All Lines';}
+  closeModal('freereqmodal');
+  if(saved>0){toast('Saved '+saved+' requisition'+(saved>1?'s':'')+' ✓','ok');showLoad('Refreshing data...');loadAppData();}
+  if(failed>0) toast(failed+' line(s) failed','er');
+}
+
 function doExport(){
   // Route to correct export based on current view
   if (currentView === 'jcsummary' || currentView === 'jobcards') { exportJCSummary(); return; }
@@ -2483,19 +3567,80 @@ function onSearchFieldChange() {
 // JOB CARDS
 // ════════════════════════════════════════════════
 function updateTaskCount(el) {
-  var len = (el.value || '').length;
-  var counter = document.getElementById('jc_task_count');
-  if (!counter) return;
-  if (len < 100) {
-    counter.textContent = len + ' / 100 min';
-    counter.style.color = len > 80 ? '#fbbf24' : '#f87171';
-    el.style.borderColor = '#f87171';
-  } else {
-    counter.textContent = len + ' characters ✓';
-    counter.style.color = '#4ade80';
-    el.style.borderColor = '#4ade80';
-  }
+  // Legacy - kept for compatibility
 }
+
+function addTaskLine(value) {
+  var wrap = document.getElementById('jc_task_lines');
+  if (!wrap) return;
+  var n = wrap.children.length + 1;
+  var row = document.createElement('div');
+  row.style.cssText = 'display:flex;align-items:flex-start;gap:8px';
+  var v = value||'';
+  var len = v.length;
+  var colr = len >= 50 ? '#1a7f3c' : (len > 0 ? '#b91c1c' : 'var(--t3)');
+  row.innerHTML =
+    '<span style="font-size:11px;font-weight:700;color:var(--t3);min-width:18px;padding-top:10px">'+n+'.</span>'
+    +'<div style="flex:1;display:flex;flex-direction:column;gap:3px">'
+    +'<textarea style="width:100%;padding:8px 10px;font-size:13px;border:1.5px solid #d2d2d7;border-radius:7px;background:#fff;resize:vertical;min-height:54px;box-sizing:border-box;font-family:Inter,sans-serif" '
+    +'placeholder="Describe task / defect (min 50 characters)..." '
+    +'oninput="updateTaskLineCount(this);syncTaskHidden()">'+v+'</textarea>'
+    +'<div style="font-size:10px;text-align:right;color:'+colr+'">'+len+' / 50 min</div>'
+    +'</div>'
+    +(n>1?'<button type="button" onclick="removeTaskLine(this)" style="background:none;border:none;cursor:pointer;color:#b91c1c;font-size:20px;font-weight:700;line-height:1;padding:2px 4px;margin-top:6px">×</button>':'<span style="width:24px"></span>');
+  wrap.appendChild(row);
+  syncTaskHidden();
+}
+
+function updateTaskLineCount(ta) {
+  var cnt = ta.nextElementSibling;
+  if (!cnt) return;
+  var len = (ta.value||'').length;
+  cnt.textContent = len + ' / 50 min';
+  cnt.style.color = len >= 50 ? '#1a7f3c' : (len > 0 ? '#b91c1c' : 'var(--t3)');
+}
+
+function removeTaskLine(btn) {
+  var row = btn.parentNode;
+  var wrap = row.parentNode;
+  wrap.removeChild(row);
+  Array.from(wrap.children).forEach(function(r, i){
+    var num = r.querySelector('span');
+    if (num && num.textContent.match(/^\d+\.$/)) num.textContent = (i+1)+'.';
+  });
+  syncTaskHidden();
+}
+
+function syncTaskHidden() {
+  var wrap = document.getElementById('jc_task_lines');
+  var hidden = document.getElementById('jc_task');
+  if (!wrap||!hidden) return;
+  var texts = [];
+  wrap.querySelectorAll('textarea').forEach(function(ta){
+    var v=(ta.value||'').trim(); if(v) texts.push(v);
+  });
+  hidden.value = texts.join(' || ');
+}
+
+function getTaskLines() {
+  var h = document.getElementById('jc_task');
+  var val = (h?h.value:'').trim();
+  if (!val) return [];
+  return val.split(' || ').map(function(s){return s.trim();}).filter(Boolean);
+}
+
+function setTaskLines(value) {
+  var wrap = document.getElementById('jc_task_lines');
+  if (!wrap) return;
+  wrap.innerHTML = '';
+  var lines = [];
+  if (value && value.indexOf(' || ') !== -1) lines = value.split(' || ').map(function(s){return s.trim();}).filter(Boolean);
+  else if (value && value.indexOf('||') !== -1) lines = value.split('||').map(function(s){return s.trim();}).filter(Boolean);
+  else if (value && value.trim()) lines = [value.trim()];
+  if (lines.length === 0) lines = [''];
+  lines.forEach(function(v){ addTaskLine(v); });
+}
+
 
 function calcDuration() {
   const s = document.getElementById('jc_startdate').value;
@@ -2534,6 +3679,8 @@ function openAddJobCard() {
   document.getElementById('jctitle').textContent = 'New Job Card';
   const fields = ['jc_no','jc_vtype','jc_odometer','jc_orderstatus','jc_client','jc_category','jc_location','jc_maintlevel','jc_workstatus','jc_task','jc_parts','jc_startdate','jc_enddate','jc_releasedate','jc_duration','jc_comment'];
   fields.forEach(id => { const el = document.getElementById(id); if(el) el.value = ''; });
+  // Init task lines with one empty field
+  setTaskLines('');
   // Reset vehicle/driver custom inputs
   ['jc_vehicle_custom','jc_driver_custom'].forEach(id=>{const el=document.getElementById(id);if(el)el.remove();});
   const jcv=document.getElementById('jc_vehicle');if(jcv){jcv.style.display='';jcv.value='';}
@@ -2598,7 +3745,7 @@ function editJobCard(id) {
   sv('jc_location', j.location);
   sv('jc_maintlevel', j.maintenanceLevel);
   sv('jc_workstatus', j.workStatus);
-  sv('jc_task', j.taskDescription);
+  setTaskLines(j.taskDescription||'');
   sv('jc_parts', j.partsRequested);
   sv('jc_startdate', toDateInput(j.startDate));
   sv('jc_enddate', toDateInput(j.endDate));
@@ -2650,7 +3797,12 @@ function saveJobCard() {
     if (!document.getElementById('jc_startdate').value) missing.push('Start Date');
     if (!document.getElementById('jc_enddate').value) missing.push('End Date');
     if (!document.getElementById('jc_releasedate').value) missing.push('Expected Release Date');
-    if (!document.getElementById('jc_task').value.trim()) missing.push('Task Description');
+    var taskLines = getTaskLines();
+    if (taskLines.length === 0 || !taskLines[0]) { missing.push('Task Description (at least one line)'); }
+    else {
+      var shortLine = taskLines.find(function(t){ return t.length < 50; });
+      if (shortLine) { missing.push('Each task line must be at least 50 characters'); }
+    }
     if (!document.getElementById('jc_client').value.trim()) missing.push('Client Name');
   }
   if (!workStatus) missing.push('Work Status');
@@ -2663,6 +3815,35 @@ function saveJobCard() {
     alert('Please fill in the following required fields:\n\n• ' + missing.join('\n• '));
     return;
   }
+
+  // Block creating new job card if truck has open/unsigned job cards
+  // (Only check on NEW job cards, not edits)
+  if (!editingJC) {
+    var jcVehicleEl = document.getElementById('jc_vehicle');
+    var vehiclePlate = ((jcVehicleEl && jcVehicleEl.tomselect ? jcVehicleEl.tomselect.getValue() : null) || vehicle || '').toUpperCase();
+    console.log('JC vehicle check - plate:', vehiclePlate, 'JOBCARDS count:', JOBCARDS.length);
+    var existingJCs = JOBCARDS.filter(function(j){
+      return (j.vehicle||'').toUpperCase() === vehiclePlate;
+    });
+    console.log('Existing JCs for truck:', existingJCs.length, existingJCs.map(function(j){return j.code+':'+j.workStatus;}));
+    // Check 1: any job card not completed
+    var openJC = existingJCs.find(function(j){
+      return (j.workStatus||'').toUpperCase() !== 'COMPLETED';
+    });
+    if (openJC) {
+      alert('Cannot create job card. Truck ' + vehicle + ' has an open/in-progress job card:\n\n' + (openJC.code||openJC.id) + ' — Status: ' + (openJC.workStatus||'N/A') + '\n\nPlease complete it before creating a new one.');
+      return;
+    }
+    // Check 2: any completed job card with no signed PDF attached
+    var unsignedJC = existingJCs.find(function(j){
+      return (j.workStatus||'').toUpperCase() === 'COMPLETED' && !j.signedPdfUrl && !j.signedPdfId;
+    });
+    if (unsignedJC) {
+      alert('Cannot create job card. Truck ' + vehicle + ' has a completed job card without a signed document attached:\n\n' + (unsignedJC.code||unsignedJC.id) + '\n\nPlease attach the signed job card before creating a new one.');
+      return;
+    }
+  }
+
   btn.disabled = true; btn.textContent = 'Saving...';
 
   const U = s => (s||'').toUpperCase();
@@ -3136,15 +4317,52 @@ function populateJCFormDropdowns() {
 }
 
 // When vehicle selected in JC form — auto fill vehicle type
+function checkVehicleForNewJC(plate) {
+  if (!plate || !JOBCARDS) return;
+  var p = plate.toUpperCase();
+  var existingJCs = JOBCARDS.filter(function(j){ return (j.vehicle||'').toUpperCase() === p; });
+  var openJC = existingJCs.find(function(j){ return (j.workStatus||'').toUpperCase() !== 'COMPLETED'; });
+  if (openJC) {
+    toast('⚠ ' + plate + ' has an open job card: ' + (openJC.code||'') + ' (' + (openJC.workStatus||'') + ')', 'er');
+    return false;
+  }
+  var unsignedJC = existingJCs.find(function(j){ return (j.workStatus||'').toUpperCase()==='COMPLETED' && !j.signedPdfUrl && !j.signedPdfId; });
+  if (unsignedJC) {
+    toast('⚠ ' + plate + ' has a completed job card with no signed document: ' + (unsignedJC.code||''), 'er');
+    return false;
+  }
+  return true;
+}
+
 function onJCVehicleSelect() {
   const sel = document.getElementById('jc_vehicle');
   if (!sel) return;
   const vtEl = document.getElementById('jc_vtype');
   if (!vtEl) return;
-  const plate = sel.value;
+  // Get plate from Tom Select if active, else from plain select
+  const plate = (sel.tomselect ? sel.tomselect.getValue() : sel.value) || sel.value;
   if (!plate || plate === '__custom__') {
     vtEl.value = '';
     return;
+  }
+  // Check vehicle eligibility for NEW job card
+  if (!editingJC) {
+    var existingJCs = JOBCARDS.filter(function(j){
+      return (j.vehicle||'').toUpperCase() === plate.toUpperCase();
+    });
+    var openJC = existingJCs.find(function(j){
+      return (j.workStatus||'').toUpperCase() !== 'COMPLETED';
+    });
+    if (openJC) {
+      toast('⚠ ' + plate + ' has open job card: ' + (openJC.code||'') + ' [' + (openJC.workStatus||'IN PROGRESS') + ']', 'er');
+    } else {
+      var unsignedJC = existingJCs.find(function(j){
+        return (j.workStatus||'').toUpperCase() === 'COMPLETED' && !j.signedPdfUrl && !j.signedPdfId;
+      });
+      if (unsignedJC) {
+        toast('⚠ ' + plate + ' has completed job card with no signed document: ' + (unsignedJC.code||''), 'er');
+      }
+    }
   }
   const opt = sel.options[sel.selectedIndex];
   const vtype = opt ? opt.getAttribute('data-vtype') : '';
@@ -3189,7 +4407,13 @@ function previewJobCard(id) {
   if (!j) return;
 
   // Pull defects from taskDescription (split by line or comma)
-  const defects = (j.taskDescription||'').split(/\n|,/).map(s=>s.trim()).filter(s=>s.length>0);
+  const rawTask = j.taskDescription||'';
+  const defects = (rawTask.indexOf(' || ') !== -1
+    ? rawTask.split(' || ')
+    : rawTask.indexOf('||') !== -1
+      ? rawTask.split('||')
+      : rawTask.split(/\n|,/))
+    .map(s=>s.trim()).filter(s=>s.length>0);
 
   // Pull received parts from ALL records matching this job card
   const receivedParts = ALL.filter(r =>
@@ -3567,7 +4791,13 @@ function downloadJCPDFById(id) {
   currentPDFJobCardId = id;
   const j = JOBCARDS.find(x => x.id === id);
   if (!j) return;
-  const defects = (j.taskDescription||'').split(/\n|,/).map(s=>s.trim()).filter(s=>s.length>0);
+  const rawTask = j.taskDescription||'';
+  const defects = (rawTask.indexOf(' || ') !== -1
+    ? rawTask.split(' || ')
+    : rawTask.indexOf('||') !== -1
+      ? rawTask.split('||')
+      : rawTask.split(/\n|,/))
+    .map(s=>s.trim()).filter(s=>s.length>0);
   const receivedParts = ALL.filter(r =>
     r.status === 'RECEIVED' &&
     r.jobCardNo && j.code &&
@@ -4508,6 +5738,16 @@ async function loadAppData(){
 }
 init();
 
+// Handle browser back/forward - redirect to home instead of leaving app
+window.addEventListener('popstate', function(e) {
+  // Push state back so browser can't go back/forward out
+  history.pushState(null, '', window.location.href);
+  // Switch to workshop (home) view if not already there
+  if (typeof switchView === 'function') switchView('workshop');
+});
+// Push initial state
+history.pushState(null, '', window.location.href);
+
 // Prevent swipe left/right browser navigation (single touch only - allow pinch zoom)
 (function() {
   var touchStartX = 0;
@@ -4556,7 +5796,7 @@ init();
       <div class="formgroup"><label>Date Received</label><input type="date" id="f_datercvd"></div>
       <div class="formgroup"><label>Status <span style="color:#f87171">*</span></label><select id="f_status" onchange="onStatusChange();(function(){var t=(document.getElementById('f_truck').tomselect?document.getElementById('f_truck').tomselect.getValue():document.getElementById('f_truck').value)||'';var isWS=t.toUpperCase().includes('WORKSHOP');var el=document.getElementById('f_vtype');if(el&&isWS){el.style.borderColor='';var fg=el.parentNode;while(fg&&!fg.classList.contains('formgroup'))fg=fg.parentNode;if(fg){var s=fg.querySelector('.req-star');if(s)s.remove();}}})()"><option value="">Select...</option><option>RECEIVED</option><option>RECEIVED NOT ISSUED</option><option>ON HOLD</option><option>PAID NOT RECEIVED</option><option>NOT PAID</option></select></div>
       <div class="formgroup"><label>Payment Mode <span style="color:#f87171">*</span></label><select id="f_payment"><option value="">Select...</option><option>CASH</option><option>CREDIT</option><option>STORE</option></select></div>
-      <div class="formgroup"><label>Category <span style="color:#f87171">*</span></label><select id="f_category"><option value="">Select...</option><option>WORKSHOP</option><option>BREAKDOWN</option></select></div>
+      <div class="formgroup"><label>Category <span style="color:#f87171">*</span> <span style="color:var(--t3);font-size:10px;font-weight:400">(auto-filled)</span></label><select id="f_category"><option value="">Select...</option><option>WORKSHOP</option><option>BREAKDOWN</option></select></div>
       <div class="formgroup"><label>Requested By <span style="color:#f87171">*</span></label><select id="f_reqby"><option value="">Select...</option><option>SABRI ABRI</option><option>RAMADHAN LUDEGE</option><option>MUSTAKIM RAMADHAN</option><option>MOHAMED AL JABRY</option></select></div>
       <div class="formgroup"><label>Date Issued</label><input type="date" id="f_dateissued"></div>
       <div class="formgroup full"><label>Remarks</label><textarea id="f_remarks"></textarea></div>
@@ -4634,7 +5874,12 @@ init();
       <div class="formgroup"><label>Location <span style="color:#f87171">*</span></label><input type="text" id="jc_location"></div>
       <div class="formgroup"><label>Maintenance Level <span style="color:#f87171">*</span></label><select id="jc_maintlevel"><option value="">Select...</option><option>MINOR MAINTENANCE</option><option>MAJOR MAINTENANCE</option><option>ACCIDENT REPAIR</option><option>SERVICE</option></select></div>
       <div class="formgroup"><label>Work Status <span style="color:#f87171">*</span></label><select id="jc_workstatus"><option value="">Select...</option><option>IN PROGRESS</option><option>COMPLETED</option><option>STALLED</option><option>PENDING</option><option>TO BE REPAIRED AFTER LOADING</option></select></div>
-      <div class="formgroup full"><label>Task Description <span style="color:#f87171">*</span> <span style="color:var(--t3);font-weight:400;font-size:10px">(min 100 characters)</span></label><textarea id="jc_task" style="min-height:80px" oninput="updateTaskCount(this)" placeholder="Describe the task in detail (minimum 100 characters including spaces)..."></textarea><div id="jc_task_count" style="font-size:10px;color:var(--t3);text-align:right;margin-top:3px">0 / 100 min</div></div>
+      <div class="formgroup full">
+  <label>Task / Defects Description <span style="color:#f87171">*</span> <span style="color:var(--t3);font-weight:400;font-size:10px">(each item min 50 chars)</span></label>
+  <div id="jc_task_lines" style="display:flex;flex-direction:column;gap:8px;margin-bottom:6px"></div>
+  <button type="button" onclick="addTaskLine()" style="background:none;border:1px dashed var(--br);border-radius:7px;padding:6px 14px;font-size:12px;color:var(--ac);cursor:pointer;width:100%;margin-top:2px">+ Add Task Line</button>
+  <input type="hidden" id="jc_task" value="">
+</div>
       <div class="formgroup full"><label>Parts Requested</label><textarea id="jc_parts" style="min-height:60px"></textarea></div>
       <div class="formgroup"><label>Start Date</label><input type="date" id="jc_startdate" onchange="calcDuration()"></div>
       <div class="formgroup"><label>End Date</label><input type="date" id="jc_enddate" onchange="calcDuration()"></div>
@@ -4779,12 +6024,175 @@ init();
 
 <input type="file" id="signedpdf_input" accept=".pdf" style="display:none" onchange="handleAttachFile(this)">
 
+<!-- MULTI-LINE REQUISITION MODAL -->
+<div class="overlay hidden" id="multireqmodal" style="padding:0;align-items:stretch;overflow:hidden">
+  <div style="background:#fff;width:100vw;height:100vh;display:flex;flex-direction:column;overflow:hidden">
+    <!-- Header -->
+    <div class="modalhead" style="border-radius:0;flex-shrink:0">
+      <div class="modaltitle">🚛 Single-Truck Requisition</div>
+      <button class="modalclose" onclick="closeModal('multireqmodal')">✕</button>
+    </div>
+
+    <!-- Scrollable body -->
+    <div style="flex:1;overflow-y:auto;padding:16px 22px">
+
+      <!-- Shared section -->
+      <div style="background:#f0f4ff;border:1.5px solid rgba(10,45,110,.15);border-radius:10px;padding:14px 18px;margin-bottom:16px">
+        <div style="font-size:10px;font-weight:700;color:var(--ac);text-transform:uppercase;letter-spacing:.08em;margin-bottom:12px">Shared — applies to all lines</div>
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px">
+          <div class="formgroup">
+            <label>Truck / Vehicle No <span style="color:#f87171">*</span></label>
+            <select id="mr_truck"><option value="">Search vehicle...</option></select>
+          </div>
+          <div class="formgroup" id="mr_vtype_fg">
+            <label>Vehicle Type</label>
+            <input type="text" id="mr_vtype" readonly style="opacity:.65;cursor:not-allowed;font-weight:600;color:var(--ac)">
+          </div>
+          <div class="formgroup" id="mr_jobcard_fg">
+            <label>Job Card No</label>
+            <select id="mr_jobcard" onchange="onMRJCSelect()"><option value="">Select...</option></select>
+          </div>
+          <div class="formgroup" id="mr_driver_fg">
+            <label>Driver Name</label>
+            <select id="mr_driver"><option value="">Select...</option></select>
+          </div>
+          <div class="formgroup">
+            <label>Category <span style="color:#f87171">*</span></label>
+            <select id="mr_category"><option value="">Select...</option><option>WORKSHOP</option><option>BREAKDOWN</option></select>
+          </div>
+          <div class="formgroup">
+            <label>Date Requested <span style="color:#f87171">*</span></label>
+            <input type="date" id="mr_date">
+          </div>
+          <div class="formgroup">
+            <label>Priority <span style="color:#f87171">*</span></label>
+            <select id="mr_priority"><option value="">Select...</option><option>HIGH PRIORITY</option><option>NORMAL</option></select>
+          </div>
+        </div>
+      </div>
+
+      <!-- Lines header -->
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+        <span style="font-size:11px;font-weight:700;color:var(--ac);text-transform:uppercase;letter-spacing:.06em">Line Items — each line = one requisition record</span>
+        <button onclick="addMRLine()" class="btn bp" style="font-size:12px;padding:6px 16px">+ Add Line</button>
+      </div>
+
+      <!-- Lines container -->
+      <div id="mr_lines_wrap"></div>
+
+      <!-- Grand total -->
+      <div style="display:flex;justify-content:flex-end;margin-top:14px;gap:12px;align-items:center;padding:12px 16px;background:#f5f5f7;border-radius:8px;border:1px solid #e2e2e7">
+        <span style="font-size:13px;font-weight:600;color:var(--t2)">Grand Total:</span>
+        <span id="mr_grand_total" style="font-size:20px;font-weight:900;color:var(--ac);font-family:monospace">0.00</span>
+      </div>
+    </div>
+
+    <!-- Footer -->
+    <div class="modalfoot" style="border-radius:0;flex-shrink:0">
+      <button class="btn bg" onclick="closeModal('multireqmodal')">Cancel</button>
+      <button class="btn bp" id="mr_save_btn" onclick="saveMultiReq()">💾 Save All Lines</button>
+    </div>
+  </div>
+</div>
+
+<!-- SINGLE-SUPPLIER MULTI-REQ MODAL -->
+<div class="overlay hidden" id="ssreqmodal" style="padding:0;align-items:flex-start;overflow-y:auto">
+  <div style="background:#fff;width:100vw;min-height:100vh;display:flex;flex-direction:column">
+    <div style="background:var(--ac);color:#fff;padding:14px 24px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0">
+      <div style="font-family:'Outfit',sans-serif;font-size:18px;font-weight:700">🏪 Single-Supplier Requisition</div>
+      <button onclick="closeModal('ssreqmodal')" style="background:rgba(255,255,255,.15);border:none;color:#fff;width:32px;height:32px;border-radius:8px;cursor:pointer;font-size:16px">✕</button>
+    </div>
+    <!-- Shared: only 3 fields -->
+    <div style="padding:14px 24px;background:#f0f4ff;border-bottom:1.5px solid rgba(10,45,110,.1);flex-shrink:0">
+      <div style="font-size:10px;font-weight:700;color:var(--ac);text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px">Shared — applies to all lines</div>
+      <div style="display:grid;grid-template-columns:2fr 1fr 1fr;gap:16px;max-width:700px">
+        <div class="formgroup">
+          <label>Supplier <span style="color:#f87171">*</span></label>
+          <select id="ssr_supplier"><option value="">Select supplier...</option></select>
+        </div>
+        <div class="formgroup">
+          <label>Date Requested <span style="color:#f87171">*</span></label>
+          <input type="date" id="ssr_date">
+        </div>
+        <div class="formgroup">
+          <label>Payment Mode <span style="color:#f87171">*</span></label>
+          <select id="ssr_payment"><option value="">Select...</option><option>CASH</option><option>CHEQUE</option><option>BANK TRANSFER</option><option>MPESA</option><option>CREDIT</option></select>
+        </div>
+      </div>
+    </div>
+    <!-- Lines -->
+    <div style="flex:1;overflow-y:auto;padding:14px 24px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+        <span style="font-size:11px;font-weight:700;color:var(--ac);text-transform:uppercase;letter-spacing:.06em">Line Items — each line = one requisition</span>
+        <button onclick="addSSRLine()" class="btn bp" style="font-size:12px;padding:6px 16px">+ Add Line</button>
+      </div>
+      <div id="ssr_lines_wrap"></div>
+    </div>
+    <!-- Footer -->
+    <div style="padding:12px 24px;border-top:1px solid #e2e2e7;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;background:#f5f5f7">
+      <div style="display:flex;align-items:center;gap:12px">
+        <span style="font-size:13px;font-weight:600;color:var(--t2)">Grand Total:</span>
+        <span id="ssr_grand_total" style="font-size:20px;font-weight:900;color:var(--ac);font-family:monospace">0.00</span>
+      </div>
+      <div style="display:flex;gap:10px">
+        <button class="btn bg" onclick="closeModal('ssreqmodal')">Cancel</button>
+        <button class="btn bp" id="ssr_save_btn" onclick="saveSSReq()">💾 Save All Lines</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- BULK EDIT MODAL -->
+<div class="overlay hidden" id="bulkeditmodal" style="padding:0;align-items:flex-start;overflow-y:auto">
+  <div style="background:#fff;width:100vw;min-height:100vh;display:flex;flex-direction:column">
+    <div style="background:var(--ac);color:#fff;padding:14px 24px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0">
+      <div style="font-family:'Outfit',sans-serif;font-size:18px;font-weight:700">✏ Bulk Edit Requisitions</div>
+      <button onclick="closeModal('bulkeditmodal')" style="background:rgba(255,255,255,.15);border:none;color:#fff;width:32px;height:32px;border-radius:8px;cursor:pointer;font-size:16px">✕</button>
+    </div>
+    <div style="flex:1;overflow-y:auto;padding:16px 24px">
+      <div id="bulk_edit_lines"></div>
+    </div>
+    <div style="padding:12px 24px;border-top:1px solid #e2e2e7;display:flex;align-items:center;justify-content:flex-end;gap:10px;flex-shrink:0;background:#f5f5f7">
+      <button class="btn bg" onclick="closeModal('bulkeditmodal');updateSelectionBar()">Cancel</button>
+      <button class="btn bp" id="bulk_save_btn" onclick="saveBulkEdit()">💾 Save All Changes</button>
+    </div>
+  </div>
+</div>
+
+<!-- FREE MULTI REQUISITION MODAL -->
+<div class="overlay hidden" id="freereqmodal" style="padding:0;align-items:flex-start;overflow-y:auto">
+  <div style="background:#fff;width:100vw;min-height:100vh;display:flex;flex-direction:column">
+    <div style="background:var(--ac);color:#fff;padding:14px 24px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0">
+      <div style="font-family:'Outfit',sans-serif;font-size:18px;font-weight:700">📝 Multi Requisition</div>
+      <button onclick="closeModal('freereqmodal')" style="background:rgba(255,255,255,.15);border:none;color:#fff;width:32px;height:32px;border-radius:8px;cursor:pointer;font-size:16px">✕</button>
+    </div>
+    <div style="flex:1;overflow-y:auto;padding:16px 24px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+        <span style="font-size:11px;font-weight:700;color:var(--ac);text-transform:uppercase;letter-spacing:.06em">Each line = one requisition — no shared fields</span>
+        <button onclick="addFreeReqLine()" class="btn bp" style="font-size:12px;padding:6px 16px">+ Add Line</button>
+      </div>
+      <div id="free_lines_wrap"></div>
+    </div>
+    <div style="padding:12px 24px;border-top:1px solid #e2e2e7;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;background:#f5f5f7">
+      <div style="display:flex;align-items:center;gap:12px">
+        <span style="font-size:13px;font-weight:600;color:var(--t2)">Grand Total:</span>
+        <span id="free_grand_total" style="font-size:20px;font-weight:900;color:var(--ac);font-family:monospace">0.00</span>
+      </div>
+      <div style="display:flex;gap:10px">
+        <button class="btn bg" onclick="closeModal('freereqmodal')">Cancel</button>
+        <button class="btn bp" id="free_save_btn" onclick="saveFreeReq()">💾 Save All Lines</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- SELECTION ACTION BAR -->
 <div id="selectionbar" style="display:none;position:fixed;bottom:28px;left:50%;transform:translateX(-50%);background:#0a2d6e;color:#fff;border-radius:12px;padding:11px 20px;align-items:center;gap:12px;box-shadow:0 8px 32px rgba(10,45,110,.4);z-index:5000;white-space:nowrap">
   <span id="sel_count" style="font-size:13px;font-weight:600">0 selected</span>
   <div style="width:1px;background:rgba(255,255,255,.3);height:18px;flex-shrink:0"></div>
   <button onclick="exportSelectedExcel()" style="background:rgba(255,255,255,.18);border:1px solid rgba(255,255,255,.3);color:#fff;padding:6px 14px;border-radius:7px;cursor:pointer;font-size:12px;font-weight:600">⬇ Export Excel</button>
   <button id="btn_pdf_req" onclick="exportSelectedPDF()" style="background:rgba(255,255,255,.18);border:1px solid rgba(255,255,255,.3);color:#fff;padding:6px 14px;border-radius:7px;cursor:pointer;font-size:12px;font-weight:600;display:none">🖨 Print Form</button>
+  <button id="btn_bulk_edit" onclick="openBulkEdit()" style="background:rgba(255,255,255,.18);border:1px solid rgba(255,255,255,.3);color:#fff;padding:6px 14px;border-radius:7px;cursor:pointer;font-size:12px;font-weight:600;display:none">✏ Edit Selected</button>
   <button onclick="clearSelection()" style="background:none;border:none;color:rgba(255,255,255,.7);cursor:pointer;font-size:20px;line-height:1;padding:0 4px">✕</button>
 </div>
 
