@@ -198,7 +198,7 @@ tr:hover td{background:#f0f4ff}
 .loadtxt{color:var(--ac);font-size:14px;font-weight:600}
 
 /* TOAST */
-.toastbox{position:fixed;top:24px;left:50%;transform:translateX(-50%);z-index:9001;display:flex;flex-direction:column;gap:8px}
+.toastbox{position:fixed;top:10%;left:50%;transform:translateX(-50%);z-index:9001;display:flex;flex-direction:column;gap:8px}
 .toast{padding:11px 18px;border-radius:12px;font-size:13px;font-weight:600;animation:slidein .25s ease;box-shadow:0 4px 20px rgba(0,0,0,.12)}
 @keyframes slidein{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
 .tok{background:var(--ac);color:#ffffff}
@@ -1981,8 +1981,15 @@ function onTruckSelect() {
   const isWorkshop = (plate||'').toUpperCase().includes('WORKSHOP') ||
                      (v && (v.vehicleType||'').toUpperCase().includes('WORKSHOP')) ||
                      (v && (v.plate||'').toUpperCase().includes('WORKSHOP'));
+  const isMotorcycle = v && (v.vehicleType||'').toUpperCase() === 'MOTORCYCLE';
+
   muteReqFields(isWorkshop);
-  if (!isWorkshop) populateJobCardDropdown(plate);
+
+  // For motorcycle: hide job card field only, keep driver visible
+  var jcFg = document.getElementById('f_jobcard') ? document.getElementById('f_jobcard').closest('.formgroup') : null;
+  if (jcFg) jcFg.style.display = isMotorcycle ? 'none' : '';
+
+  if (!isWorkshop && !isMotorcycle) populateJobCardDropdown(plate);
   else populateJobCardDropdown('');
 }
 
@@ -3819,10 +3826,13 @@ function saveJobCard() {
     if (!document.getElementById('jc_client').value.trim()) missing.push('Client Name');
   }
   if (!workStatus) missing.push('Work Status');
-  // Validate task description minimum 100 characters
-  var taskVal = document.getElementById('jc_task').value || '';
-  if (taskVal.length < 100) {
-    missing.push('Task Description (minimum 100 characters, currently ' + taskVal.length + ')');
+  // Validate task lines - each must be min 50 characters
+  var taskLines = getTaskLines();
+  if (taskLines.length === 0 || !taskLines[0]) {
+    missing.push('Task Description (at least one line required)');
+  } else {
+    var shortLine = taskLines.find(function(t){ return t.length < 50; });
+    if (shortLine) missing.push('Each task line must be at least 50 characters');
   }
   if (missing.length > 0) {
     alert('Please fill in the following required fields:\n\n• ' + missing.join('\n• '));
@@ -3834,25 +3844,21 @@ function saveJobCard() {
   if (!editingJC) {
     var jcVehicleEl = document.getElementById('jc_vehicle');
     var vehiclePlate = ((jcVehicleEl && jcVehicleEl.tomselect ? jcVehicleEl.tomselect.getValue() : null) || vehicle || '').toUpperCase();
-    console.log('JC vehicle check - plate:', vehiclePlate, 'JOBCARDS count:', JOBCARDS.length);
+    console.log('JC vehicle check - plate:', vehiclePlate, 'category:', jcCategory, 'JOBCARDS count:', JOBCARDS.length);
+    var debugJCs = JOBCARDS.filter(function(j){ return (j.vehicle||'').toUpperCase() === vehiclePlate; });
+    console.log('JCs for truck:', debugJCs.map(function(j){ return {code:j.code, cat:j.category, status:j.workStatus, signed:j.signedPdfUrl||j.signedPdfId}; }));
     var existingJCs = JOBCARDS.filter(function(j){
       return (j.vehicle||'').toUpperCase() === vehiclePlate;
     });
     console.log('Existing JCs for truck:', existingJCs.length, existingJCs.map(function(j){return j.code+':'+j.workStatus;}));
     // Check 1: any job card not completed
-    var openJC = existingJCs.find(function(j){
-      return (j.workStatus||'').toUpperCase() !== 'COMPLETED';
-    });
-    if (openJC) {
-      alert('Cannot create job card. Truck ' + vehicle + ' has an open/in-progress job card:\n\n' + (openJC.code||openJC.id) + ' — Status: ' + (openJC.workStatus||'N/A') + '\n\nPlease complete it before creating a new one.');
-      return;
-    }
-    // Check 2: any completed job card with no signed PDF attached
-    var unsignedJC = existingJCs.find(function(j){
-      return (j.workStatus||'').toUpperCase() === 'COMPLETED' && !j.signedPdfUrl && !j.signedPdfId;
-    });
-    if (unsignedJC) {
-      alert('Cannot create job card. Truck ' + vehicle + ' has a completed job card without a signed document attached:\n\n' + (unsignedJC.code||unsignedJC.id) + '\n\nPlease attach the signed job card before creating a new one.');
+    // Use category-aware check
+    var jcCategoryEl = document.getElementById('jc_category');
+    var jcCategory = jcCategoryEl ? jcCategoryEl.value : '';
+    var allowed = checkVehicleForNewJC(vehiclePlate, jcCategory);
+    if (!allowed) {
+      // Toast already shown by checkVehicleForNewJC - just block
+      if (btn) { btn.disabled = false; btn.textContent = 'Save Job Card'; }
       return;
     }
   }
@@ -4190,6 +4196,20 @@ function editVehicle(id) {
   document.getElementById('vehmodal').classList.remove('hidden');
 }
 
+function onVehicleTypeChange(sel) {
+  var val = (sel ? sel.value : '').toUpperCase();
+  // Show/hide note about job cards for motorcycle
+  var note = document.getElementById('motorcycle_note');
+  if (!note) {
+    note = document.createElement('div');
+    note.id = 'motorcycle_note';
+    note.style.cssText = 'font-size:11px;color:#92400e;background:#fef3c7;padding:6px 10px;border-radius:6px;margin-top:4px;border:1px solid #fde68a';
+    note.textContent = '⚠ Motorcycles are excluded from Job Cards.';
+    sel.parentNode.appendChild(note);
+  }
+  note.style.display = val === 'MOTORCYCLE' ? 'block' : 'none';
+}
+
 function saveVehicle() {
   const btn = document.getElementById('vehsavebtn');
   if (!document.getElementById('v_plate').value.trim()) { alert('Vehicle plate is required'); return; }
@@ -4330,19 +4350,69 @@ function populateJCFormDropdowns() {
 }
 
 // When vehicle selected in JC form — auto fill vehicle type
-function checkVehicleForNewJC(plate) {
-  if (!plate || !JOBCARDS) return;
-  var p = plate.toUpperCase();
-  var existingJCs = JOBCARDS.filter(function(j){ return (j.vehicle||'').toUpperCase() === p; });
-  var openJC = existingJCs.find(function(j){ return (j.workStatus||'').toUpperCase() !== 'COMPLETED'; });
+function getCategoryForJCCheck() {
+  var el = document.getElementById('jc_category');
+  return el ? (el.value||'') : '';
+}
+
+function onJCCategoryChange() {
+  var vehEl = document.getElementById('jc_vehicle');
+  var plate = vehEl && vehEl.tomselect ? vehEl.tomselect.getValue() : (vehEl ? vehEl.value : '');
+  if (!plate || editingJC) return;
+  var cat = getCategoryForJCCheck().toUpperCase();
+  var allJCs = JOBCARDS.filter(function(j){ return (j.vehicle||'').toUpperCase() === plate.toUpperCase(); });
+  // Always warn: open JC
+  var openJC = allJCs.find(function(j){ return (j.workStatus||'').toUpperCase() !== 'COMPLETED'; });
   if (openJC) {
-    toast('⚠ ' + plate + ' has an open job card: ' + (openJC.code||'') + ' (' + (openJC.workStatus||'') + ')', 'er');
+    toast('⚠ ' + plate + ' has an open job card: ' + (openJC.code||'') + ' — complete it first.', 'er');
+    return;
+  }
+  // Warn unsigned PDF only when category is NOT BREAKDOWN
+  if (cat !== 'BREAKDOWN') {
+    var unsignedJC = allJCs.find(function(j){
+      return (j.workStatus||'').toUpperCase() === 'COMPLETED' && !j.signedPdfUrl && !j.signedPdfId;
+    });
+    if (unsignedJC) {
+      toast('⚠ ' + plate + ' has a completed job card with no signed document: ' + (unsignedJC.code||''), 'er');
+    }
+  }
+}
+
+function checkVehicleForNewJC(plate, category) {
+  if (!plate || !JOBCARDS) return true;
+  var p = plate.toUpperCase();
+  var cat = (category || getCategoryForJCCheck()).toUpperCase();
+  var allJCs = JOBCARDS.filter(function(j){ return (j.vehicle||'').toUpperCase() === p; });
+
+  // RULE 1 (ALL categories): any incomplete JC blocks new JC for any category
+  var openJC = allJCs.find(function(j){
+    return (j.workStatus||'').toUpperCase() !== 'COMPLETED';
+  });
+  if (openJC) {
+    toast('Cannot open new job card. ' + plate + ' has an open job card: ' + (openJC.code||'') + ' [' + (openJC.workStatus||'IN PROGRESS') + ']', 'er');
     return false;
   }
-  var unsignedJC = existingJCs.find(function(j){ return (j.workStatus||'').toUpperCase()==='COMPLETED' && !j.signedPdfUrl && !j.signedPdfId; });
-  if (unsignedJC) {
-    toast('⚠ ' + plate + ' has a completed job card with no signed document: ' + (unsignedJC.code||''), 'er');
-    return false;
+
+  if (cat === 'WORKSHOP') {
+    // RULE 2 (WORKSHOP): any completed JC without signed PDF blocks
+    var unsignedAny = allJCs.find(function(j){
+      return (j.workStatus||'').toUpperCase() === 'COMPLETED' && !j.signedPdfUrl && !j.signedPdfId;
+    });
+    if (unsignedAny) {
+      toast('Cannot open Workshop job card. ' + plate + ' has unsigned completed job card: ' + (unsignedAny.code||''), 'er');
+      return false;
+    }
+  } else if (cat === 'BREAKDOWN') {
+    // RULE 3 (BREAKDOWN): allow up to 6 completed-unsigned BREAKDOWN JCs
+    var unsignedBD = allJCs.filter(function(j){
+      return (j.category||'').toUpperCase() === 'BREAKDOWN' &&
+             (j.workStatus||'').toUpperCase() === 'COMPLETED' &&
+             !j.signedPdfUrl && !j.signedPdfId;
+    });
+    if (unsignedBD.length >= 6) {
+      toast('Cannot open new Breakdown job card. ' + plate + ' already has ' + unsignedBD.length + ' unsigned completed breakdown job cards (max 6).', 'er');
+      return false;
+    }
   }
   return true;
 }
@@ -4358,22 +4428,27 @@ function onJCVehicleSelect() {
     vtEl.value = '';
     return;
   }
-  // Check vehicle eligibility for NEW job card
+  // Early warnings for NEW job card only
   if (!editingJC) {
     var existingJCs = JOBCARDS.filter(function(j){
       return (j.vehicle||'').toUpperCase() === plate.toUpperCase();
     });
+    // Always warn: open/incomplete JC
     var openJC = existingJCs.find(function(j){
       return (j.workStatus||'').toUpperCase() !== 'COMPLETED';
     });
     if (openJC) {
-      toast('⚠ ' + plate + ' has open job card: ' + (openJC.code||'') + ' [' + (openJC.workStatus||'IN PROGRESS') + ']', 'er');
+      toast('⚠ ' + plate + ' has an open job card: ' + (openJC.code||'') + ' [' + (openJC.workStatus||'IN PROGRESS') + '] — complete it first.', 'er');
     } else {
-      var unsignedJC = existingJCs.find(function(j){
-        return (j.workStatus||'').toUpperCase() === 'COMPLETED' && !j.signedPdfUrl && !j.signedPdfId;
-      });
-      if (unsignedJC) {
-        toast('⚠ ' + plate + ' has completed job card with no signed document: ' + (unsignedJC.code||''), 'er');
+      // Warn about unsigned PDF — but NOT if category is BREAKDOWN (waiver applies)
+      var cat = getCategoryForJCCheck().toUpperCase();
+      if (cat !== 'BREAKDOWN') {
+        var unsignedJC = existingJCs.find(function(j){
+          return (j.workStatus||'').toUpperCase() === 'COMPLETED' && !j.signedPdfUrl && !j.signedPdfId;
+        });
+        if (unsignedJC) {
+          toast('⚠ ' + plate + ' has a completed job card with no signed document: ' + (unsignedJC.code||''), 'er');
+        }
       }
     }
   }
@@ -5898,6 +5973,7 @@ history.pushState(null, '', window.location.href);
     <div class="modalhead"><div class="modaltitle" id="jctitle">New Job Card</div><button class="modalclose" onclick="closeModal('jcmodal')">&#10005;</button></div>
     <div class="modalbody"><div class="formgrid">
       <div class="formgroup full"><label>Job Card No (Auto-Generated)</label><input type="text" id="jc_no" readonly style="font-family:monospace;color:var(--ac);font-size:15px;font-weight:700"></div>
+      <div class="formgroup"><label>Category <span style="color:#f87171">*</span></label><select id="jc_category" onchange="onJCCategoryChange()"><option value="">Select...</option><option>WORKSHOP</option><option>BREAKDOWN</option></select></div>
       <div class="formgroup"><label>Vehicle No <span style="color:#f87171">*</span></label><select id="jc_vehicle" onchange="onJCVehicleSelect()"><option value="">Select vehicle...</option></select></div>
       <div class="formgroup"><label>Vehicle Type</label><input type="text" id="jc_vtype" readonly style="opacity:.7;cursor:not-allowed;color:var(--ac);font-weight:600"></div>
       <div class="formgroup"><label>Driver Name <span style="color:#f87171">*</span></label><select id="jc_driver"><option value="">Select driver...</option></select></div>
@@ -5906,7 +5982,7 @@ history.pushState(null, '', window.location.href);
       <div class="formgroup"><label>Client Name</label>
         <select id="jc_client"><option value="">Select...</option><option>KEMEXON</option><option>TOTAL ENERGIES</option><option>GLENCORE</option><option>NOT BOOKED</option></select>
       </div>
-      <div class="formgroup"><label>Category <span style="color:#f87171">*</span></label><select id="jc_category"><option value="">Select...</option><option>WORKSHOP</option><option>BREAKDOWN</option></select></div>
+      
       <div class="formgroup"><label>Location <span style="color:#f87171">*</span></label><input type="text" id="jc_location"></div>
       <div class="formgroup"><label>Maintenance Level <span style="color:#f87171">*</span></label><select id="jc_maintlevel"><option value="">Select...</option><option>MINOR MAINTENANCE</option><option>MAJOR MAINTENANCE</option><option>ACCIDENT REPAIR</option><option>SERVICE</option></select></div>
       <div class="formgroup"><label>Work Status <span style="color:#f87171">*</span></label><select id="jc_workstatus"><option value="">Select...</option><option>IN PROGRESS</option><option>COMPLETED</option><option>STALLED</option><option>PENDING</option><option>TO BE REPAIRED AFTER LOADING</option></select></div>
@@ -5959,7 +6035,7 @@ history.pushState(null, '', window.location.href);
     <div class="modalbody"><div class="formgrid">
       <div class="formgroup"><label>Vehicle Code</label><input type="text" id="v_code" readonly style="font-family:monospace;color:var(--ac)"></div>
       <div class="formgroup"><label>Vehicle No (Plate)</label><input type="text" id="v_plate"></div>
-      <div class="formgroup"><label>Vehicle Type</label><select id="v_type"><option value="">Select...</option><option>TRUCK</option><option>TRAILER</option><option>OTHER</option></select></div>
+      <div class="formgroup"><label>Vehicle Type</label><select id="v_type" onchange="onVehicleTypeChange(this)"><option value="">Select...</option><option>TRUCK</option><option>TRAILER</option><option>MOTORCYCLE</option><option>TIPPER</option><option>OTHER</option></select></div>
       <div class="formgroup"><label>Make / Brand</label><input type="text" id="v_make"></div>
       <div class="formgroup"><label>Model</label><input type="text" id="v_model"></div>
       <div class="formgroup"><label>Year</label><input type="number" id="v_year" min="1990" max="2030"></div>
