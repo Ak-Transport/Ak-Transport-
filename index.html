@@ -960,7 +960,7 @@ window.onerror = function(msg, src, line, col, err) {
 };
 
 const API = 'https://script.google.com/macros/s/AKfycbyiXtmTbRUTzhIgLe4IlKc6tHf4fSN2chmETdCbLXazBTtQgR5xiRInSJL44e0NElhOkA/exec';
-const APP_VERSION = '1777727146';
+const APP_VERSION = '1778059030';
 
 // Auto-detect new version and force reload
 (function(){
@@ -6725,5 +6725,53 @@ window.addEventListener('load', function() {
 });
 </script>
 </div>
+<script>
+// Runtime patch - runs fresh every load, bypasses GitHub cache
+// Patches saveRecord to enforce status transition rules
+(function(){
+  var _origSave = window.saveRecord;
+  if (typeof _origSave !== 'function') return;
+  window.saveRecord = function(){
+    // Get status and editing record
+    var statusEl = document.getElementById('f_status');
+    var status = statusEl ? statusEl.value : '';
+    if (window.editingId) {
+      var orig = (window.ALL||[]).find(function(r){ return r.id === window.editingId; });
+      if (orig) {
+        var os = (orig.status||'').toUpperCase();
+        var ns = status.toUpperCase();
+        if (os === 'PAID NOT RECEIVED') {
+          var allowed = ['PAID NOT RECEIVED','RECEIVED NOT ISSUED','RECEIVED'];
+          if (allowed.indexOf(ns) === -1) {
+            if (typeof window.toast === 'function') window.toast('Status cannot be changed from PAID NOT RECEIVED to ' + status, 'er');
+            return;
+          }
+        } else if (os === 'RECEIVED NOT ISSUED') {
+          if (ns !== 'RECEIVED NOT ISSUED' && ns !== 'RECEIVED') {
+            if (typeof window.toast === 'function') window.toast('Status cannot be changed from RECEIVED NOT ISSUED to ' + status, 'er');
+            return;
+          }
+          if (ns === 'RECEIVED NOT ISSUED' || ns === 'RECEIVED') {
+            var dr = document.getElementById('f_datercvd');
+            if (!dr || !dr.value) {
+              if (typeof window.toast === 'function') window.toast('Date Received is required when status is RECEIVED NOT ISSUED', 'er');
+              return;
+            }
+          }
+        }
+      }
+    }
+    // Also check RECEIVED NOT ISSUED date received for new records
+    if (status.toUpperCase() === 'RECEIVED NOT ISSUED') {
+      var dr2 = document.getElementById('f_datercvd');
+      if (!dr2 || !dr2.value) {
+        if (typeof window.toast === 'function') window.toast('Date Received is required when status is RECEIVED NOT ISSUED', 'er');
+        return;
+      }
+    }
+    return _origSave.apply(this, arguments);
+  };
+})();
+</script>
 </body>
 </html>
