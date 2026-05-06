@@ -1323,6 +1323,10 @@ function onStatusChange() {
   var isWS = truckVal.toUpperCase().includes('WORKSHOP');
   var receivedFields = ['f_date','f_priority','f_lpo','f_datercvd','f_payment','f_reqby','f_dateissued','f_remarks'];
   if (!isWS) receivedFields.push('f_vtype');
+  // For RECEIVED NOT ISSUED, only highlight datercvd as mandatory
+  if (status === 'RECEIVED NOT ISSUED') {
+    receivedFields = ['f_datercvd'];
+  }
   receivedFields.forEach(function(id) {
     var el = document.getElementById(id);
     if (!el) return;
@@ -1471,6 +1475,68 @@ function isStaffJC() { return CURRENT_USER && CURRENT_USER.role === 'staff_jc'; 
 // Check if current user can edit/delete (not viewer)
 function canModify() { return CURRENT_USER && CURRENT_USER.role !== 'viewer'; }
 
+// Lock all fields except status, dateIssued, remarks for restricted statuses
+function lockRestrictedReqFields(currentStatus) {
+  var allFields = ['f_truck','f_vtype','f_jobcard','f_driver','f_category',
+    'f_date','f_priority','f_desc_select','f_desc','f_qty','f_unit_price',
+    'f_cost','f_supplier','f_lpo','f_datercvd','f_payment','f_reqby'];
+  allFields.forEach(function(id) {
+    var el = document.getElementById(id); if (!el) return;
+    el.disabled = true;
+    el.style.opacity = '0.45';
+    el.style.pointerEvents = 'none';
+    el.style.background = '#f0f0f2';
+    if (el.tomselect) { el.tomselect.disable(); el.tomselect.wrapper.style.opacity='0.45'; el.tomselect.wrapper.style.pointerEvents='none'; }
+    var fg = el.closest ? el.closest('.formgroup') : null;
+    if (fg) fg.style.opacity = '0.5';
+  });
+  // Restrict status dropdown to allowed transitions
+  var statusEl = document.getElementById('f_status');
+  if (statusEl) {
+    var allowedOpts;
+    if (currentStatus === 'PAID NOT RECEIVED') {
+      allowedOpts = ['PAID NOT RECEIVED','RECEIVED NOT ISSUED','RECEIVED'];
+    } else if (currentStatus === 'RECEIVED NOT ISSUED') {
+      allowedOpts = ['RECEIVED NOT ISSUED','RECEIVED'];
+    }
+    if (allowedOpts) {
+      statusEl.innerHTML = '';
+      allowedOpts.forEach(function(opt) {
+        var o = document.createElement('option');
+        o.value = opt; o.textContent = opt;
+        if (opt === currentStatus) o.selected = true;
+        statusEl.appendChild(o);
+      });
+    }
+  }
+  // Add banner to modal
+  var banner = document.getElementById('restricted_edit_banner');
+  if (!banner) {
+    banner = document.createElement('div');
+    banner.id = 'restricted_edit_banner';
+    banner.style.cssText = 'background:#fef3c7;border:1px solid #fde68a;color:#92400e;padding:8px 14px;border-radius:8px;font-size:12px;font-weight:600;margin-bottom:12px';
+    banner.textContent = '⚠ Restricted Edit: only Status, Date Issued and Remarks can be changed.';
+    var body = document.getElementById('recmodal').querySelector('.modalbody');
+    if (body) body.insertBefore(banner, body.firstChild);
+  }
+  banner.style.display = 'block';
+}
+
+function unlockAllReqFields() {
+  var allFields = ['f_truck','f_vtype','f_jobcard','f_driver','f_category',
+    'f_date','f_priority','f_desc_select','f_desc','f_qty','f_unit_price',
+    'f_cost','f_supplier','f_lpo','f_datercvd','f_payment','f_reqby'];
+  allFields.forEach(function(id) {
+    var el = document.getElementById(id); if (!el) return;
+    el.disabled = false; el.style.opacity = ''; el.style.pointerEvents = ''; el.style.background = '';
+    if (el.tomselect) { el.tomselect.enable(); el.tomselect.wrapper.style.opacity=''; el.tomselect.wrapper.style.pointerEvents=''; }
+    var fg = el.closest ? el.closest('.formgroup') : null;
+    if (fg) fg.style.opacity = '';
+  });
+  var banner = document.getElementById('restricted_edit_banner');
+  if (banner) banner.style.display = 'none';
+}
+
 // Enforce BREAKDOWN for staff_jc: lock category field
 function lockCategoryBreakdown(elId) {
   var el = document.getElementById(elId);
@@ -1520,7 +1586,15 @@ function openAdd(){
 function editRecord(id){
   const r=ALL.find(x=>x.id===id);if(!r)return;
   if (!canEditReq(r)) { toast('You do not have permission to edit this requisition', 'er'); return; }
-  if(r.status==='RECEIVED')askPassword(()=>doEdit(r));else doEdit(r);}
+  var s=(r.status||'').toUpperCase();
+  // Only RECEIVED requires password to open (it's fully locked)
+  // PAID NOT RECEIVED and RECEIVED NOT ISSUED open freely, restrictions enforced at save
+  if(s==='RECEIVED'){
+    askPassword(function(){ doEdit(r); });
+  } else {
+    doEdit(r);
+  }
+}
 function doEdit(r){
   editingId=r.id;
   document.getElementById('modaltitle').textContent='Edit Requisition';
@@ -1604,6 +1678,7 @@ function clearForm(){
   const descInp=document.getElementById('f_desc');if(descInp){descInp.value='';descInp.style.borderColor='';}
 }
 async function saveRecord(){
+  var btn = document.getElementById('savebtn');
   // Validate mandatory fields
   const truck = (()=>{const c=document.getElementById('f_truck_custom');if(c&&c.value)return c.value;const s=document.getElementById('f_truck');return s?s.value:'';})();
   const driver = document.getElementById('f_driver').value;
@@ -1622,7 +1697,83 @@ async function saveRecord(){
   var modal = document.getElementById('recmodal');
   var isWorkshopTruck = (truck||'').toUpperCase().includes('WORKSHOP') ||
     (modal && modal.getAttribute('data-workshop') === '1');
-  // staff_jc can only save BREAKDOWN
+  // Validate status transitions and restricted fields
+  if (editingId) {
+    var origRec = ALL.find(function(r){ return r.id === editingId; });
+    if (origRec) {
+      var origStat = (origRec.status||'').toUpperCase();
+      var newStat2 = (status||'').toUpperCase();
+
+      if (origStat === 'PAID NOT RECEIVED') {
+        // Status transition rule
+        if (['PAID NOT RECEIVED','RECEIVED NOT ISSUED','RECEIVED'].indexOf(newStat2) === -1) {
+          toast('Status cannot be changed from PAID NOT RECEIVED to ' + status, 'er');
+          btn.disabled=false; btn.textContent='Save Record'; return;
+        }
+        // Only Status, Date Received, Date Issued, Remarks allowed to change
+        var chkPNR = function(field, newVal) {
+          var ov = (origRec[field]||'').toString().toUpperCase().trim();
+          var nv = (newVal||'').toString().toUpperCase().trim();
+          return ov !== nv;
+        };
+        var pnrChanged = [];
+        if (chkPNR('truck', truck)) pnrChanged.push('Truck');
+        if (chkPNR('vehicleType', document.getElementById('f_vtype')?document.getElementById('f_vtype').value:'')) pnrChanged.push('Vehicle Type');
+        if (chkPNR('driverName', driver)) pnrChanged.push('Driver Name');
+        if (chkPNR('jobCardNo', jobcard)) pnrChanged.push('Job Card No');
+        if (chkPNR('category', document.getElementById('f_category')?document.getElementById('f_category').value:'')) pnrChanged.push('Category');
+        if (chkPNR('dateRequested', document.getElementById('f_date')?document.getElementById('f_date').value:'')) pnrChanged.push('Date Requested');
+        if (chkPNR('priority', priority)) pnrChanged.push('Priority');
+        if (chkPNR('description', desc)) pnrChanged.push('Description');
+        if (chkPNR('qty', qty)) pnrChanged.push('Qty');
+        if (chkPNR('unitPrice', document.getElementById('f_unit_price')?document.getElementById('f_unit_price').value:'')) pnrChanged.push('Unit Price');
+        if (chkPNR('cost', cost)) pnrChanged.push('Total Amount');
+        if (chkPNR('supplier', (function(){var c=document.getElementById('f_supplier_custom');if(c&&c.style.display!=='none')return c.value;var s=document.getElementById('f_supplier');return s?s.value:'';})())) pnrChanged.push('Supplier');
+        if (chkPNR('lpoNo', document.getElementById('f_lpo')?document.getElementById('f_lpo').value:'')) pnrChanged.push('LPO No');
+        if (chkPNR('paymentMode', payment)) pnrChanged.push('Payment Mode');
+        if (chkPNR('requestedBy', reqby)) pnrChanged.push('Requested By');
+        if (pnrChanged.length > 0) {
+          toast('Only Status, Date Received, Date Issued and Remarks can be changed for PAID NOT RECEIVED records. Cannot change: ' + pnrChanged.join(', '), 'er');
+          btn.disabled=false; btn.textContent='Save Record'; return;
+        }
+
+      } else if (origStat === 'RECEIVED NOT ISSUED') {
+        // Status transition rule
+        if (newStat2 !== 'RECEIVED NOT ISSUED' && newStat2 !== 'RECEIVED') {
+          toast('Status cannot be changed from RECEIVED NOT ISSUED to ' + status, 'er');
+          btn.disabled=false; btn.textContent='Save Record'; return;
+        }
+        // Only Status, Date Issued, Remarks allowed to change
+        var chkRNI = function(field, newVal) {
+          var ov = (origRec[field]||'').toString().toUpperCase().trim();
+          var nv = (newVal||'').toString().toUpperCase().trim();
+          return ov !== nv;
+        };
+        var rniChanged = [];
+        if (chkRNI('truck', truck)) rniChanged.push('Truck');
+        if (chkRNI('vehicleType', document.getElementById('f_vtype')?document.getElementById('f_vtype').value:'')) rniChanged.push('Vehicle Type');
+        if (chkRNI('driverName', driver)) rniChanged.push('Driver Name');
+        if (chkRNI('jobCardNo', jobcard)) rniChanged.push('Job Card No');
+        if (chkRNI('category', document.getElementById('f_category')?document.getElementById('f_category').value:'')) rniChanged.push('Category');
+        if (chkRNI('dateRequested', document.getElementById('f_date')?document.getElementById('f_date').value:'')) rniChanged.push('Date Requested');
+        if (chkRNI('priority', priority)) rniChanged.push('Priority');
+        if (chkRNI('description', desc)) rniChanged.push('Description');
+        if (chkRNI('qty', qty)) rniChanged.push('Qty');
+        if (chkRNI('unitPrice', document.getElementById('f_unit_price')?document.getElementById('f_unit_price').value:'')) rniChanged.push('Unit Price');
+        if (chkRNI('cost', cost)) rniChanged.push('Total Amount');
+        if (chkRNI('supplier', (function(){var c=document.getElementById('f_supplier_custom');if(c&&c.style.display!=='none')return c.value;var s=document.getElementById('f_supplier');return s?s.value:'';})())) rniChanged.push('Supplier');
+        if (chkRNI('lpoNo', document.getElementById('f_lpo')?document.getElementById('f_lpo').value:'')) rniChanged.push('LPO No');
+        if (chkRNI('dateReceived', document.getElementById('f_datercvd') ? document.getElementById('f_datercvd').value : '')) rniChanged.push('Date Received');
+        if (chkRNI('paymentMode', payment)) rniChanged.push('Payment Mode');
+        if (chkRNI('requestedBy', reqby)) rniChanged.push('Requested By');
+        if (rniChanged.length > 0) {
+          toast('Only Status, Date Issued and Remarks can be changed for RECEIVED NOT ISSUED records. Cannot change: ' + rniChanged.join(', '), 'er');
+          btn.disabled=false; btn.textContent='Save Record'; return;
+        }
+      }
+    }
+  }
+    // staff_jc can only save BREAKDOWN
   if (isStaffJC() && cat && cat.toUpperCase() !== 'BREAKDOWN') {
     toast('Your role only allows BREAKDOWN category requisitions','er'); return;
   }
@@ -1651,6 +1802,9 @@ async function saveRecord(){
     return;
   }
   // If status is RECEIVED, ALL fields are required
+  if (status === 'RECEIVED NOT ISSUED') {
+    if (!document.getElementById('f_datercvd').value) missing.push('Date Received (required for RECEIVED NOT ISSUED)');
+  }
   if (status === 'RECEIVED') {
     if (!document.getElementById('f_date').value) missing.push('Date Requested');
     if (!isWorkshopTruck && !document.getElementById('f_vtype').value) missing.push('Vehicle Type');
@@ -1681,14 +1835,69 @@ async function saveRecord(){
     }
   }
 
-  const btn=document.getElementById('savebtn');btn.disabled=true;btn.textContent='Saving...';
   const U=s=>(s||'').toUpperCase();
   const data={reqNo:document.getElementById('f_req').value,dateRequested:document.getElementById('f_date').value,truck:U(document.getElementById('f_truck').value),vehicleType:document.getElementById('f_vtype').value,driverName:U(document.getElementById('f_driver').value),priority:document.getElementById('f_priority').value,jobCardNo:U(document.getElementById('f_jobcard').value),lpoNo:U(document.getElementById('f_lpo').value),description:U(document.getElementById('f_desc').value),qty:document.getElementById('f_qty').value,unitPrice:document.getElementById('f_unit_price')?(document.getElementById('f_unit_price').value.replace(/,/g,'')):'' ,cost:(document.getElementById('f_cost').value||'').replace(/,/g,''),supplier:U((()=>{
       const custom=document.getElementById('f_supplier_custom');
       if(custom&&custom.style.display!=='none')return custom.value;
       return document.getElementById('f_supplier').value;
     })()),dateReceived:document.getElementById('f_datercvd').value,status:document.getElementById('f_status').value,paymentMode:document.getElementById('f_payment').value,category:U(document.getElementById('f_category').value),requestedBy:U(document.getElementById('f_reqby').value),dateIssued:document.getElementById('f_dateissued').value,remarks:U(document.getElementById('f_remarks').value)};
+
+if (!truck) missing.push('Truck / Vehicle No');
+  if (!isWorkshopTruck && !driver) missing.push('Driver Name');
+  if (!isWorkshopTruck && !jobcard) missing.push('Job Card No');
+  if (!desc) missing.push('Spare Part / Description');
+  if (!qty) missing.push('Qty');
+  if (!cost) missing.push('Total Amount');
+  if (!category) missing.push('Category');
+  if (!priority) missing.push('Priority');
+  if (!supVal || supVal === '__custom__') missing.push('Supplier');
+  if (!payment) missing.push('Payment Mode');
+  if (!status) missing.push('Status');
+  if (!reqby) missing.push('Requested By');
+  // Validate LPO format if filled
+  var lpoVal = (document.getElementById('f_lpo').value||'').trim().toUpperCase();
+  if (lpoVal && !/^PO-/.test(lpoVal)) {
+    alert('LPO No must start with PO- (e.g. PO-001234). Please correct the LPO No field.');
+    document.getElementById('f_lpo').style.borderColor = '#f87171';
+    document.getElementById('f_lpo').focus();
+    return;
+  }
+  // If status is RECEIVED, ALL fields are required
+  if (status === 'RECEIVED NOT ISSUED') {
+    if (!document.getElementById('f_datercvd').value) missing.push('Date Received (required for RECEIVED NOT ISSUED)');
+  }
+  if (status === 'RECEIVED') {
+    if (!document.getElementById('f_date').value) missing.push('Date Requested');
+    if (!isWorkshopTruck && !document.getElementById('f_vtype').value) missing.push('Vehicle Type');
+    if (!document.getElementById('f_priority').value) missing.push('Priority');
+    if (!document.getElementById('f_lpo').value) missing.push('LPO No');
+    if (!document.getElementById('f_datercvd').value) missing.push('Date Received');
+    if (!document.getElementById('f_payment').value) missing.push('Payment Mode');
+    if (!document.getElementById('f_reqby').value) missing.push('Requested By');
+    if (!document.getElementById('f_dateissued').value) missing.push('Date Issued');
+    if (!document.getElementById('f_remarks').value.trim()) missing.push('Remarks');
+    // Also ensure supplier is filled
+    var supVal = document.getElementById('f_supplier') ? document.getElementById('f_supplier').value : '';
+    if (!supVal || supVal === '__custom__') {
+      var supCustom = document.getElementById('f_supplier_custom');
+      if (!supCustom || !supCustom.value.trim()) missing.push('Supplier');
+    }
+  }
+  
+  if (missing.length > 0) {
+    alert('Please fill in the following required fields:\n\n• ' + missing.join('\n• '));
+    return;
+  }
+  // staff_jc can only save BREAKDOWN requisitions
+  if (CURRENT_USER && CURRENT_USER.role === 'staff_jc') {
+    if ((category||'').toUpperCase() !== 'BREAKDOWN') {
+      alert('You can only create Breakdown requisitions. Please select BREAKDOWN as the category.');
+      return;
+    }
+  }
+
   try{
+    btn.disabled=true;btn.textContent='Saving...';
     if(editingId){
       data.id=editingId;
       const i=ALL.findIndex(r=>r.id===editingId);
@@ -3186,11 +3395,60 @@ async function saveBulkEdit() {
     if (!pay)   { toast('Record '+(n+1)+': Payment Mode is required','er'); return; }
     if (!reqby) { toast('Record '+(n+1)+': Requested By is required','er'); return; }
     if (lpo && !/^PO-/.test(lpo)) { toast('Record '+(n+1)+': LPO must start with PO-','er'); return; }
-    if (stat==='RECEIVED'){
-      var isWSRec = (orig.truck||'').toUpperCase().includes('WORKSHOP');
-      if (!isWSRec && !(orig.vehicleType||'')){
-        // vehicle type required for non-workshop when RECEIVED - but it's on the record not editable here
+    // Status transition rules
+    var origStat = (orig.status||'').toUpperCase();
+    var newStat = stat.toUpperCase();
+    if (origStat === 'PAID NOT RECEIVED') {
+      if (['PAID NOT RECEIVED','RECEIVED NOT ISSUED','RECEIVED'].indexOf(newStat) === -1) {
+        toast('Record '+(n+1)+': Status cannot be changed from PAID NOT RECEIVED to '+stat,'er'); return;
       }
+      // Only Status, Date Received, Date Issued, Remarks allowed to change
+      var origDesc = (orig.description||'').toUpperCase().trim();
+      var origQty = (orig.qty||'').toString().trim();
+      var origUp = (orig.unitPrice||'').toString().trim();
+      var origSup = (orig.supplier||'').toUpperCase().trim();
+      var origLpo = (orig.lpoNo||'').toUpperCase().trim();
+      var origPay = (orig.paymentMode||'').toUpperCase().trim();
+      var origReqby = (orig.requestedBy||'').toUpperCase().trim();
+      var pnrChanged = [];
+      if (desc.toUpperCase().trim() !== origDesc) pnrChanged.push('Description');
+      if (qty.trim() !== origQty) pnrChanged.push('Qty');
+      if (parseFloat(up||0) !== parseFloat(orig.unitPrice||0)) pnrChanged.push('Unit Price');
+      if (sup.toUpperCase().trim() !== origSup) pnrChanged.push('Supplier');
+      if (lpo.trim() !== origLpo) pnrChanged.push('LPO No');
+      if (pay.toUpperCase().trim() !== origPay) pnrChanged.push('Payment Mode');
+      if (reqby.toUpperCase().trim() !== origReqby) pnrChanged.push('Requested By');
+      var beDate = (document.getElementById('be_date_'+n)||{}).value||'';
+      if (beDate && beDate !== (orig.dateRequested||'')) pnrChanged.push('Date Requested');
+      if (pnrChanged.length > 0) {
+        toast('Record '+(n+1)+' ('+orig.reqNo+'): Only Status, Date Received, Date Issued and Remarks can be changed for PAID NOT RECEIVED. Cannot change: '+pnrChanged.join(', '),'er'); return;
+      }
+    } else if (origStat === 'RECEIVED NOT ISSUED') {
+      if (newStat !== 'RECEIVED NOT ISSUED' && newStat !== 'RECEIVED') {
+        toast('Record '+(n+1)+': Status cannot be changed from RECEIVED NOT ISSUED to '+stat,'er'); return;
+      }
+      // Only Status, Date Issued, Remarks allowed
+      var rniChanged = [];
+      if (desc.toUpperCase().trim() !== (orig.description||'').toUpperCase().trim()) rniChanged.push('Description');
+      if (qty.trim() !== (orig.qty||'').toString().trim()) rniChanged.push('Qty');
+      if (parseFloat(up||0) !== parseFloat(orig.unitPrice||0)) rniChanged.push('Unit Price');
+      if (sup.toUpperCase().trim() !== (orig.supplier||'').toUpperCase().trim()) rniChanged.push('Supplier');
+      if (lpo.trim() !== (orig.lpoNo||'').toUpperCase().trim()) rniChanged.push('LPO No');
+      if (pay.toUpperCase().trim() !== (orig.paymentMode||'').toUpperCase().trim()) rniChanged.push('Payment Mode');
+      if (reqby.toUpperCase().trim() !== (orig.requestedBy||'').toUpperCase().trim()) rniChanged.push('Requested By');
+      var beDate2 = (document.getElementById('be_date_'+n)||{}).value||'';
+      if (beDate2 && beDate2 !== (orig.dateRequested||'')) rniChanged.push('Date Requested');
+      var beDateRcvd = (document.getElementById('be_datercvd_'+n)||{}).value||'';
+      if (beDateRcvd !== (orig.dateReceived||'')) rniChanged.push('Date Received');
+      if (rniChanged.length > 0) {
+        toast('Record '+(n+1)+' ('+orig.reqNo+'): Only Status, Date Issued and Remarks can be changed for RECEIVED NOT ISSUED. Cannot change: '+rniChanged.join(', '),'er'); return;
+      }
+    }
+
+    if (stat==='RECEIVED NOT ISSUED'){
+      if (!(document.getElementById('be_datercvd_'+n)||{}).value) { toast('Record '+(n+1)+': Date Received is required when status is RECEIVED NOT ISSUED','er'); return; }
+    }
+    if (stat==='RECEIVED'){
       if (!(document.getElementById('be_datercvd_'+n)||{}).value)  { toast('Record '+(n+1)+': Date Received is required when status is RECEIVED','er'); return; }
       if (!(document.getElementById('be_dateissued_'+n)||{}).value) { toast('Record '+(n+1)+': Date Issued is required when status is RECEIVED','er'); return; }
       if (!(document.getElementById('be_remarks_'+n)||{}).value)    { toast('Record '+(n+1)+': Remarks is required when status is RECEIVED','er'); return; }
@@ -3210,9 +3468,10 @@ async function saveBulkEdit() {
   }
 
   if (!updates.length) { toast('Nothing to save','er'); return; }
-  if (btn) { btn.disabled=true; btn.textContent='Saving...'; }
 
   var saved=0, failed=0;
+  if (btn) { btn.disabled=true; btn.textContent='Saving...'; }
+  try {
   for (var ui=0; ui<updates.length; ui++) {
     try {
       if (ui>0) await new Promise(function(r){ setTimeout(r,600); });
@@ -3228,7 +3487,8 @@ async function saveBulkEdit() {
     } catch(e) { console.error(e); failed++; }
   }
 
-  if (btn) { btn.disabled=false; btn.textContent='💾 Save All Changes'; }
+  } catch(e2) { console.error('Bulk save error:', e2); }
+  finally { if (btn) { btn.disabled=false; btn.textContent='💾 Save All Changes'; } }
   closeModal('bulkeditmodal');
   clearSelection();
   buildHeader(); applyFilters(); updateBadges();
@@ -5006,12 +5266,14 @@ function canEditReq(record) {
 }
 function canDeleteReq(record) {
   if (!CURRENT_USER) return false;
+  // Cannot delete PAID NOT RECEIVED or RECEIVED NOT ISSUED records
+  var s = (record && record.status||'').toUpperCase();
+  if (s === 'PAID NOT RECEIVED' || s === 'RECEIVED NOT ISSUED') return false;
   if (CURRENT_USER.role === 'admin' || CURRENT_USER.role === 'manager') return true;
   if (CURRENT_USER.role === 'staff_jc') {
-    // JC staff can only delete BREAKDOWN requisitions that are NOT received
     if (!record) return false;
     if ((record.category||'').toUpperCase() !== 'BREAKDOWN') return false;
-    if ((record.status||'').toUpperCase() === 'RECEIVED') return false;
+    if (s === 'RECEIVED') return false;
     return true;
   }
   return can('delete');
