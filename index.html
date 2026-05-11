@@ -7373,11 +7373,21 @@ function onJCCategoryChange() {
   if (!plate || editingJC) return;
   var cat = getCategoryForJCCheck().toUpperCase();
   var allJCs = JOBCARDS.filter(function(j){ return (j.vehicle||'').toUpperCase() === plate.toUpperCase(); });
-  // Always warn: open JC
-  var openJC = allJCs.find(function(j){ return (j.workStatus||'').toUpperCase() !== 'COMPLETED'; });
-  if (openJC) {
-    toast('⚠ ' + plate + ' has an open job card: ' + (openJC.code||'') + ' — complete it first.', 'er');
-    return;
+  // Always warn: open JC — but apply breakdown waiver
+  var openJCs = allJCs.filter(function(j){ return (j.workStatus||'').toUpperCase() !== 'COMPLETED'; });
+  if (openJCs.length > 0) {
+    var allOpenAreBreakdown = openJCs.every(function(j){ return (j.category||'').toUpperCase() === 'BREAKDOWN'; });
+    if (cat === 'BREAKDOWN' && allOpenAreBreakdown) {
+      // Breakdown waiver: open breakdown JC exists, new one is also breakdown — allow, no block
+    } else {
+      var openJC = openJCs[0];
+      if (cat === 'BREAKDOWN') {
+        toast('⚠ ' + plate + ' has an open Workshop job card: ' + (openJC.code||'') + ' — close it first.', 'er');
+      } else {
+        toast('⚠ ' + plate + ' has an open job card: ' + (openJC.code||'') + ' — complete it first.', 'er');
+      }
+      return;
+    }
   }
   // Warn unsigned PDF only when category is NOT BREAKDOWN
   if (cat !== 'BREAKDOWN') {
@@ -7396,13 +7406,29 @@ function checkVehicleForNewJC(plate, category) {
   var cat = (category || getCategoryForJCCheck()).toUpperCase();
   var allJCs = JOBCARDS.filter(function(j){ return (j.vehicle||'').toUpperCase() === p; });
 
-  // RULE 1 (ALL categories): any incomplete JC blocks new JC for any category
-  var openJC = allJCs.find(function(j){
+  // RULE 1 (ALL categories): any incomplete JC blocks new JC
+  // EXCEPTION (Breakdown Waiver): if the only open JC(s) are BREAKDOWN and the new JC is also BREAKDOWN, allow it.
+  var openJCs = allJCs.filter(function(j){
     return (j.workStatus||'').toUpperCase() !== 'COMPLETED';
   });
-  if (openJC) {
-    toast('Cannot open new job card. ' + plate + ' has an open job card: ' + (openJC.code||'') + ' [' + (openJC.workStatus||'IN PROGRESS') + ']', 'er');
-    return false;
+  if (openJCs.length > 0) {
+    var allOpenAreBreakdown = openJCs.every(function(j){
+      return (j.category||'').toUpperCase() === 'BREAKDOWN';
+    });
+    if (cat === 'BREAKDOWN' && allOpenAreBreakdown) {
+      // BREAKDOWN WAIVER: open breakdown JC(s) exist but new JC is also BREAKDOWN — allow
+      // (fall through to Rule 3 below)
+    } else if (cat === 'BREAKDOWN' && !allOpenAreBreakdown) {
+      // New JC is BREAKDOWN but there is a non-breakdown open JC — block
+      var openNonBD = openJCs.find(function(j){ return (j.category||'').toUpperCase() !== 'BREAKDOWN'; });
+      toast('Cannot open Breakdown job card. ' + plate + ' has an open Workshop job card: ' + (openNonBD.code||'') + ' — close it first.', 'er');
+      return false;
+    } else {
+      // New JC is WORKSHOP (or any other) — always blocked by any open JC
+      var openJC = openJCs[0];
+      toast('Cannot open new job card. ' + plate + ' has an open job card: ' + (openJC.code||'') + ' [' + (openJC.category||'') + ' — ' + (openJC.workStatus||'IN PROGRESS') + '] — close it first.', 'er');
+      return false;
+    }
   }
 
   if (cat === 'WORKSHOP') {
@@ -7445,12 +7471,22 @@ function onJCVehicleSelect() {
     var existingJCs = JOBCARDS.filter(function(j){
       return (j.vehicle||'').toUpperCase() === plate.toUpperCase();
     });
-    // Always warn: open/incomplete JC
-    var openJC = existingJCs.find(function(j){
+    // Always warn: open/incomplete JC — but apply breakdown waiver
+    var openJCs = existingJCs.filter(function(j){
       return (j.workStatus||'').toUpperCase() !== 'COMPLETED';
     });
-    if (openJC) {
-      toast('⚠ ' + plate + ' has an open job card: ' + (openJC.code||'') + ' [' + (openJC.workStatus||'IN PROGRESS') + '] — complete it first.', 'er');
+    if (openJCs.length > 0) {
+      var cat = getCategoryForJCCheck().toUpperCase();
+      var allOpenAreBreakdown = openJCs.every(function(j){ return (j.category||'').toUpperCase() === 'BREAKDOWN'; });
+      if (cat === 'BREAKDOWN' && allOpenAreBreakdown) {
+        // Breakdown waiver: open breakdown JC(s) exist, new one is also breakdown — allow with info toast
+        toast('ℹ️ Breakdown waiver: ' + plate + ' has an open breakdown job card (' + openJCs[0].code + '). You may open another breakdown job card.', 'in');
+      } else if (cat === 'BREAKDOWN') {
+        toast('⚠ ' + plate + ' has an open Workshop job card: ' + (openJCs[0].code||'') + ' — close it first.', 'er');
+      } else {
+        var openJC = openJCs[0];
+        toast('⚠ ' + plate + ' has an open job card: ' + (openJC.code||'') + ' [' + (openJC.workStatus||'IN PROGRESS') + '] — complete it first.', 'er');
+      }
     } else {
       // Warn about unsigned PDF — but NOT if category is BREAKDOWN (waiver applies)
       var cat = getCategoryForJCCheck().toUpperCase();
