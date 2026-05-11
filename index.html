@@ -1626,7 +1626,7 @@ const READ_ACTIONS=['getAll','getSuppliers','getSpareParts','getJobCards','getDr
 async function callAPI(action, data={}) {
   if (action==='getAll') setSyncStatus('sy');
   var controller = new AbortController();
-  var timer = setTimeout(function(){ controller.abort(); }, 25000);
+  var timer = setTimeout(function(){ controller.abort(); }, 45000);
   try {
     const res = await fetch(API, {method:'POST', body:JSON.stringify({action,...data}), headers:{'Content-Type':'text/plain'}, signal:controller.signal});
     clearTimeout(timer);
@@ -1646,12 +1646,27 @@ async function callAPI(action, data={}) {
     throw e;
   }
 }
-async function loadRecords(){
-  try{const res=await callAPI('getAll');ALL=res.records||[];setSyncStatus('on');return true;}
-  catch(e){setSyncStatus('er');toast('Failed to load data','er');return false;}
+async function loadRecords(silent){
+  var attempts = 3;
+  for (var attempt = 1; attempt <= attempts; attempt++) {
+    try {
+      var res = await callAPI('getAll');
+      ALL = res.records || [];
+      setSyncStatus('on');
+      return true;
+    } catch(e) {
+      if (attempt < attempts) {
+        await new Promise(function(r){ setTimeout(r, attempt * 3000); });
+      } else {
+        setSyncStatus('er');
+        if (!silent) toast('Failed to load data — check connection and try again', 'er');
+        return false;
+      }
+    }
+  }
 }
 async function refreshAll(){
-  showLoad('Refreshing...');await loadRecords();hideLoad();updateBadges();applyFilters();toast('Data refreshed','ok');
+  showLoad('Refreshing...');await loadRecords(false);hideLoad();updateBadges();applyFilters();toast('Data refreshed','ok');
 }
 function setSyncStatus(s){document.getElementById('syndot').className='dot '+s;document.getElementById('synlbl').textContent={on:'Live',sy:'Syncing...',er:'Offline'}[s]||s;}
 function showLoad(t){
@@ -8905,13 +8920,20 @@ async function loadAppData(){
     if (ml) ml.style.display = 'flex';
     updateBadges();buildHeader();applyFilters();
     toast('Connected — '+ALL.length+' records loaded','ok');
+    var _wasOffline = false;
     setInterval(async function(){
-      if(await loadRecords()){
+      var ok = await loadRecords(true); // silent: no toast on failure during poll
+      if (ok) {
+        // Also refresh job cards on every poll so they stay in sync
+        try { var jcr = await callAPI('getJobCards'); JOBCARDS = jcr.records||[]; } catch(e){}
+        if (_wasOffline) {
+          _wasOffline = false;
+          toast('Back online ✓', 'ok');
+        }
         updateBadges();
         if(currentView==='suppliers')renderSuppliers();
         else if(currentView==='spareparts')renderSpareParts();
         else if(currentView==='jobcards'){
-          // Re-apply JC filters if active, else full render
           var jcHasFilter = ['JCF1','JCF2','JCF3','JCF4'].some(function(id){
             var el=document.getElementById(id); return el && el.value.trim();
           }) || (document.getElementById('JC_DATE_FROM') && document.getElementById('JC_DATE_FROM').value)
@@ -8919,7 +8941,6 @@ async function loadAppData(){
           if(jcHasFilter) applyJCFilter(); else renderJobCards();
         }
         else if(currentView==='jcsummary'){
-          // Re-apply JCS filters if active, else full render
           var jcsHasFilter = ['JF1','JF2','JF3','JF4'].some(function(id){
             var el=document.getElementById(id); return el && el.value.trim();
           }) || (document.getElementById('JCS_DATE_FROM') && document.getElementById('JCS_DATE_FROM').value)
@@ -8930,6 +8951,11 @@ async function loadAppData(){
         else if(currentView==='vehicles')renderVehicles();
         else if(currentView==='dashboard')renderDashboard();
         else applyFilters();
+      } else {
+        if (!_wasOffline) {
+          _wasOffline = true;
+          toast('Connection lost — retrying in background...', 'er');
+        }
       }
     },30000);
   }else{
