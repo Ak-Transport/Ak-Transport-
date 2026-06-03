@@ -1648,7 +1648,7 @@ window.onerror = function(msg, src, line, col, err) {
   return false;
 };
 
-const API = 'https://script.google.com/macros/s/AKfycbzZdfdUOUT1TdMKtzlUW3z6kmIvgvY19q28tCyIGNls2cgKh3ZmOxLlNbCEUVKFtCkTuA/exec';
+const API = 'https://script.google.com/macros/s/AKfycbzW1LvVuVZWQC-GrIf97BupDv6cNpoC0q7HMGfiSY1-eYvk4yiK2UVFxawTTopV4Mc_CA/exec';
 const APP_VERSION = '1780059676';
 
 // Auto-detect new version and force reload
@@ -2150,8 +2150,11 @@ function updateBadges(){
 const READ_ACTIONS=['getAll','getSuppliers','getSpareParts','getJobCards','getDrivers','getVehicles','getStoreInventory','getStoreReqs','getStoreIssuances','getPendingIssuances','getTyres','getTyrePOs','getTyreGRNs','getTyreFitments','getTyreScrapSales','getBatteryPOs','getBatteryGRNs','getBatteries','getBatteryFitments','getBatterySales','getUsers','getSignedPdf','getFolderUrl'];
 async function callAPI(action, data={}) {
   if (action==='getAll') setSyncStatus('sy');
+  // Large batch operations get more time
+  var batchActions = ['saveTyreGRN','saveBatteryGRN','savePendingIssuances'];
+  var timeoutMs = batchActions.includes(action) ? 120000 : 45000;
   var controller = new AbortController();
-  var timer = setTimeout(function(){ controller.abort(); }, 45000);
+  var timer = setTimeout(function(){ controller.abort(); }, timeoutMs);
   try {
     const res = await fetch(API, {method:'POST', body:JSON.stringify({action,...data}), headers:{'Content-Type':'text/plain'}, signal:controller.signal});
     clearTimeout(timer);
@@ -2168,6 +2171,10 @@ async function callAPI(action, data={}) {
   } catch(e) {
     clearTimeout(timer);
     if (action==='getAll') setSyncStatus('er');
+    // Give user clear message on timeout
+    if (e.name === 'AbortError') {
+      throw new Error('Request timed out. The operation may have partially completed — please refresh and check before retrying.');
+    }
     throw e;
   }
 }
@@ -7718,11 +7725,13 @@ async function saveFitTyre() {
   if(new Set(_fss).size!==_fss.length){toast('Duplicate tyre selected. Each tyre can only be fitted once.','er');return;}
   var tyreFitMax=0;
   (TYRE_FITS||[]).forEach(function(f){var n=parseInt((f.reqNo||'').replace(/[^0-9]/g,''),10);if(!isNaN(n)&&n>tyreFitMax)tyreFitMax=n;});
+  // Pre-generate all reqNos sequentially before firing concurrent API calls to avoid race condition
+  var pregenReqNos = fitLines.map(function(l,j){ return 'TFIT-'+String(tyreFitMax+j+1).padStart(6,'0'); });
   var btn=document.getElementById('fit_save_btn');
   if(btn){btn.disabled=true;btn.textContent='Saving '+fitLines.length+' line'+(fitLines.length>1?'s':'')+'...';}
   var saved=0,failed=0;
   var fitResults=await Promise.all(fitLines.map(function(line,j){
-    var reqNo='TFIT-'+String(tyreFitMax+j+1).padStart(6,'0');
+    var reqNo=pregenReqNos[j];
     return callAPI('fitTyre',{reqNo:reqNo,serialNo:line.serial,vehicle:vehicle,vehicleType:vtype,position:line.position,dateFitted:dateFit,kmAtFitting:kmFit,jobCardNo:jcNo,driverName:driver,category:category,status:'PENDING ISSUANCE',requestedBy:reqBy}).then(function(res){
       if(res&&res.success)return {ok:true};
       return {ok:false,err:res&&res.error?res.error:'unknown error'};
@@ -7764,11 +7773,13 @@ async function saveRemoveTyre() {
   if(new Set(_rss).size!==_rss.length){toast('Duplicate tyre selected. Each tyre can only be removed once.','er');return;}
   var tyreRemMax=0;
   (TYRE_FITS||[]).forEach(function(f){var n=parseInt((f.reqNo||'').replace(/[^0-9]/g,''),10);if(!isNaN(n)&&n>tyreRemMax)tyreRemMax=n;});
+  // Pre-generate all reqNos sequentially before firing concurrent API calls
+  var pregenRemReqNos = remLines.map(function(l,j){ return 'TREM-'+String(tyreRemMax+j+1).padStart(6,'0'); });
   var btn=document.getElementById('rem_save_btn');
   if(btn){btn.disabled=true;btn.textContent='Saving '+remLines.length+' line'+(remLines.length>1?'s':'')+'...';}
   var saved=0,failed=0;
   var remResults=await Promise.all(remLines.map(function(line,j){
-    var reqNo='TREM-'+String(tyreRemMax+j+1).padStart(6,'0');
+    var reqNo=pregenRemReqNos[j];
     return callAPI('removeTyre',{reqNo:reqNo,serialNo:line.serial,dateRemoved:dateRem,kmAtRemoval:kmRem,reason:line.reason,nextStatus:line.nextSt,status:'PENDING REMOVAL',requestedBy:reqBy,category:'REMOVAL'}).then(function(res){
       if(res&&res.success)return {ok:true};
       return {ok:false,err:res&&res.error?res.error:'Failed'};
