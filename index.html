@@ -6217,6 +6217,23 @@ async function _doDeleteBpoSelected(ids, rows) {
   toast(deleted+' battery request(s) deleted','ok');
 }
 
+function bpoExportExcel() {
+  var ids = Array.from(_bpoSelected);
+  var rows = (BAT_POS||[]).filter(function(r){ return ids.includes(r.id); });
+  if (!rows.length) { toast('No rows selected','er'); return; }
+  var cols    = ['poNo','poDate','brand','size','qtyOrdered','unitPrice','supplier','lpoNo','status','requestedBy','remarks'];
+  var headers = ['PO No','Date','Brand','Size','Qty Ordered','Unit Price','Supplier','LPO No','Status','Requested By','Remarks'];
+  var wb = XLSX.utils.book_new();
+  var wsData = [headers].concat(rows.map(function(r){
+    return cols.map(function(c){
+      if(c==='unitPrice') return Number(r[c]||0);
+      return r[c]||'';
+    });
+  }));
+  var ws = XLSX.utils.aoa_to_sheet(wsData);
+  XLSX.utils.book_append_sheet(wb, ws, 'Battery Requests');
+  XLSX.writeFile(wb, 'Battery_Requests_' + todayStr() + '.xlsx');
+}
 
 function applyBatPOFilter(){renderBatPOs(window._batPOFilter||'all');}
 function clearBatPOFilter(){['BPFF1','BPFV1','BPFF2','BPFV2','BPFSTATUS'].forEach(function(id){var e=document.getElementById(id);if(e)e.value='';});renderBatPOs(window._batPOFilter||'all');
@@ -11523,6 +11540,24 @@ async function _doDeleteTpoSelected(ids, rows) {
   toast(deleted+' tyre request(s) deleted','ok');
 }
 
+function tpoExportExcel() {
+  var ids = Array.from(_tpoSelected);
+  var rows = (TYRE_POS||[]).filter(function(r){ return ids.includes(r.id); });
+  if (!rows.length) { toast('No rows selected','er'); return; }
+  var cols    = ['poNo','poDate','brand','tyreSize','qtyOrdered','unitPrice','supplier','lpoNo','status','requestedBy','remarks'];
+  var headers = ['PO No','Date','Brand','Size','Qty Ordered','Unit Price','Supplier','LPO No','Status','Requested By','Remarks'];
+  var wb = XLSX.utils.book_new();
+  var wsData = [headers].concat(rows.map(function(r){
+    return cols.map(function(c){
+      if(c==='unitPrice') return Number(r[c]||0);
+      return r[c]||'';
+    });
+  }));
+  var ws = XLSX.utils.aoa_to_sheet(wsData);
+  XLSX.utils.book_append_sheet(wb, ws, 'Tyre Requests');
+  XLSX.writeFile(wb, 'Tyre_Requests_' + todayStr() + '.xlsx');
+}
+
 // -- TYRE NEW DROPDOWN TOGGLE --
 function toggleTyreNewDrop(e) {
   e.stopPropagation();
@@ -12439,8 +12474,8 @@ function updateSReqSelBar() {
     if (editBtn)  editBtn.style.display  = isAll ? 'inline-block' : 'none';
     if (printBtn) printBtn.style.display = isAll ? 'inline-block' : 'none';
     if (delBtn)   delBtn.style.display   = isAll ? 'inline-block' : 'none';
-    // Sub-status views (Received / PNR / Not Paid / On Hold): Export only
-    if (expBtn)   expBtn.style.display   = isAll ? 'none' : 'inline-block';
+    // Export Excel always visible on all views
+    if (expBtn)   expBtn.style.display   = 'inline-block';
   } else {
     bar.style.display = 'none';
   }
@@ -16088,6 +16123,7 @@ history.pushState(null, '', window.location.href);
 <div id="tpo_selbar" style="display:none;position:fixed;bottom:28px;left:50%;transform:translateX(-50%);background:#0a2d6e;color:#fff;border-radius:12px;padding:11px 20px;align-items:center;gap:12px;box-shadow:0 8px 32px rgba(10,45,110,.4);z-index:5000;white-space:nowrap">
   <span id="tpo_selcount" style="font-size:13px;font-weight:600">0 selected</span>
   <div style="width:1px;background:rgba(255,255,255,.3);height:18px;flex-shrink:0"></div>
+  <button onclick="tpoExportExcel()" style="background:rgba(255,255,255,.18);border:1px solid rgba(255,255,255,.3);color:#fff;padding:6px 14px;border-radius:7px;cursor:pointer;font-size:12px;font-weight:600">⬇ Export Excel</button>
   <button onclick="tpoPrintForm()" style="background:rgba(255,255,255,.18);border:1px solid rgba(255,255,255,.3);color:#fff;padding:6px 14px;border-radius:7px;cursor:pointer;font-size:12px;font-weight:600">🖨 Print Form</button>
   <button id="tpo_edit_btn" onclick="openTpoBulkEdit()" style="background:rgba(255,255,255,.18);border:1px solid rgba(255,255,255,.3);color:#fff;padding:6px 14px;border-radius:7px;cursor:pointer;font-size:12px;font-weight:600">✏ Edit Selected</button>
   <button id="tpo_del_btn" onclick="deleteTpoSelected()" style="background:rgba(185,28,28,.7);border:1px solid rgba(255,255,255,.3);color:#fff;padding:6px 14px;border-radius:7px;cursor:pointer;font-size:12px;font-weight:600">🗑 Delete Selected</button>
@@ -16098,6 +16134,7 @@ history.pushState(null, '', window.location.href);
 <div id="bpo_selbar" style="display:none;position:fixed;bottom:28px;left:50%;transform:translateX(-50%);background:#1e3a5f;color:#fff;border-radius:12px;padding:11px 20px;align-items:center;gap:12px;box-shadow:0 8px 32px rgba(10,45,110,.4);z-index:5000;white-space:nowrap">
   <span id="bpo_selcount" style="font-size:13px;font-weight:600">0 selected</span>
   <div style="width:1px;background:rgba(255,255,255,.3);height:18px;flex-shrink:0"></div>
+  <button onclick="bpoExportExcel()" style="background:rgba(255,255,255,.18);border:1px solid rgba(255,255,255,.3);color:#fff;padding:6px 14px;border-radius:7px;cursor:pointer;font-size:12px;font-weight:600">⬇ Export Excel</button>
   <button onclick="bpoPrintForm()" style="background:rgba(255,255,255,.18);border:1px solid rgba(255,255,255,.3);color:#fff;padding:6px 14px;border-radius:7px;cursor:pointer;font-size:12px;font-weight:600">&#128424; Print Form</button>
   <button id="bpo_edit_btn" onclick="openBpoBulkEdit()" style="background:rgba(255,255,255,.18);border:1px solid rgba(255,255,255,.3);color:#fff;padding:6px 14px;border-radius:7px;cursor:pointer;font-size:12px;font-weight:600">&#9999; Edit Selected</button>
   <button id="bpo_delete_btn" onclick="deleteBpoSelected()" style="background:rgba(185,28,28,.7);border:1px solid rgba(255,255,255,.3);color:#fff;padding:6px 14px;border-radius:7px;cursor:pointer;font-size:12px;font-weight:600">&#128465; Delete Selected</button>
