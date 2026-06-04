@@ -2044,6 +2044,9 @@ function switchView(v){
 
 // -- DASHBOARD TAB STATE --
 var _dashTab = 'overview';
+var _fleetVSearch='', _fleetASort='desc';
+var _bdVSearch='',    _bdASort='desc';
+var _drvDSearch='',   _drvASort='desc';
 
 function switchDashTab(tab) {
   _dashTab = tab;
@@ -2715,6 +2718,7 @@ function renderDashFleet(){
   function applyFleetFilter(){
     var vSearch = (document.getElementById('fleet_v_search')||{}).value||'';
     var aSort   = (document.getElementById('fleet_a_sort')||{}).value||'desc';
+    _fleetVSearch=vSearch; _fleetASort=aSort;
     var filtered = allTrucks.slice();
     if(vSearch.trim()){
       var q=vSearch.trim().toUpperCase();
@@ -2760,7 +2764,7 @@ function renderDashFleet(){
     '<div style="padding:4px 20px 12px;display:flex;gap:10px;flex-wrap:wrap;align-items:center">' +
       '<div style="display:flex;flex-direction:column;gap:4px;flex:1;min-width:180px">' +
         '<label style="font-size:10px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.06em">🔍 Search Vehicle</label>' +
-        '<input id="fleet_v_search" type="text" placeholder="Type truck number..." autocomplete="off" value="'+(_fleetVSearch||'')+'" ' +
+        '<input id="fleet_v_search" type="text" placeholder="Type truck number..." autocomplete="off" ' +
           'style="background:#fff;border:1.5px solid var(--br);border-radius:8px;padding:8px 12px;font-size:13px;font-family:Inter,sans-serif;color:var(--tx);outline:none" ' +
           'oninput="if(window._applyFleetFilter)window._applyFleetFilter()" />' +
       '</div>' +
@@ -2776,6 +2780,11 @@ function renderDashFleet(){
     '</div>' +
     '<div id="fleet_truck_list" style="padding:0 20px 16px;display:flex;flex-direction:column;gap:8px">'+buildFleetRows(allTrucks)+'</div>' +
     spikeHTML;
+
+  // Re-apply sort if user had non-default selection
+  if(_fleetASort!=='desc'||_fleetVSearch){
+    setTimeout(function(){ window._applyFleetFilter&&window._applyFleetFilter(); },0);
+  }
 }
 
 // -- TAB 3: BREAKDOWNS --
@@ -2862,6 +2871,7 @@ function renderDashBreakdowns(){
   function applyBDFilter(){
     var vSearch=(document.getElementById('bd_v_search')||{}).value||'';
     var aSort=(document.getElementById('bd_a_sort')||{}).value||'desc';
+    _bdVSearch=vSearch; _bdASort=aSort;
     var filtered=bdTrucks.slice();
     if(vSearch.trim()){var q=vSearch.trim().toUpperCase();filtered=filtered.filter(function(t){return t[0].indexOf(q)>=0;});}
     if(aSort==='asc_cost') filtered.sort(function(a,b){return a[1].cost-b[1].cost;});
@@ -2881,7 +2891,7 @@ function renderDashBreakdowns(){
     '<div style="padding:4px 20px 12px;display:flex;gap:10px;flex-wrap:wrap;align-items:center">' +
       '<div style="display:flex;flex-direction:column;gap:4px;flex:1;min-width:180px">' +
         '<label style="font-size:10px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.06em">🔍 Search Vehicle</label>' +
-        '<input id="bd_v_search" type="text" placeholder="Type truck number..." autocomplete="off" value="'+(_bdVSearch||'')+'" ' +
+        '<input id="bd_v_search" type="text" placeholder="Type truck number..." autocomplete="off" ' +
           'style="background:#fff;border:1.5px solid var(--br);border-radius:8px;padding:8px 12px;font-size:13px;font-family:Inter,sans-serif;color:var(--tx);outline:none" ' +
           'oninput="if(window._applyBDFilter)window._applyBDFilter()" />' +
       '</div>' +
@@ -2900,12 +2910,13 @@ function renderDashBreakdowns(){
     '<div id="bd_truck_list" style="padding:0 20px 16px;display:flex;flex-direction:column;gap:8px"></div>' +
     recurHTML;
 
-  // init count and list after render
   setTimeout(function(){
     var countEl=document.getElementById('bd_count');
     if(countEl)countEl.textContent=bdTrucks.length+' truck(s)';
     var listEl=document.getElementById('bd_truck_list');
     if(listEl)listEl.innerHTML=buildBDRows(bdTrucks)||'<div style="color:var(--t3);padding:20px">No breakdown data</div>';
+    // Re-apply sort if user had non-default selection
+    if(_bdASort!=='desc'||_bdVSearch) window._applyBDFilter&&window._applyBDFilter();
   },0);
 }
 
@@ -3001,6 +3012,7 @@ function renderDashDrivers(){
   function applyDrvFilter(){
     var dSearch=(document.getElementById('drv_d_search')||{}).value||'';
     var aSort=(document.getElementById('drv_a_sort')||{}).value||'desc';
+    _drvDSearch=dSearch; _drvASort=aSort;
     var filtered=allDrivers.slice();
     if(dSearch.trim()){var q=dSearch.trim().toUpperCase();filtered=filtered.filter(function(d){return d[0].indexOf(q)>=0;});}
     if(aSort==='asc') filtered.sort(function(a,b){return a[1].total-b[1].total;});
@@ -3019,7 +3031,7 @@ function renderDashDrivers(){
     '<div style="padding:4px 20px 12px;display:flex;gap:10px;flex-wrap:wrap;align-items:center">' +
       '<div style="display:flex;flex-direction:column;gap:4px;flex:1;min-width:180px">' +
         '<label style="font-size:10px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.06em">🔍 Search Driver</label>' +
-        '<input id="drv_d_search" type="text" placeholder="Type driver name..." autocomplete="off" value="'+(_drvDSearch||'')+'" ' +
+        '<input id="drv_d_search" type="text" placeholder="Type driver name..." autocomplete="off" ' +
           'style="background:#fff;border:1.5px solid var(--br);border-radius:8px;padding:8px 12px;font-size:13px;font-family:Inter,sans-serif;color:var(--tx);outline:none" ' +
           'oninput="if(window._applyDrvFilter)window._applyDrvFilter()" />' +
       '</div>' +
@@ -3027,8 +3039,8 @@ function renderDashDrivers(){
         '<label style="font-size:10px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.06em">💰 Sort by Amount</label>' +
         '<select id="drv_a_sort" onchange="if(window._applyDrvFilter)window._applyDrvFilter()" ' +
           'style="background:#fff;border:1.5px solid var(--br);border-radius:8px;padding:8px 12px;font-size:13px;font-family:Inter,sans-serif;color:var(--tx);outline:none;cursor:pointer">' +
-          '<option value="desc"'+(_drvASort==="desc"?" selected":"")+'>Highest Cost First</option>' +
-          '<option value="asc"'+(_drvASort==="asc"?" selected":"")+'>Lowest Cost First</option>' +
+          '<option value="desc"'+(_drvASort==="asc"?"":' selected')+'>Highest Cost First</option>' +
+          '<option value="asc"'+(_drvASort==="asc"?' selected':'')+'>Lowest Cost First</option>' +
         '</select>' +
       '</div>' +
       '<div style="align-self:flex-end;padding-bottom:2px;font-size:11px;color:var(--t3)" id="drv_count">0 driver(s)</div>' +
@@ -3040,6 +3052,8 @@ function renderDashDrivers(){
     if(countEl)countEl.textContent=allDrivers.length+' driver(s)';
     var listEl=document.getElementById('drv_list');
     if(listEl)listEl.innerHTML=buildDrvRows(allDrivers)||'<div style="color:var(--t3);padding:20px">No driver data</div>';
+    // Re-apply sort if user had non-default selection
+    if(_drvASort!=='desc'||_drvDSearch) window._applyDrvFilter&&window._applyDrvFilter();
   },0);
 }
 
