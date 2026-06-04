@@ -2760,7 +2760,7 @@ function renderDashFleet(){
     '<div style="padding:4px 20px 12px;display:flex;gap:10px;flex-wrap:wrap;align-items:center">' +
       '<div style="display:flex;flex-direction:column;gap:4px;flex:1;min-width:180px">' +
         '<label style="font-size:10px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.06em">🔍 Search Vehicle</label>' +
-        '<input id="fleet_v_search" type="text" placeholder="Type truck number..." autocomplete="off" ' +
+        '<input id="fleet_v_search" type="text" placeholder="Type truck number..." autocomplete="off" value="'+(_fleetVSearch||'')+'" ' +
           'style="background:#fff;border:1.5px solid var(--br);border-radius:8px;padding:8px 12px;font-size:13px;font-family:Inter,sans-serif;color:var(--tx);outline:none" ' +
           'oninput="if(window._applyFleetFilter)window._applyFleetFilter()" />' +
       '</div>' +
@@ -2768,8 +2768,8 @@ function renderDashFleet(){
         '<label style="font-size:10px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.06em">💰 Sort by Amount</label>' +
         '<select id="fleet_a_sort" onchange="if(window._applyFleetFilter)window._applyFleetFilter()" ' +
           'style="background:#fff;border:1.5px solid var(--br);border-radius:8px;padding:8px 12px;font-size:13px;font-family:Inter,sans-serif;color:var(--tx);outline:none;cursor:pointer">' +
-          '<option value="desc">Highest First</option>' +
-          '<option value="asc">Lowest First</option>' +
+          '<option value="desc"'+(_fleetASort==='asc'?'':' selected')+'>Highest First</option>' +
+          '<option value="asc"'+(_fleetASort==='asc'?' selected':'')+'>Lowest First</option>' +
         '</select>' +
       '</div>' +
       '<div style="align-self:flex-end;padding-bottom:2px;font-size:11px;color:var(--t3)" id="fleet_count">'+allTrucks.length+' truck(s)</div>' +
@@ -2881,7 +2881,7 @@ function renderDashBreakdowns(){
     '<div style="padding:4px 20px 12px;display:flex;gap:10px;flex-wrap:wrap;align-items:center">' +
       '<div style="display:flex;flex-direction:column;gap:4px;flex:1;min-width:180px">' +
         '<label style="font-size:10px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.06em">🔍 Search Vehicle</label>' +
-        '<input id="bd_v_search" type="text" placeholder="Type truck number..." autocomplete="off" ' +
+        '<input id="bd_v_search" type="text" placeholder="Type truck number..." autocomplete="off" value="'+(_bdVSearch||'')+'" ' +
           'style="background:#fff;border:1.5px solid var(--br);border-radius:8px;padding:8px 12px;font-size:13px;font-family:Inter,sans-serif;color:var(--tx);outline:none" ' +
           'oninput="if(window._applyBDFilter)window._applyBDFilter()" />' +
       '</div>' +
@@ -2889,10 +2889,10 @@ function renderDashBreakdowns(){
         '<label style="font-size:10px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.06em">💰 Sort by Amount</label>' +
         '<select id="bd_a_sort" onchange="if(window._applyBDFilter)window._applyBDFilter()" ' +
           'style="background:#fff;border:1.5px solid var(--br);border-radius:8px;padding:8px 12px;font-size:13px;font-family:Inter,sans-serif;color:var(--tx);outline:none;cursor:pointer">' +
-          '<option value="desc">Most Breakdowns First</option>' +
-          '<option value="asc">Least Breakdowns First</option>' +
-          '<option value="desc_cost">Highest Cost First</option>' +
-          '<option value="asc_cost">Lowest Cost First</option>' +
+          '<option value="desc"'+(_bdASort==="desc"?" selected":"")+'>Most Breakdowns First</option>' +
+          '<option value="asc"'+(_bdASort==="asc"?" selected":"")+'>Least Breakdowns First</option>' +
+          '<option value="desc_cost"'+(_bdASort==="desc_cost"?" selected":"")+'>Highest Cost First</option>' +
+          '<option value="asc_cost"'+(_bdASort==="asc_cost"?" selected":"")+'>Lowest Cost First</option>' +
         '</select>' +
       '</div>' +
       '<div style="align-self:flex-end;padding-bottom:2px;font-size:11px;color:var(--t3)" id="bd_count">0 truck(s)</div>' +
@@ -3019,7 +3019,7 @@ function renderDashDrivers(){
     '<div style="padding:4px 20px 12px;display:flex;gap:10px;flex-wrap:wrap;align-items:center">' +
       '<div style="display:flex;flex-direction:column;gap:4px;flex:1;min-width:180px">' +
         '<label style="font-size:10px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.06em">🔍 Search Driver</label>' +
-        '<input id="drv_d_search" type="text" placeholder="Type driver name..." autocomplete="off" ' +
+        '<input id="drv_d_search" type="text" placeholder="Type driver name..." autocomplete="off" value="'+(_drvDSearch||'')+'" ' +
           'style="background:#fff;border:1.5px solid var(--br);border-radius:8px;padding:8px 12px;font-size:13px;font-family:Inter,sans-serif;color:var(--tx);outline:none" ' +
           'oninput="if(window._applyDrvFilter)window._applyDrvFilter()" />' +
       '</div>' +
@@ -3027,8 +3027,8 @@ function renderDashDrivers(){
         '<label style="font-size:10px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.06em">💰 Sort by Amount</label>' +
         '<select id="drv_a_sort" onchange="if(window._applyDrvFilter)window._applyDrvFilter()" ' +
           'style="background:#fff;border:1.5px solid var(--br);border-radius:8px;padding:8px 12px;font-size:13px;font-family:Inter,sans-serif;color:var(--tx);outline:none;cursor:pointer">' +
-          '<option value="desc">Highest Cost First</option>' +
-          '<option value="asc">Lowest Cost First</option>' +
+          '<option value="desc"'+(_drvASort==="desc"?" selected":"")+'>Highest Cost First</option>' +
+          '<option value="asc"'+(_drvASort==="asc"?" selected":"")+'>Lowest Cost First</option>' +
         '</select>' +
       '</div>' +
       '<div style="align-self:flex-end;padding-bottom:2px;font-size:11px;color:var(--t3)" id="drv_count">0 driver(s)</div>' +
@@ -3062,9 +3062,9 @@ function renderDashParts(){
 
   function shortLabel(s){return s.length>18?s.substring(0,18)+'…':s;}
 
-  var barC=byC.map(function(e){var pct=Math.round((e[1]/maxC)*100);return '<div class="barrow"><div class="barlabel" title="'+e[0]+'">'+shortLabel(e[0])+'</div><div class="bartrack"><div class="barfill" style="width:'+pct+'%;background:linear-gradient(90deg,#0a2d6e,#1a4fa0)"><span class="barval">'+(e[1]/1000).toFixed(0)+'k</span></div></div></div>';}).join('');
+  var barC=byC.map(function(e){var pct=Math.round((e[1]/maxC)*100);return '<div class="barrow"><div class="barlabel" title="'+e[0]+'">'+shortLabel(e[0])+'</div><div class="bartrack"><div class="barfill" style="width:'+pct+'%;background:linear-gradient(90deg,#0a2d6e,#1a4fa0)"><span class="barval">'+e[1].toLocaleString()+'</span></div></div></div>';}).join('');
   var barQ=byQ.map(function(e){var pct=Math.round((e[1]/maxQ)*100);return '<div class="barrow"><div class="barlabel" title="'+e[0]+'">'+shortLabel(e[0])+'</div><div class="bartrack"><div class="barfill" style="width:'+pct+'%;background:linear-gradient(90deg,#166534,#4ade80)"><span class="barval">'+e[1]+'</span></div></div></div>';}).join('');
-  var barS=supTop.map(function(e){var pct=Math.round((e[1]/maxSup)*100);return '<div class="barrow"><div class="barlabel" title="'+e[0]+'">'+shortLabel(e[0])+'</div><div class="bartrack"><div class="barfill" style="width:'+pct+'%;background:linear-gradient(90deg,#92400e,#f59e0b)"><span class="barval">'+(e[1]/1000).toFixed(0)+'k</span></div></div></div>';}).join('');
+  var barS=supTop.map(function(e){var pct=Math.round((e[1]/maxSup)*100);return '<div class="barrow"><div class="barlabel" title="'+e[0]+'">'+shortLabel(e[0])+'</div><div class="bartrack"><div class="barfill" style="width:'+pct+'%;background:linear-gradient(90deg,#92400e,#f59e0b)"><span class="barval">'+e[1].toLocaleString()+'</span></div></div></div>';}).join('');
 
   document.getElementById('dtab-parts').innerHTML =
     '<div class="chartgrid">' +
@@ -3102,10 +3102,10 @@ function renderDashFinancials(){
   var barM=monthKeys.map(function(k){
     var pct=Math.round((monthly[k]/maxM)*100);
     var lbl=monthLabel(new Date(k+'-01'));
-    return '<div class="barrow"><div class="barlabel">'+lbl+'</div><div class="bartrack"><div class="barfill" style="width:'+pct+'%;background:linear-gradient(90deg,#0a2d6e,#3b82f6)">'+(monthly[k]>0?'<span class="barval">'+(monthly[k]/1000).toFixed(0)+'k</span>':'')+'</div></div></div>';
+    return '<div class="barrow"><div class="barlabel">'+lbl+'</div><div class="bartrack"><div class="barfill" style="width:'+pct+'%;background:linear-gradient(90deg,#0a2d6e,#3b82f6)">'+(monthly[k]>0?'<span class="barval">'+monthly[k].toLocaleString()+'</span>':'')+'</div></div></div>';
   }).join('');
 
-  var barPM=pmTop.map(function(e){var pct=Math.round((e[1]/maxPM)*100);return '<div class="barrow"><div class="barlabel">'+(e[0]||'UNSPECIFIED')+'</div><div class="bartrack"><div class="barfill" style="width:'+pct+'%;background:linear-gradient(90deg,#166534,#4ade80)"><span class="barval">'+(e[1]/1000).toFixed(0)+'k</span></div></div></div>';}).join('');
+  var barPM=pmTop.map(function(e){var pct=Math.round((e[1]/maxPM)*100);return '<div class="barrow"><div class="barlabel">'+(e[0]||'UNSPECIFIED')+'</div><div class="bartrack"><div class="barfill" style="width:'+pct+'%;background:linear-gradient(90deg,#166534,#4ade80)"><span class="barval">'+e[1].toLocaleString()+'</span></div></div></div>';}).join('');
 
   document.getElementById('dtab-financials').innerHTML =
     dashSection('Monthly Spend - Last 12 Months (Received Items)') +
@@ -13047,7 +13047,7 @@ function editJobCard(id) {
   populateJCFormDropdowns();
 
   // Helper for plain inputs
-  var sv = function(eid, val) { var el=document.getElementById(eid); if(el) el.value=val||''; };
+  var sv = function(eid, val) { var el=document.getElementById(eid); if(!el) return; if(el.type==='number'){ var n=parseFloat(String(val||'').replace(/,/g,'')); el.value=isNaN(n)?'':n; } else { el.value=(val!==null&&val!==undefined)?val:''; } };
 
   // Helper for Tom Select dropdowns
   var setSelect = function(eid, val) {
@@ -13118,7 +13118,7 @@ function saveJobCard() {
   const missing = [];
   if (!vehicle) missing.push('Vehicle No');
   if (!driver) missing.push('Driver Name');
-  if (!odometer) missing.push('Odometer Reading');
+  if (!odometer || isNaN(Number(odometer)) || Number(odometer) <= 0) missing.push('Odometer Reading (must be a number greater than 0)');
   if (!orderStatus) missing.push('Order Status');
   if (!category) missing.push('Category');
   if (!location) missing.push('Location');
@@ -13188,7 +13188,7 @@ function saveJobCard() {
       if(s&&s.value&&s.value!=='__other__') return s.value;
       return '';
     })()),
-    odometer: document.getElementById('jc_odometer').value,
+    odometer: String(document.getElementById('jc_odometer').value).replace(/,/g,''),
     orderStatus: document.getElementById('jc_orderstatus').value,
     clientName: U(document.getElementById('jc_client') ? document.getElementById('jc_client').value : ''),
     category: document.getElementById('jc_category').value,
