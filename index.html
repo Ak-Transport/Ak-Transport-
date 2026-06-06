@@ -1656,20 +1656,7 @@ window.onerror = function(msg, src, line, col, err) {
 const API = 'https://script.google.com/macros/s/AKfycbwJ2801Er0p9OdbVtIuJysV_g5KRJmA-zWLDn4cKk6jsIkZ5N1OOVni1OFETPWsu8HJbg/exec';
 const APP_VERSION = '1780059676';
 
-// Auto-detect new version and force reload
-(function(){
-  try {
-    var cached = localStorage.getItem('ak_app_version');
-    if (cached && cached !== APP_VERSION) {
-      localStorage.setItem('ak_app_version', APP_VERSION);
-      // Clear session so user logs in fresh with new version
-      sessionStorage.clear();
-      window.location.reload(true);
-      return;
-    }
-    localStorage.setItem('ak_app_version', APP_VERSION);
-  } catch(e) {}
-})();
+// Version check removed for local file compatibility
 const ADMINPWD = 'akadmin321';
 const PAGESIZE = 100;
 
@@ -4599,7 +4586,7 @@ function renderTyreInventory() {
       var isChk = _tyreInvSelected.has(t.id);
       html += '<tr>'
         + '<td style="text-align:center"><input type="checkbox" class="tinv-chk" data-id="'+t.id+'" data-serial="'+t.serialNo+'" onchange="onTyreInvCheck(this)" '+(isChk?'checked':'')+' style="cursor:pointer;width:14px;height:14px;accent-color:var(--ac)"></td>'
-        + '<td><span class="reqbadge" style="cursor:pointer;text-decoration:underline" onclick="openTyreProfile('+JSON.stringify(t.serialNo)+')" title="View Tyre Profile">'+t.serialNo+'</span></td>'
+        + '<td><span class="reqbadge" style="cursor:pointer;text-decoration:underline" data-tyre-serial="'+encodeURIComponent(t.serialNo||'')+'" onclick="openTyreProfile(decodeURIComponent(this.dataset.tyreSerial))" title="View Tyre Profile">'+t.serialNo+'</span></td>'
         + '<td><b>'+t.brand+'</b></td>'
         + '<td>'+t.size+'</td>'
         + '<td>'+tyreType+'</td>'
@@ -4623,7 +4610,9 @@ function renderTyreInventory() {
 
 // -- TYRE PROFILE --
 function openTyreProfile(serial) {
+
   var tyre=(TYRES||[]).find(function(t){return t.serialNo===serial;});
+
   if(!tyre){toast('Tyre not found','er');return;}
   var history=(TYRE_FITS||[]).filter(function(f){return String(f.tyreSerial||'').trim().toUpperCase()===String(serial).trim().toUpperCase();}).sort(function(a,b){return (a.dateFitted||'').localeCompare(b.dateFitted||'');});
   var po=(TYRE_POS||[]).find(function(p){return p.poNo===tyre.poNo&&(p.status||'').toUpperCase()!=='DELETED';})||{};
@@ -5257,7 +5246,7 @@ function renderTyreRemHold() {
       html += '<tr data-fitid="'+f.id+'" style="background:'+rowBg+'">'
         + '<td style="text-align:center"><input type="checkbox" class="tyre-rh-chk" data-id="'+f.id+'" onchange="onTyreRemHoldCheck(this)" '+(trIsChk2?'checked':'')+' style="cursor:pointer;width:14px;height:14px;accent-color:var(--ac)"></td>'
         + '<td>'+typeLabel+'</td>'
-        + '<td><span class="reqbadge" style="cursor:pointer;text-decoration:underline" onclick="openTyreProfile('+JSON.stringify(f.tyreSerial)+')" title="View Tyre Profile">'+f.tyreSerial+'</span></td>'
+        + '<td><span class="reqbadge" style="cursor:pointer;text-decoration:underline" data-tyre-serial="'+encodeURIComponent(f.tyreSerial||'')+'" onclick="openTyreProfile(decodeURIComponent(this.dataset.tyreSerial))" title="View Tyre Profile">'+f.tyreSerial+'</span></td>'
         + '<td><b>'+(tyre.brand||f.brand||'\u2014')+'</b></td>'
         + '<td>'+(tyre.size||f.size||'\u2014')+'</td>'
         + '<td><b style="color:var(--ac)">'+(f.vehicle||'\u2014')+'</b></td>'
@@ -5339,7 +5328,7 @@ function renderTyreFitRequests() {
         + '<td style="text-align:center"><input type="checkbox" class="fitreq-chk" data-id="'+f.id+'" onchange="onFitReqCheck(this)" '+(isChk?'checked':'')+' style="cursor:pointer;width:14px;height:14px;accent-color:var(--ac)"></td>'
         + '<td style="font-family:monospace;font-size:11px"><span class="reqbadge">'+(f.reqNo||f.id||'')+'</span></td>'
         + '<td>'+typeBadge+'</td>'
-        + '<td><span class="reqbadge" style="cursor:pointer;text-decoration:underline" onclick="openTyreProfile('+JSON.stringify(f.tyreSerial||'')+')" title="View Tyre Profile">'+(f.tyreSerial||'')+'</span></td>'
+        + '<td><span class="reqbadge" style="cursor:pointer;text-decoration:underline" data-tyre-serial="'+encodeURIComponent(f.tyreSerial||'')+'" onclick="openTyreProfile(decodeURIComponent(this.dataset.tyreSerial))" title="View Tyre Profile">'+(f.tyreSerial||'')+'</span></td>'
         + '<td><b>'+(tyre.brand||f.brand||'\u2014')+'</b></td>'
         + '<td>'+(tyre.size||f.size||'\u2014')+'</td>'
         + '<td><b style="color:var(--ac)">'+(f.vehicle||'')+'</b></td>'
@@ -5729,7 +5718,7 @@ function renderTyreFitted() {
       var _fs=[f.tyreSerial||'',brand,size,tyreType,supplier,lpoNo,f.vehicle||'',f.position||'',f.driverName||'',fmtDate(f.dateFitted)||'',fmtDate(f.dateRemoved)||'',f.removedReason||'',f.jobCardNo||'',f.status||''].join(' ').toLowerCase();
       var _rowBg = f.status==='PENDING REMOVAL'?'#fff7ed':isActive?'#f0fdf4':'';
       html += '<tr data-search="'+_fs+'" style="background:'+_rowBg+'">'
-        + '<td><span class="reqbadge" style="cursor:pointer;text-decoration:underline" onclick="openTyreProfile('+JSON.stringify(f.tyreSerial)+')" title="View Tyre Profile">'+f.tyreSerial+'</span></td>'
+        + '<td><span class="reqbadge" style="cursor:pointer;text-decoration:underline" data-tyre-serial="'+encodeURIComponent(f.tyreSerial||'')+'" onclick="openTyreProfile(decodeURIComponent(this.dataset.tyreSerial))" title="View Tyre Profile">'+f.tyreSerial+'</span></td>'
         + '<td><b>'+brand+'</b></td>'
         + '<td>'+size+'</td>'
         + '<td><span style="font-size:11px;background:#e0e7ff;color:#3730a3;padding:2px 7px;border-radius:5px;font-weight:600">'+tyreType+'</span></td>'
@@ -5859,7 +5848,7 @@ function renderTyreScrap() {
         +'<td style="text-align:center"><input type="checkbox" class="tyre-scrap-chk" data-id="'+r.id+'" onchange="onTyreScrapCheck(this)" '+(tsIsChk?'checked':'')+' style="cursor:pointer;width:14px;height:14px;accent-color:var(--ac)"></td>'
         +'<td><span class="reqbadge">'+(r.scrapNo||'')+'</span></td>'
         +'<td>'+fmtDate(r.scrapDate||'')+'</td>'
-        +'<td><span class="reqbadge" style="cursor:pointer;text-decoration:underline" onclick="openTyreProfile('+JSON.stringify(r.tyreSerial||'')+')" title="View Tyre Profile">'+(r.tyreSerial||'')+'</span></td>'
+        +'<td><span class="reqbadge" style="cursor:pointer;text-decoration:underline" data-tyre-serial="'+encodeURIComponent(r.tyreSerial||'')+'" onclick="openTyreProfile(decodeURIComponent(this.dataset.tyreSerial))" title="View Tyre Profile">'+(r.tyreSerial||'')+'</span></td>'
         +'<td><b>'+(r.brand||'')+'</b></td>'
         +'<td>'+(r.size||'')+'</td>'
         +'<td style="text-align:right;font-family:monospace">'+fmtMoney(r.totalKMRun)+' KM</td>'
@@ -16756,45 +16745,48 @@ function doSignIn() {
   }, 1200);
 }
 
-// Restore session on page refresh
+// Restore session on page refresh — safely handles corrupted data
 (function() {
   try {
     var saved = sessionStorage.getItem('ak_user');
     if (!saved) return;
-    var user = JSON.parse(saved);
+    // Validate JSON before parsing
+    if (saved.charAt(0) !== '{') return;
+    var user;
+    try { user = JSON.parse(saved); } catch(e) { sessionStorage.removeItem('ak_user'); return; }
     if (!user || !user.username) return;
     window.CURRENT_USER = user;
-    if (typeof CURRENT_USER !== 'undefined') CURRENT_USER = user;
-    document.getElementById('aklg').style.display = 'none';
+    // Hide login screen
+    var lg = document.getElementById('aklg'); if (lg) lg.style.display = 'none';
+    // Show top bar elements
     var uw = document.getElementById('usermenu_wrap'); if (uw) uw.style.display = 'inline-block';
     var nw = document.getElementById('newwrap'); if (nw) nw.style.display = 'inline-block';
     var un = document.getElementById('topbar_username'); if (un) un.textContent = user.name || user.username;
+    // Show admin links if admin
     var ul = document.getElementById('usermgmt_link'); if (ul && user.role === 'admin') ul.style.display = 'flex';
-    // Show sidebar user management for admin
-    var navUm2 = document.getElementById('nav-usermgmt');
-    var divUm2 = document.getElementById('div-usermgmt');
-    var slblUm2 = document.getElementById('slbl-usermgmt');
-    if (user.role === 'admin') {
-      if (navUm2) navUm2.style.display = '';
-      if (divUm2) divUm2.style.display = '';
-      if (slblUm2) slblUm2.style.display = '';
-    }
-    // Load all app data for restored session
+    var navUm = document.getElementById('nav-usermgmt'); if (navUm && user.role === 'admin') navUm.style.display = '';
+    var divUm = document.getElementById('div-usermgmt'); if (divUm && user.role === 'admin') divUm.style.display = '';
+    var slblUm = document.getElementById('slbl-usermgmt'); if (slblUm && user.role === 'admin') slblUm.style.display = '';
+    // Apply permissions and load data
     if (typeof applyPermissions === 'function') applyPermissions();
     if (typeof loadAppData === 'function') loadAppData();
-  } catch(e) {}
+  } catch(e) {
+    // Any error — silently clear and let user log in normally
+    try { sessionStorage.removeItem('ak_user'); } catch(e2) {}
+  }
 })();
 
-document.getElementById('aklgbtn').addEventListener('click', doSignIn);
-document.getElementById('aklgu').addEventListener('keydown', function(e){ if(e.key==='Enter') document.getElementById('aklgp').focus(); });
-document.getElementById('aklgp').addEventListener('keydown', function(e){ if(e.key==='Enter') doSignIn(); });
-
-
-document.getElementById('aklgu').addEventListener('keydown', function(e) { if (e.key === 'Enter') doSignIn(); });
-document.getElementById('aklgp').addEventListener('keydown', function(e) { if (e.key === 'Enter') doSignIn(); });
-window.addEventListener('load', function() {
-  var el = document.getElementById('aklgu'); if (el) el.focus();
-});
+(function(){
+  var btn = document.getElementById('aklgbtn');
+  var uEl = document.getElementById('aklgu');
+  var pEl = document.getElementById('aklgp');
+  if(btn) btn.addEventListener('click', doSignIn);
+  if(uEl) uEl.addEventListener('keydown', function(e){ if(e.key==='Enter'){ var p=document.getElementById('aklgp'); if(p) p.focus(); }});
+  if(pEl) pEl.addEventListener('keydown', function(e){ if(e.key==='Enter') doSignIn(); });
+  window.addEventListener('load', function() {
+    var el = document.getElementById('aklgu'); if (el) el.focus();
+  });
+})();
 </script>
 </div>
 <script>
