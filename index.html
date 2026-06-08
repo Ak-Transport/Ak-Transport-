@@ -145,7 +145,7 @@ select,input[type=text],input[type=password],input[type=date],textarea{
 select:focus,input:focus,textarea:focus{border-color:var(--hi);box-shadow:0 0 0 3px rgba(0,113,227,.1)}
 
 /* TABLE */
-#tablearea{flex:1;overflow:auto;padding:0 22px 20px}
+#tablearea{flex:1;overflow-y:auto;overflow-x:hidden;padding:0 22px 20px}
 table{width:100%;border-collapse:separate;border-spacing:0;font-size:12.5px}
 #tablearea table{border-radius:12px;overflow:hidden;border:1px solid var(--br);box-shadow:0 2px 8px rgba(0,0,0,.05)}
 th{background:var(--ac);color:#ffffff;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;padding:10px 13px;white-space:nowrap;cursor:pointer;user-select:none;position:sticky;top:0;z-index:2}
@@ -155,6 +155,9 @@ tr:last-child td{border-bottom:none}
 tr:hover td{background:#f0f4ff}
 /* Store content tables: no max-width cap so td and th widths stay in sync */
 #storecontent td{max-width:none;padding:11px 13px;overflow:visible;}
+#tyreInventoryTable td,#tyreFittedTable td,#tyreFitReqTable td,#tyreRemHoldTable td{max-width:none;overflow:visible;white-space:nowrap;}
+#tyreInventoryTable,#tyreFittedTable,#tyreFitReqTable,#tyreRemHoldTable{width:max-content;min-width:100%;}
+.tyre-scroll-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch;width:100%;}
 #storecontent table{border-collapse:collapse;}
 
 /* STATUS BADGES */
@@ -632,8 +635,8 @@ body.no-bat-edit #bpo_delete_btn,
 body.no-bat-edit #batfitreq_edit_btn,
 body.no-bat-edit #batfitreq_del_btn { display:none !important; }
 /* Legacy global rules for backwards compat */
-body.no-edit .actbtn.e:not(.ws-action):not(.jc-action):not(.fleet-action):not(.sup-action):not(.store-action) { display:none !important; }
-body.no-delete .actbtn.d:not(.ws-action):not(.jc-action):not(.fleet-action):not(.sup-action):not(.store-action):not(.jcr-del):not(.jc-action) { display:none !important; }
+body.no-edit .actbtn.e:not(.ws-action):not(.jc-action):not(.fleet-action):not(.sup-action):not(.store-action):not(.store-approve-action):not(.tyre-approve-action):not(.bat-approve-action) { display:none !important; }
+body.no-delete .actbtn.d:not(.ws-action):not(.jc-action):not(.fleet-action):not(.sup-action):not(.store-action):not(.jcr-del):not(.jc-action):not(.store-approve-action):not(.tyre-approve-action):not(.bat-approve-action) { display:none !important; }
 </style>
 
 
@@ -4568,7 +4571,7 @@ function renderTyreInventory() {
     + '<div class="statcard statcard-sm" style="background:#7c3aed;color:#fff"><div class="scl">Sold</div><div class="scv">'+sold+'</div></div>'
     + '</div>';
   var statusColors = {'IN STORE':'sR','FITTED':'sPNR','RETREADING':'sOH','SCRAPPED':'sNR','SOLD':'sSLD'};
-  html += '<div style="overflow-x:auto"><table><thead><tr>'
+  html += '<div class="tyre-scroll-wrap"><table id="tyreInventoryTable"><thead><tr>'
     + '<th style="width:36px;text-align:center"><input type="checkbox" id="tinv_chk_all" onclick="toggleAllTyreInv(this)" style="cursor:pointer;width:14px;height:14px;accent-color:var(--ac)"></th>'
     + '<th>Serial No</th><th>Brand</th><th>Size</th><th>Type</th><th>Supplier</th><th>Req No</th><th>LPO No</th>'
     + '<th>Date Received</th><th>Purchase Price</th><th>Total KM</th><th>Retreads</th><th>Status</th><th>Vehicle</th><th>Position</th>'
@@ -5199,7 +5202,7 @@ function renderTyreRemHold() {
     + '<div class="statcard statcard-sm" style="background:#059669;color:#fff"><div class="scl">Approved</div><div class="scv">'+approved+'</div></div>'
     + '<div class="statcard statcard-sm" style="background:#dc2626;color:#fff"><div class="scl">Rejected</div><div class="scv">'+rejected+'</div></div>'
     + '</div>';
-  html += '<div style="overflow-x:auto"><table><thead><tr>'
+  html += '<div class="tyre-scroll-wrap"><table id="tyreRemHoldTable"><thead><tr>'
     + '<th style="width:36px;text-align:center"><input type="checkbox" id="tyre_rh_chk_all" onclick="toggleAllTyreRH(this)" style="cursor:pointer;width:14px;height:14px"></th>'+'<th>Type</th><th>Tyre Serial</th><th>Brand</th><th>Size</th><th>Vehicle</th><th>Position</th>'
     + '<th>Date</th><th>KM</th><th>Driver</th><th>Job Card</th><th>Reason</th><th>Next Status</th>'
     + '<th>Status</th><th>Processed By</th><th>Date Processed</th>'
@@ -5287,7 +5290,7 @@ function renderTyreFitRequests() {
     + '<div class="statcard statcard-sm" style="background:#dc2626;color:#fff"><div class="scl">Rejected</div><div class="scv">'+rejected+'</div></div>'
     + '</div>';
   // Filter controls
-  html += '<div style="overflow-x:auto"><table><thead><tr>'
+  html += '<div class="tyre-scroll-wrap"><table id="tyreFitReqTable"><thead><tr>'
     + '<th style="width:36px"><input type="checkbox" id="fitreq_chk_all" onclick="toggleAllFitReq(this)" style="cursor:pointer;width:14px;height:14px;accent-color:var(--ac)"></th>'
     + '<th>Req No</th><th>Type</th><th>Serial No</th><th>Brand</th><th>Size</th><th>Vehicle</th><th>Position</th><th>Job Card</th><th>Driver</th><th>Reason</th><th>Next Status</th><th>Requested By</th><th>Date</th><th>Status</th><th>Processed By</th><th>Date Processed</th>'
     + '</tr></thead><tbody id="fitreq_tbody">';
@@ -5689,7 +5692,7 @@ function renderTyreFitted() {
     + '<div class="statcard statcard-sm" style="background:#2563eb;color:#fff"><div class="scl">Currently Fitted</div><div class="scv">'+active.length+'</div></div>'
     + '<div class="statcard statcard-sm" style="background:#0a2d6e;color:#fff"><div class="scl">All Fitments</div><div class="scv">'+allFits.length+'</div></div>'
     + '</div>';
-  html += '<div style="overflow-x:auto"><table><thead><tr>'
+  html += '<div class="tyre-scroll-wrap"><table id="tyreFittedTable"><thead><tr>'
     + '<th>Tyre Serial</th><th>Brand</th><th>Size</th><th>Type</th><th>Supplier</th><th>LPO No</th>'
     + '<th>Vehicle</th><th>Position</th><th>Date Fitted</th><th>KM at Fitting</th><th>Driver</th>'
     + '<th>Date Removed</th><th>KM at Removal</th><th>KM Run</th><th>Reason Removed</th><th>Job Card</th><th>Status</th>'
@@ -11000,7 +11003,9 @@ var _issReqSelected = new Set();
 function renderIssPending() {
   document.getElementById('viewtitle').textContent = 'Issuance On Hold';
   document.getElementById('viewsub').textContent = '';
+
   var isAdmin = (window.CURRENT_USER && (window.CURRENT_USER.role === 'admin' || can('store_approve')));
+
   var iphFilters = [
     { f: (document.getElementById('IPHF1')||{}).value||'', v: ((document.getElementById('IPHV1')||{}).value||'').trim().toLowerCase() },
     { f: (document.getElementById('IPHF2')||{}).value||'', v: ((document.getElementById('IPHV2')||{}).value||'').trim().toLowerCase() }
@@ -14529,6 +14534,11 @@ const ROLE_PRESETS = {
 function can(perm) {
   if (!CURRENT_USER) return false;
   if (CURRENT_USER.role === 'admin' || CURRENT_USER.role === 'manager') return true;
+  // For all roles: check explicit p_ permission from sheet FIRST
+  // This allows admin to grant any permission to any role via the sheet
+  var newVal = CURRENT_USER['p_'+perm];
+  if (newVal === true || String(newVal).toLowerCase() === 'true') return true;
+  // Then apply role-based defaults for roles that haven't been fully configured
   if (CURRENT_USER.role === 'tyre_supervisor') {
     if (perm === 'tyre') return true;
     if (perm === 'tyre_create') return true;
@@ -14543,11 +14553,7 @@ function can(perm) {
   }
   // staff_jc can create requisitions (breakdown only - enforced at save time)
   if (perm === 'req' && CURRENT_USER.role === 'staff_jc') return true;
-  // Check new module flags first
-  var newVal = CURRENT_USER['p_'+perm];
-  if (newVal === true || String(newVal).toLowerCase() === 'true') return true;
-  // Fallback to old flags ONLY for access and create - NOT for edit/delete
-  // (edit fallbacks caused permissions to bleed across modules)
+  // Fallback to old flags for access and create
   var fallback = {
     'workshop':         'req',
     'workshop_create':  'req',
@@ -14561,14 +14567,24 @@ function can(perm) {
     'delete':           'delete'
   };
   if (fallback[perm]) {
-    var old = CURRENT_USER['p_'+fallback[perm]];
-    if (old === true || String(old).toLowerCase() === 'true') return true;
+    var oldVal = CURRENT_USER['p_'+fallback[perm]];
+    if (oldVal === true || String(oldVal).toLowerCase() === 'true') return true;
   }
   return false;
 }
 function canEditReq(record) {
   if (!CURRENT_USER) return false;
   if (CURRENT_USER.role === 'admin' || CURRENT_USER.role === 'manager') return true;
+  // Check module-specific edit permission based on record category
+  if (record) {
+    var cat = (record.category||'').toUpperCase();
+    if (cat === 'WORKSHOP' || cat === 'BREAKDOWN') {
+      if (can('workshop_edit')) return true;
+    }
+    if (cat === 'STORE') {
+      if (can('store_edit')) return true;
+    }
+  }
   if (CURRENT_USER.role === 'staff_jc') {
     if (!record) return false;
     var cat6 = (record.category||'').toUpperCase();
@@ -14583,6 +14599,16 @@ function canDeleteReq(record) {
   var s = (record && record.status||'').toUpperCase();
   if (s === 'PAID NOT RECEIVED' || s === 'RECEIVED NOT ISSUED') return false;
   if (CURRENT_USER.role === 'admin' || CURRENT_USER.role === 'manager') return true;
+  // Check module-specific edit permission based on record category
+  if (record) {
+    var catD = (record.category||'').toUpperCase();
+    if (catD === 'WORKSHOP' || catD === 'BREAKDOWN') {
+      if (can('workshop_edit')) return true;
+    }
+    if (catD === 'STORE') {
+      if (can('store_edit')) return true;
+    }
+  }
   if (CURRENT_USER.role === 'staff_jc') {
     if (!record) return false;
     var cat6d = (record.category||'').toUpperCase();
@@ -14595,13 +14621,15 @@ function canDeleteReq(record) {
 function canEditJC() {
   if (!CURRENT_USER) return false;
   if (CURRENT_USER.role === 'admin' || CURRENT_USER.role === 'manager') return true;
-  if (CURRENT_USER.role === 'staff') return false; // Req staff cannot edit job cards
+  if (can('jobcard_edit')) return true; // explicit jobcard_edit permission overrides staff block
+  if (CURRENT_USER.role === 'staff') return false;
   return can('edit');
 }
 function canDeleteJC() {
   if (!CURRENT_USER) return false;
   if (CURRENT_USER.role === 'admin' || CURRENT_USER.role === 'manager') return true;
-  if (CURRENT_USER.role === 'staff') return false; // Req staff cannot delete job cards
+  if (can('jobcard_edit')) return true; // explicit jobcard_edit permission overrides staff block
+  if (CURRENT_USER.role === 'staff') return false;
   return can('delete');
 }
 
