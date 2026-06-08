@@ -16745,7 +16745,7 @@ function doSignIn() {
   }, 1200);
 }
 
-// Restore session on page refresh — safely handles corrupted data
+// Restore session on page refresh — refreshes permissions from backend on every restore
 (function() {
   try {
     var saved = sessionStorage.getItem('ak_user');
@@ -16755,21 +16755,46 @@ function doSignIn() {
     var user;
     try { user = JSON.parse(saved); } catch(e) { sessionStorage.removeItem('ak_user'); return; }
     if (!user || !user.username) return;
+
+    // Use cached user to show UI immediately
     window.CURRENT_USER = user;
-    // Hide login screen
     var lg = document.getElementById('aklg'); if (lg) lg.style.display = 'none';
-    // Show top bar elements
     var uw = document.getElementById('usermenu_wrap'); if (uw) uw.style.display = 'inline-block';
     var nw = document.getElementById('newwrap'); if (nw) nw.style.display = 'inline-block';
     var un = document.getElementById('topbar_username'); if (un) un.textContent = user.name || user.username;
-    // Show admin links if admin
     var ul = document.getElementById('usermgmt_link'); if (ul && user.role === 'admin') ul.style.display = 'flex';
     var navUm = document.getElementById('nav-usermgmt'); if (navUm && user.role === 'admin') navUm.style.display = '';
     var divUm = document.getElementById('div-usermgmt'); if (divUm && user.role === 'admin') divUm.style.display = '';
     var slblUm = document.getElementById('slbl-usermgmt'); if (slblUm && user.role === 'admin') slblUm.style.display = '';
-    // Apply permissions and load data
-    if (typeof applyPermissions === 'function') applyPermissions();
-    if (typeof loadAppData === 'function') loadAppData();
+
+    // Load app data (this also refreshes permissions from backend)
+    if (typeof loadAppData === 'function') {
+      loadAppData().then(function() {
+        // After data loaded, refresh user permissions from latest USERS data
+        try {
+          var freshUser = (USERS||[]).find(function(u) {
+            return String(u.username||'').toLowerCase().trim() === String(user.username||'').toLowerCase().trim();
+          });
+          if (freshUser) {
+            // Merge fresh permissions into current user — keep password/role from session
+            Object.keys(freshUser).forEach(function(k) {
+              if (k.indexOf('p_') === 0 || k === 'role' || k === 'status') {
+                window.CURRENT_USER[k] = freshUser[k];
+              }
+            });
+            // Update cached session with fresh permissions
+            try { sessionStorage.setItem('ak_user', JSON.stringify(window.CURRENT_USER)); } catch(e) {}
+          }
+        } catch(e) {}
+        // Re-apply permissions with fresh data
+        if (typeof applyPermissions === 'function') applyPermissions();
+      }).catch(function() {
+        // loadAppData failed — still apply cached permissions
+        if (typeof applyPermissions === 'function') applyPermissions();
+      });
+    } else {
+      if (typeof applyPermissions === 'function') applyPermissions();
+    }
   } catch(e) {
     // Any error — silently clear and let user log in normally
     try { sessionStorage.removeItem('ak_user'); } catch(e2) {}
