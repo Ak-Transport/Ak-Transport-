@@ -611,7 +611,7 @@ body.no-fleet-edit .actbtn.fleet-action { display:none !important; }
 /* Supplier & Parts */
 body.no-sup-edit .actbtn.sup-action { display:none !important; }
 /* Store */
-body.no-store-edit .actbtn.store-action { display:none !important; }
+body.no-store-edit .actbtn.store-action:not(.store-approve-action) { display:none !important; }
 body.no-store-edit #sreq_editsel_btn,
 body.no-store-edit #sreq_del_btn,
 body.no-store-edit #iss_req_delete_btn { display:none !important; }
@@ -11039,7 +11039,7 @@ function renderIssPending() {
       var isChk = _issPendingSelected.has(r.id);
       var approveCell = isAdmin ? '<td>'+(isApproved||isRejected
         ? '<button class="actbtn" disabled style="opacity:.4;cursor:not-allowed;font-size:11px">\u2705 Approved</button>'
-        : '<button class="actbtn e store-action" onclick="approveIssuance(\''+r.id+'\')" style="font-size:11px">\u2705 Approve</button>')+'</td>' : '';
+        : '<button class="actbtn e store-approve-action" onclick="approveIssuance(\''+r.id+'\')" style="font-size:11px">\u2705 Approve</button>')+'</td>' : '';
       // One row per line item - all columns repeated
       lineItems.forEach(function(l, li){
         html += '<tr style="'+rowBg+'">'
@@ -14802,11 +14802,11 @@ function applyPermissions() {
   var supSection = document.getElementById('navsec-suppliers');
   if (supSection) supSection.style.display = can('supparts') ? '' : 'none';
   var storeSection = document.getElementById('navsec-store');
-  if (storeSection) storeSection.style.display = can('store') ? '' : 'none';
+  if (storeSection) storeSection.style.display = (can('store')||can('store_approve')||can('store_create')||can('store_edit')) ? '' : 'none';
   var tyreSection = document.getElementById('navsec-tyres');
-  if (tyreSection) tyreSection.style.display = can('tyre') ? '' : 'none';
+  if (tyreSection) tyreSection.style.display = (can('tyre')||can('tyre_approve')||can('tyre_create')||can('tyre_edit')) ? '' : 'none';
   var batSection = document.getElementById('navsec-batteries');
-  if (batSection) batSection.style.display = can('battery') ? '' : 'none';
+  if (batSection) batSection.style.display = (can('battery')||can('battery_approve')||can('battery_create')||can('battery_edit')) ? '' : 'none';
   // -- On Hold pages - approve permission required --
   var navIssPend = document.getElementById('nav-iss_pending');
   if (navIssPend) navIssPend.style.display = can('store_approve') ? '' : 'none';
@@ -15532,7 +15532,25 @@ async function loadAppData(){
     var ml = document.getElementById('mainlayout');
     if (ml) ml.style.display = 'flex';
     updateBadges();buildHeader();applyFilters();
+    // Refresh CURRENT_USER permissions from latest USERS data
+    if (window.CURRENT_USER && (typeof USERS !== 'undefined') && USERS.length) {
+      var freshU = USERS.find(function(u){
+        return String(u.username||'').toLowerCase().trim() === String(window.CURRENT_USER.username||'').toLowerCase().trim();
+      });
+      if (freshU) {
+        Object.keys(freshU).forEach(function(k){
+          if (k.indexOf('p_') === 0 || k === 'role' || k === 'status') {
+            window.CURRENT_USER[k] = freshU[k];
+          }
+        });
+        try { sessionStorage.setItem('ak_user', JSON.stringify(window.CURRENT_USER)); } catch(e) {}
+      }
+    }
     if (typeof applyPermissions === 'function') applyPermissions();
+    // Re-render approval views so approve/reject buttons reflect fresh permissions
+    if (currentView === 'iss_pending' && typeof renderIssPending === 'function') renderIssPending();
+    else if (currentView === 'tyre_rem_hold' && typeof renderTyreRemHold === 'function') renderTyreRemHold();
+    else if (currentView === 'bat_rem_hold' && typeof renderBatRemHold === 'function') renderBatRemHold();
     toast('Connected - '+ALL.length+' records loaded','ok');
     var _wasOffline = false;
     setInterval(async function(){
