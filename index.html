@@ -14157,8 +14157,11 @@ function downloadSigned(id) {
 }
 
 async function deleteSigned(id) {
-  // Only admin, manager and job card staff can remove signed PDFs
-  if (CURRENT_USER && (CURRENT_USER.role === 'staff' || CURRENT_USER.role === 'viewer')) {
+  // Only admin, manager and staff with jobcard_edit can remove signed PDFs
+  if (CURRENT_USER && CURRENT_USER.role === 'viewer') {
+    toast('You do not have permission to remove signed PDFs', 'er'); return;
+  }
+  if (CURRENT_USER && CURRENT_USER.role === 'staff' && !can('jobcard_edit')) {
     toast('You do not have permission to remove signed PDFs', 'er'); return;
   }
   if (!confirm('Remove the signed PDF from Google Drive?')) return;
@@ -14281,7 +14284,7 @@ function renderJCSummary() {
     var catStyle = j.category === 'WORKSHOP' ? 'background:rgba(79,142,247,.15);color:#4f8ef7' : j.category === 'BREAKDOWN' ? 'background:rgba(249,115,22,.15);color:#f97316' : 'background:var(--s2);color:var(--t2)';
     var totalAmt = calcJCTotal(j.code);
     var totalAmtDisplay = totalAmt > 0 ? totalAmt.toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2}) : '-';
-    var canManageSigned = CURRENT_USER && CURRENT_USER.role !== 'staff' && CURRENT_USER.role !== 'viewer';
+    var canManageSigned = CURRENT_USER && (CURRENT_USER.role === 'admin' || CURRENT_USER.role === 'manager' || (CURRENT_USER.role !== 'viewer' && can('jobcard_edit')));
     // Quick status badge - clickable
     var wsColor = {'IN PROGRESS':'sPNR','COMPLETED':'sR','STALLED':'sOH','PENDING':'sRNP','TO BE REPAIRED AFTER LOADING':'sNR'}[j.workStatus]||'sNR';
     var quickStatus = '<span class="sb '+wsColor+' jcs-status" data-id="'+jid+'" style="cursor:pointer;user-select:none" title="Click to change status">'+( j.workStatus||'')+'</span>';
@@ -14293,7 +14296,7 @@ function renderJCSummary() {
         +(canRemoveSigned ? '<button class="actbtn jcs-del d" data-id="'+jid+'" style="font-size:11px">🗑 Remove</button>' : '')
       : (canManageSigned ? '<button class="actbtn jcs-att" data-id="'+jid+'" style="color:#fbbf24;border-color:#fbbf24;font-size:11px">📤 Attach Signed PDF</button>' : '');
     // Staff (Requisition) cannot remove signed PDFs
-    var canRemoveSigned = !(CURRENT_USER && (CURRENT_USER.role === 'staff' || CURRENT_USER.role === 'viewer'));
+    var canRemoveSigned = CURRENT_USER && (CURRENT_USER.role === 'admin' || CURRENT_USER.role === 'manager' || (CURRENT_USER.role === 'staff' && can('jobcard_edit')));
     rows += '<tr>'
       +'<td><span class="reqbadge" style="font-size:11px">'+(j.code||'')+'</span></td>'
       +'<td><b style="color:var(--ac)">'+(j.vehicle||'')+'</b> <span style="color:var(--t2);font-size:10px">'+(j.vehicleType||'')+'</span></td>'
@@ -14449,7 +14452,10 @@ function downloadJCPDFById(id) {
 // -- TRIGGER FILE ATTACH --
 let _attachingId = null;
 function triggerAttach(id) {
-  if (CURRENT_USER && (CURRENT_USER.role === 'staff' || CURRENT_USER.role === 'viewer')) {
+  if (CURRENT_USER && CURRENT_USER.role === 'viewer') {
+    toast('You do not have permission to attach or replace signed PDFs', 'er'); return;
+  }
+  if (CURRENT_USER && CURRENT_USER.role === 'staff' && !can('jobcard_edit')) {
     toast('You do not have permission to attach or replace signed PDFs', 'er'); return;
   }
   _attachingId = id;
