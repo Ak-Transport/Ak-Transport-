@@ -13301,7 +13301,7 @@ function renderJobCards() {
     <td style="font-family:monospace;text-align:center">${calcDurationDays(j.startDate,j.endDate,j.workStatus)}</td>
     <td><span class="sb ${wsColors[j.workStatus]||'sNR'}">${j.workStatus||''}</span></td>
     <td style="color:var(--t2);font-size:10px" title="${j.comment||''}">${(j.comment||'').substring(0,20)}${(j.comment||'').length>20?'…':''}</td>
-    <td style="font-family:monospace;font-weight:700;color:var(--ac)">${(function(){ var t=calcJCTotal(j.code,j.jobCardNo); return t>0?t.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}):'-'; })()}</td>
+    <td style="font-family:monospace;font-weight:700;color:var(--ac)">${(function(){ var t=calcJCTotal(j.code,j.jobCardNo); console.log("RENDER code="+j.code+" jcNo="+j.jobCardNo+" total="+t); return t>0?t.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}):'-'; })()}</td>
     <td>
       <button class="actbtn jcr-edit jc-action" data-id="${j.id}" data-done="${j.workStatus==='COMPLETED'?'1':''}" style="${j.workStatus==='COMPLETED'?'color:#fbbf24;border-color:#fbbf24':''}" title="${j.workStatus==='COMPLETED'?'Password required':'Edit'}">
         ${j.workStatus==='COMPLETED'?'🔒 Edit':'✏ Edit'}
