@@ -13301,7 +13301,7 @@ function renderJobCards() {
     <td style="font-family:monospace;text-align:center">${calcDurationDays(j.startDate,j.endDate,j.workStatus)}</td>
     <td><span class="sb ${wsColors[j.workStatus]||'sNR'}">${j.workStatus||''}</span></td>
     <td style="color:var(--t2);font-size:10px" title="${j.comment||''}">${(j.comment||'').substring(0,20)}${(j.comment||'').length>20?'…':''}</td>
-    <td style="font-family:monospace;font-weight:700;color:var(--ac)">${(function(){ var a=0; ALL.forEach(function(r){ if(r.status==='RECEIVED'&&r.jobCardNo&&j.code&&r.jobCardNo.toUpperCase()===j.code.toUpperCase()) a+=parseFloat(r.cost)||0; }); return a>0?a.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}):'-'; })()}</td>
+    <td style="font-family:monospace;font-weight:700;color:var(--ac)">${(function(){ var t=calcJCTotal(j.code,j.jobCardNo); return t>0?t.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}):'-'; })()}</td>
     <td>
       <button class="actbtn jcr-edit jc-action" data-id="${j.id}" data-done="${j.workStatus==='COMPLETED'?'1':''}" style="${j.workStatus==='COMPLETED'?'color:#fbbf24;border-color:#fbbf24':''}" title="${j.workStatus==='COMPLETED'?'Password required':'Edit'}">
         ${j.workStatus==='COMPLETED'?'🔒 Edit':'✏ Edit'}
@@ -14150,19 +14150,34 @@ function openReceiveStock() {
 }
 
 // -- calcJCTotal: exact same logic as PDF - workshop parts + new tyres + new batteries --
-function calcJCTotal(jCode) {
-  var code = (jCode||'').toUpperCase();
+function calcJCTotal(jCode, jNo) {
+  var code  = (jCode||'').toUpperCase();
+  var jcNo  = (jNo||'').toUpperCase();
   var total = 0;
+  // Match by either code or jobCardNo
+  var matchJC = function(val) {
+    var v = (val||'').toUpperCase();
+    return (code && v === code) || (jcNo && v === jcNo);
+  };
+  // DEBUG
+  var tyrMatches = (TYRE_FITS||[]).filter(function(f){ return matchJC(f.jobCardNo); });
+  var batMatches = (BAT_FITS||[]).filter(function(f){ return matchJC(f.jobCardNo); });
+  if(tyrMatches.length > 0 || batMatches.length > 0) {
+    console.log('calcJCTotal code='+code+' jcNo='+jcNo+' tyrMatches='+tyrMatches.length+' batMatches='+batMatches.length);
+  }
+  if((TYRE_FITS||[]).length > 0 && code && code.indexOf('JC-') === 0) {
+    console.log('TYRE_FITS sample jobCardNo:', (TYRE_FITS||[]).slice(0,3).map(function(f){return f.jobCardNo;}));
+    console.log('JOBCARDS sample code/jobCardNo:', 'code='+code+' jcNo='+jcNo);
+  }
   // 1. Workshop requisition received parts
   (ALL||[]).forEach(function(r) {
-    if (r.status === 'RECEIVED' && r.jobCardNo && code &&
-        r.jobCardNo.toUpperCase() === code) {
+    if (r.status === 'RECEIVED' && r.jobCardNo && matchJC(r.jobCardNo)) {
       total += parseFloat(r.cost) || 0;
     }
   });
   // 2. New-only tyre fitments - no prior CLOSED fitment for this serial before this one
   (TYRE_FITS||[]).forEach(function(f) {
-    if ((f.jobCardNo||'').toUpperCase() !== code) return;
+    if (!matchJC(f.jobCardNo)) return;
     var s = (f.status||'').toUpperCase();
     if (s !== 'ACTIVE' && s !== 'CLOSED' && s !== 'PENDING REMOVAL') return;
     var serial = String(f.tyreSerial||'').trim();
@@ -14178,7 +14193,7 @@ function calcJCTotal(jCode) {
   });
   // 3. New-only battery fitments - no prior CLOSED fitment for this ref before this one
   (BAT_FITS||[]).forEach(function(f) {
-    if ((f.jobCardNo||'').toUpperCase() !== code) return;
+    if (!matchJC(f.jobCardNo)) return;
     var s = (f.status||'').toUpperCase();
     if (s !== 'ACTIVE' && s !== 'CLOSED' && s !== 'PENDING REMOVAL') return;
     var ref = String(f.batteryRef||'').trim();
@@ -15399,7 +15414,7 @@ function renderFilteredJCSummary(data) {
   for(var i=0;i<data.length;i++){
     var j=data[i],jid=j.id;
     var catStyle=j.category==='WORKSHOP'?'background:rgba(79,142,247,.15);color:#4f8ef7':j.category==='BREAKDOWN'?'background:rgba(249,115,22,.15);color:#f97316':'background:var(--s2);color:var(--t2)';
-    var fAmt=calcJCTotal(j.code);
+    var fAmt=calcJCTotal(j.code,j.jobCardNo);
     var fAmtDisplay=fAmt>0?fAmt.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}):'-';
     var signedBtns=j.signedPdfUrl?'<button class="actbtn jcs-view" data-id="'+jid+'" style="color:#4ade80;border-color:#4ade80;font-size:11px">👁 View Signed</button><button class="actbtn jcs-dl" data-id="'+jid+'" style="color:#38bdf8;border-color:#38bdf8;font-size:11px">⬇ Download</button><button class="actbtn jcs-rep" data-id="'+jid+'" style="color:#fbbf24;border-color:#fbbf24;font-size:11px">🔄 Replace</button><button class="actbtn jcs-del d" data-id="'+jid+'" style="font-size:11px">🗑 Remove</button>':'<button class="actbtn jcs-att" data-id="'+jid+'" style="color:#fbbf24;border-color:#fbbf24;font-size:11px">📤 Attach Signed PDF</button>';
     rows+='<tr><td><span class="reqbadge" style="font-size:11px">'+(j.code||'')+'</span></td><td><b style="color:var(--ac)">'+(j.vehicle||'')+'</b> <span style="color:var(--t2);font-size:10px">'+(j.vehicleType||'')+'</span></td><td>'+(j.driverName||'')+'</td><td><span style="padding:2px 8px;border-radius:5px;font-size:10px;font-weight:700;'+catStyle+'">'+(j.category||'')+'</span></td><td style="font-size:11px">'+fd(j.startDate)+'</td><td style="font-size:11px">'+fd(j.endDate)+'</td><td style="font-family:monospace;text-align:center">'+calcDurationDays(j.startDate,j.endDate,j.workStatus)+'</td><td><span class="sb '+(wsColors[j.workStatus]||'sNR')+'">'+(j.workStatus||'')+'</span></td><td style="font-family:monospace;font-weight:700;color:var(--ac)">'+fAmtDisplay+'</td><td style="white-space:nowrap;max-width:none;overflow:visible"><button class="actbtn jcs-prev" data-id="'+jid+'" style="color:#a78bfa;border-color:#a78bfa;font-size:11px">👁 Preview</button><button class="actbtn jcs-pdf" data-id="'+jid+'" style="color:#4f8ef7;border-color:#4f8ef7;font-size:11px">⬇ PDF</button>'+signedBtns+'</td></tr>';
