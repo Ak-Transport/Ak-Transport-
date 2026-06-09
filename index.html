@@ -14187,9 +14187,11 @@ function calcJCTotal(jCode, jNo) {
         && x.id !== f.id
         && (x.dateFitted||'') < (f.dateFitted||'');
     });
-    if (priorFits.length > 0) return;
+    if (priorFits.length > 0) { console.log('SKIP serial='+serial+' priorFits='+priorFits.length); return; }
     var tyre = (TYRES||[]).find(function(t){ return t.serialNo === f.tyreSerial; }) || {};
-    total += Number(tyre.purchasePrice||0);
+    var price = Number(tyre.purchasePrice||0);
+    console.log('TYRE serial='+serial+' status='+s+' purchasePrice='+tyre.purchasePrice+' price='+price+' tyrFound='+(!!tyre.serialNo)+' TYRES.length='+(TYRES||[]).length);
+    total += price;
   });
   // 3. New-only battery fitments - no prior CLOSED fitment for this ref before this one
   (BAT_FITS||[]).forEach(function(f) {
