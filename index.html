@@ -2927,55 +2927,58 @@ function renderDashDrivers(){
     if(r.truck)drvMap[d].trucks[(r.truck||'').trim().toUpperCase()]=1;
   });
   // Add tyre costs per driver via TYRE_FITS
-  (TYRE_FITS||[]).forEach(function(f){
-    if(!f.jobCardNo)return;
-    var jc=(JOBCARDS||[]).find(function(j){
-      var code=(j.code||'').toUpperCase();
-      var jcNo=(j.jobCardNo||'').toUpperCase();
-      var fJcNo=(f.jobCardNo||'').toUpperCase();
-      return code===fJcNo||jcNo===fJcNo;
+  try {
+    (TYRE_FITS||[]).forEach(function(f){
+      if(!f.jobCardNo)return;
+      var jc=(JOBCARDS||[]).find(function(j){
+        var code=String(j.code||'').toUpperCase();
+        var jcNo=String(j.jobCardNo||'').toUpperCase();
+        var fJcNo=String(f.jobCardNo||'').toUpperCase();
+        return code===fJcNo||jcNo===fJcNo;
+      });
+      if(!jc)return;
+      var d=String(jc.driverName||'').trim().toUpperCase();
+      if(EXCLUDED.indexOf(d)>=0)return;
+      var serial=String(f.tyreSerial||'').trim().toUpperCase();
+      var tyre=(TYRES||[]).find(function(t){return String(t.serialNo||'').trim().toUpperCase()===serial;});
+      var cost=tyre?parseFloat(tyre.purchasePrice||0):0;
+      if(!cost)return;
+      var priorFits=(TYRE_FITS||[]).filter(function(x){
+        return String(x.tyreSerial||'').trim().toUpperCase()===serial
+          &&String(x.status||'').toUpperCase()==='CLOSED'
+          &&x.id!==f.id
+          &&(x.dateFitted||'')<(f.dateFitted||'');
+      });
+      if(priorFits.length>0)return;
+      if(!drvMap[d])drvMap[d]={total:0,count:0,ws:0,bd:0,trucks:{}};
+      drvMap[d].total+=cost;
+      drvMap[d].ws+=cost;
+      if(jc.vehicle)drvMap[d].trucks[String(jc.vehicle||'').trim().toUpperCase()]=1;
     });
-    if(!jc)return;
-    var d=(jc.driverName||'').trim().toUpperCase();
-    if(EXCLUDED.indexOf(d)>=0)return;
-    var serial=(f.tyreSerial||'').trim().toUpperCase();
-    var tyre=(TYRES||[]).find(function(t){return (t.serialNo||'').trim().toUpperCase()===serial;});
-    var cost=tyre?parseFloat(tyre.purchasePrice||0):0;
-    if(!cost)return;
-    // Check not a re-used tyre
-    var priorFits=(TYRE_FITS||[]).filter(function(x){
-      return (x.tyreSerial||'').trim().toUpperCase()===serial
-        &&(x.status||'').toUpperCase()==='CLOSED'
-        &&x.id!==f.id
-        &&(x.dateFitted||'')<(f.dateFitted||'');
-    });
-    if(priorFits.length>0)return;
-    if(!drvMap[d])drvMap[d]={total:0,count:0,ws:0,bd:0,trucks:{}};
-    drvMap[d].total+=cost;
-    drvMap[d].ws+=cost;
-    if(jc.vehicle)drvMap[d].trucks[(jc.vehicle||'').trim().toUpperCase()]=1;
-  });
+  } catch(e){ console.error('Tyre driver cost error:',e); }
   // Add battery costs per driver via BAT_FITS
-  (BAT_FITS||[]).forEach(function(f){
-    if(!f.jobCardNo)return;
-    var jc=(JOBCARDS||[]).find(function(j){
-      var code=(j.code||'').toUpperCase();
-      var jcNo=(j.jobCardNo||'').toUpperCase();
-      var fJcNo=(f.jobCardNo||'').toUpperCase();
-      return code===fJcNo||jcNo===fJcNo;
+  try {
+    (BAT_FITS||[]).forEach(function(f){
+      if(!f.jobCardNo)return;
+      var jc=(JOBCARDS||[]).find(function(j){
+        var code=String(j.code||'').toUpperCase();
+        var jcNo=String(j.jobCardNo||'').toUpperCase();
+        var fJcNo=String(f.jobCardNo||'').toUpperCase();
+        return code===fJcNo||jcNo===fJcNo;
+      });
+      if(!jc)return;
+      var d=String(jc.driverName||'').trim().toUpperCase();
+      if(EXCLUDED.indexOf(d)>=0)return;
+      var ref=String(f.batteryRef||'').trim().toUpperCase();
+      var bat=(BATTERIES||[]).find(function(b){return String(b.batteryRef||'').trim().toUpperCase()===ref;});
+      var cost=bat?parseFloat(bat.purchasePrice||bat.unitPrice||0):0;
+      if(!cost)return;
+      if(!drvMap[d])drvMap[d]={total:0,count:0,ws:0,bd:0,trucks:{}};
+      drvMap[d].total+=cost;
+      drvMap[d].ws+=cost;
+      if(jc.vehicle)drvMap[d].trucks[String(jc.vehicle||'').trim().toUpperCase()]=1;
     });
-    if(!jc)return;
-    var d=(jc.driverName||'').trim().toUpperCase();
-    if(EXCLUDED.indexOf(d)>=0)return;
-    var ref=(f.batteryRef||'').trim().toUpperCase();
-    var bat=(BATTERIES||[]).find(function(b){return (b.batteryRef||'').trim().toUpperCase()===ref;});
-    var cost=bat?parseFloat(bat.purchasePrice||bat.unitPrice||0):0;
-    if(!cost)return;
-    if(!drvMap[d])drvMap[d]={total:0,count:0,ws:0,bd:0,trucks:{}};
-    drvMap[d].total+=cost;
-    drvMap[d].ws+=cost;
-    if(jc.vehicle)drvMap[d].trucks[(jc.vehicle||'').trim().toUpperCase()]=1;
-  });
+  } catch(e){ console.error('Battery driver cost error:',e); }
 
   var drvJC={};
   JOBCARDS.forEach(function(j){
