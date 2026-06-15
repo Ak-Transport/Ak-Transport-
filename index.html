@@ -8698,14 +8698,14 @@ async function saveTyreGRN() {
     var note   = (document.getElementById('grn_note_'+n)||{}).value||'';
     if (!brand||!size||!serial) { toast('Line '+(i+1)+': Brand, Size and Serial No are required','er'); return; }
     if (serials.includes(serial)) { toast('Duplicate serial number: '+serial,'er'); return; }
-    var existing = (TYRES||[]).find(function(t){ return t.serialNo===serial; });
+    var existing = (TYRES||[]).find(function(t){ return String(t.serialNo||'')===serial; });
     if (existing) { toast('Serial '+serial+' already exists in inventory','er'); return; }
     serials.push(serial);
     lines.push({brand:brand, size:size, serialNo:serial, notes:note});
   }
   if (!lines.length) { toast('Add at least one tyre line','er'); return; }
   // Final duplicate check against current inventory
-  var dupInv = lines.filter(function(l){ return (TYRES||[]).some(function(t){ return (t.serialNo||'').toUpperCase().trim() === l.serialNo.toUpperCase().trim(); }); });
+  var dupInv = lines.filter(function(l){ return (TYRES||[]).some(function(t){ return String(t.serialNo||'').toUpperCase().trim() === l.serialNo.toUpperCase().trim(); }); });
   if (dupInv.length) { toast('Serial(s) already in inventory: ' + dupInv.map(function(l){return l.serialNo;}).join(', '),'er'); return; }
   var _tyreTotalOut = _grnActivePOs.reduce(function(s,p){return s+Number(p.qtyOutstanding||0);},0);
   if(_tyreTotalOut>0 && lines.length>_tyreTotalOut){toast('Total lines '+lines.length+' exceeds outstanding '+_tyreTotalOut+' tyres for this LPO','er');return;}
