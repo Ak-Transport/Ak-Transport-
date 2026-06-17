@@ -145,9 +145,9 @@ select,input[type=text],input[type=password],input[type=date],textarea{
 select:focus,input:focus,textarea:focus{border-color:var(--hi);box-shadow:0 0 0 3px rgba(0,113,227,.1)}
 
 /* TABLE */
-#tablearea{flex:1;overflow-y:auto;overflow-x:hidden;padding:0 22px 20px}
+#tablearea{flex:1;overflow:auto;padding:0 22px 20px;width:100%}
 table{width:100%;border-collapse:separate;border-spacing:0;font-size:12.5px}
-#tablearea table{border-radius:12px;overflow:hidden;border:1px solid var(--br);box-shadow:0 2px 8px rgba(0,0,0,.05)}
+#tablearea table{border-radius:12px;border:1px solid var(--br);box-shadow:0 2px 8px rgba(0,0,0,.05)}
 th{background:var(--ac);color:#ffffff;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;padding:10px 13px;white-space:nowrap;cursor:pointer;user-select:none;position:sticky;top:0;z-index:2}
 th:hover{background:var(--ac2)}
 td{padding:10px 13px;border-bottom:1px solid #ebebed;font-size:12.5px;vertical-align:middle;color:var(--tx);max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;background:#ffffff}
@@ -157,7 +157,7 @@ tr:hover td{background:#f0f4ff}
 #storecontent td{max-width:none;padding:11px 13px;overflow:visible;}
 #tyreInventoryTable td,#tyreFittedTable td,#tyreFitReqTable td,#tyreRemHoldTable td{max-width:none;overflow:visible;white-space:nowrap;}
 #tyreInventoryTable,#tyreFittedTable,#tyreFitReqTable,#tyreRemHoldTable{width:max-content;min-width:100%;}
-.tyre-scroll-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch;width:100%;}
+.tyre-scroll-wrap{display:contents;}
 #storecontent table{border-collapse:collapse;}
 
 /* STATUS BADGES */
@@ -1635,7 +1635,7 @@ body.no-delete .actbtn.d:not(.ws-action):not(.jc-action):not(.fleet-action):not(
 
     <div id="tablearea" style="flex:1;overflow:auto;padding:0 20px 20px">
       <div id="maintable_wrap"><table><thead id="tablehead"></thead><tbody id="TBODY"></tbody></table></div>
-      <div id="storecontent" style="display:none"></div>
+      <div id="storecontent" style="display:none;"></div>
       <div id="loadmorediv" style="text-align:center;padding:14px;display:none"><button class="btn bg" onclick="loadMore()">Load more</button><span id="morelabel" style="font-size:12px;color:var(--t3);margin-left:8px"></span></div>
       <div id="emptystate" style="display:none;text-align:center;padding:50px 20px;color:var(--t3)"><div style="font-size:40px;margin-bottom:10px">&#128269;</div><div style="font-size:15px;font-weight:600;color:var(--t2);margin-bottom:5px">No records found</div><div style="font-size:13px">Try a different search term</div></div>
     </div>
@@ -4668,7 +4668,7 @@ function renderTyreInventory() {
 // -- TYRE PROFILE --
 function openTyreProfile(serial) {
 
-  var tyre=(TYRES||[]).find(function(t){return t.serialNo===serial;});
+  var tyre=(TYRES||[]).find(function(t){return String(t.serialNo||"").trim()===String(serial||"").trim();});
 
   if(!tyre){toast('Tyre not found','er');return;}
   var history=(TYRE_FITS||[]).filter(function(f){return String(f.tyreSerial||'').trim().toUpperCase()===String(serial).trim().toUpperCase();}).sort(function(a,b){return (a.dateFitted||'').localeCompare(b.dateFitted||'');});
@@ -4721,7 +4721,7 @@ function openTyreProfile(serial) {
   var modal=document.getElementById('tyreProfileModal');
   if(!modal){modal=document.createElement('div');modal.id='tyreProfileModal';document.body.appendChild(modal);}
   modal.style.cssText='position:fixed;inset:0;background:rgba(10,45,110,0.75);z-index:9999;display:flex;align-items:center;justify-content:center;padding:16px;backdrop-filter:blur(4px)';
-  modal.innerHTML='<div id="tyreProfileContent" style="background:#fff;border-radius:16px;width:100%;max-width:920px;max-height:92vh;overflow-y:auto;box-shadow:0 25px 60px rgba(10,45,110,.4)">'
+  modal.innerHTML='<div id="tyreProfileContent" style="background:#fff;border-radius:16px;width:100%;max-width:1300px;max-height:96vh;overflow-y:auto;box-shadow:0 25px 60px rgba(10,45,110,.4)">'
     +'<div style="background:linear-gradient(135deg,#0a2d6e 0%,#1e40af 100%);padding:24px 28px;border-radius:16px 16px 0 0;display:flex;justify-content:space-between;align-items:flex-start">'
       +'<div><div style="color:#93c5fd;font-size:10px;font-weight:700;letter-spacing:3px;text-transform:uppercase;margin-bottom:6px">TYRE PROFILE REPORT</div>'
       +'<div style="color:#fff;font-size:26px;font-weight:900;letter-spacing:2px;font-family:monospace">'+serial+'</div>'
@@ -4891,7 +4891,7 @@ function _buildTinvPosOpts(tyreConfig, plate, currentSerial) {
     }).forEach(function(t){usedPos.push((t.currentPosition||'').toUpperCase());});
   }
   var curPos='';
-  var curTyre=(TYRES||[]).find(function(t){return t.serialNo===currentSerial;})||{};
+  var curTyre=(TYRES||[]).find(function(t){return String(t.serialNo||'').trim()===String(currentSerial||'').trim();})||{};
   curPos=(curTyre.currentPosition||'').toUpperCase();
   var opts='<option value="">-- No position --</option>';
   cfg.positions.forEach(function(p){
@@ -5289,7 +5289,7 @@ function renderTyreRemHold() {
         : '<span class="sb sNR">REJECTED</span>';
       var processedBy = isApproved ? (f.approvedBy||'\u2014') : isRejected ? (f.rejectedBy||'\u2014') : '\u2014';
       var processedAt = isApproved ? fmtDateTime(f.approvedAt||'') : isRejected ? fmtDateTime(f.rejectedAt||'') : '\u2014';
-      var tyre = (TYRES||[]).find(function(t){ return t.serialNo===f.tyreSerial; })||{};
+      var tyre = (TYRES||[]).find(function(t){ return String(t.serialNo||'').trim()===String(f.tyreSerial||'').trim(); })||{};
       var actions = (isAdmin && isPend)
         ? '<td style="white-space:nowrap">'
           + '<button style="background:#059669;color:#fff;border:none;padding:5px 12px;border-radius:6px;cursor:pointer;font-size:12px;font-weight:600;margin-right:4px" '
@@ -5364,7 +5364,7 @@ function renderTyreFitRequests() {
       var typeLabel = isIss ? 'ISSUANCE' : 'REMOVAL';
       var sc = s==='ACTIVE'?'sR':s==='CLOSED'?'sR':s==='REJECTED'?'sNR':s==='PENDING REMOVAL'||s==='PENDING ISSUANCE'?'sOH':'sNR';
       var statusLabel = s==='ACTIVE'?'APPROVED':s==='CLOSED'?'APPROVED':s;
-      var tyre = (TYRES||[]).find(function(t){return t.serialNo===f.tyreSerial;})||{};
+      var tyre = (TYRES||[]).find(function(t){return String(t.serialNo||'').trim()===String(f.tyreSerial||'').trim();})||{};
       var brandSize = (tyre.brand||f.brand||'')+(tyre.size||f.size?(' '+(tyre.size||f.size||'')):'');
       var processedBy = (s==='ACTIVE'||s==='CLOSED')?(f.approvedBy||'\u2014'):(s==='REJECTED'?(f.rejectedBy||'\u2014'):'\u2014');
       var isLocked = s==='ACTIVE'||s==='CLOSED'||s==='REJECTED';
@@ -5823,7 +5823,7 @@ async function bulkApproveScrapSales(){
         if(idx>=0){TYRE_SCRAPS[idx].status="APPROVED";TYRE_SCRAPS[idx].approvedBy=approvedBy;}
         // Update tyre status to SCRAPPED in local TYRES array
         var serial=r.tyreSerial;
-        var tidx=(TYRES||[]).findIndex(function(t){return t.serialNo===serial;});
+        var tidx=(TYRES||[]).findIndex(function(t){return String(t.serialNo||"").trim()===String(serial||"").trim();});
         if(tidx>=0) TYRES[tidx].status="SOLD";
         return {ok:true};
       }
