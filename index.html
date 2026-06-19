@@ -5258,12 +5258,12 @@ function renderTyreRemHold() {
     + '</div>';
   html += '<div class="tyre-scroll-wrap"><table id="tyreRemHoldTable"><thead><tr>'
     + '<th style="width:36px;text-align:center"><input type="checkbox" id="tyre_rh_chk_all" onclick="toggleAllTyreRH(this)" style="cursor:pointer;width:14px;height:14px"></th>'+'<th>Type</th><th>Tyre Serial</th><th>Brand</th><th>Size</th><th>Vehicle</th><th>Position</th>'
-    + '<th>Date</th><th>KM</th><th>Driver</th><th>Job Card</th><th>Reason</th><th>Next Status</th>'
+    + '<th>Date</th><th>KM</th><th>Driver</th><th>Job Card</th><th>Reason</th><th>Notes</th><th>Next Status</th>'
     + '<th>Status</th><th>Processed By</th><th>Date Processed</th>'
     + (isAdmin?'<th>Actions</th>':'')
     + '</tr></thead><tbody id="remh_tbody">';
   if (!all.length) {
-    html += '<tr><td colspan="'+(isAdmin?17:16)+'" style="text-align:center;color:var(--t3);padding:40px">'
+    html += '<tr><td colspan="'+(isAdmin?18:17)+'" style="text-align:center;color:var(--t3);padding:40px">'
       + '<div style="font-size:32px;margin-bottom:8px">\u2705</div>'
       + '<div style="font-weight:600;color:var(--t2)">No requests yet</div>'
       + '</td></tr>';
@@ -5314,6 +5314,7 @@ function renderTyreRemHold() {
         + '<td style="font-family:monospace">'+(f.jobCardNo||'\u2014')+'</td>'
 
         + '<td style="font-size:11px">'+(isIss?'\u2014':(f.removedReason||'\u2014'))+'</td>'
+        + '<td style="font-size:11px;max-width:160px">'+(isIss?'\u2014':(f.removalNotes||'\u2014'))+'</td>'
         + '<td style="font-size:11px">'+(isIss?'\u2014':(f.nextStatus||'\u2014'))+'</td>'
         + '<td>'+statusBadge+'</td>'
         + '<td style="font-size:11px">'+processedBy+'</td>'
@@ -5346,10 +5347,10 @@ function renderTyreFitRequests() {
   // Filter controls
   html += '<div class="tyre-scroll-wrap"><table id="tyreFitReqTable"><thead><tr>'
     + '<th style="width:36px"><input type="checkbox" id="fitreq_chk_all" onclick="toggleAllFitReq(this)" style="cursor:pointer;width:14px;height:14px;accent-color:var(--ac)"></th>'
-    + '<th>Req No</th><th>Type</th><th>Serial No</th><th>Brand</th><th>Size</th><th>Vehicle</th><th>Position</th><th>Job Card</th><th>Driver</th><th>Reason</th><th>Next Status</th><th>Requested By</th><th>Date</th><th>Status</th><th>Processed By</th><th>Date Processed</th>'
+    + '<th>Req No</th><th>Type</th><th>Serial No</th><th>Brand</th><th>Size</th><th>Vehicle</th><th>Position</th><th>Job Card</th><th>Driver</th><th>Reason</th><th>Notes</th><th>Next Status</th><th>Requested By</th><th>Date</th><th>Status</th><th>Processed By</th><th>Date Processed</th>'
     + '</tr></thead><tbody id="fitreq_tbody">';
   if (!all.length) {
-    html += '<tr><td colspan="16" style="text-align:center;color:var(--t3);padding:32px">No fitment/removal requests yet</td></tr>';
+    html += '<tr><td colspan="17" style="text-align:center;color:var(--t3);padding:32px">No fitment/removal requests yet</td></tr>';
   } else {
     all.slice().sort(function(a,b){return (b.requestDate||b.dateFitted||'').localeCompare(a.requestDate||a.dateFitted||'');}).forEach(function(f){
       var s=(f.status||'').toUpperCase();
@@ -5380,7 +5381,7 @@ function renderTyreFitRequests() {
         : isApproved ? '<span class="sb sR">APPROVED</span>'
         : '<span class="sb sNR">REJECTED</span>';
       var rowBg = isPend?(isIss?'#fffbeb':'#fff5f5'):isApproved?'#f0fdf4':isRejected?'#fef2f2':'';
-      var search = [f.reqNo||'',typeLabel,f.tyreSerial||'',brandSize,f.vehicle||'',f.position||'',f.jobCardNo||'',f.driverName||'',f.removedReason||'',f.requestedBy||'',statusLabel].join(' ').toLowerCase();
+      var search = [f.reqNo||'',typeLabel,f.tyreSerial||'',brandSize,f.vehicle||'',f.position||'',f.jobCardNo||'',f.driverName||'',f.removedReason||'',f.removalNotes||'',f.requestedBy||'',statusLabel].join(' ').toLowerCase();
       html += '<tr data-search="'+search+'" style="background:'+rowBg+'">'
         + '<td style="text-align:center"><input type="checkbox" class="fitreq-chk" data-id="'+f.id+'" onchange="onFitReqCheck(this)" '+(isChk?'checked':'')+' style="cursor:pointer;width:14px;height:14px;accent-color:var(--ac)"></td>'
         + '<td style="font-family:monospace;font-size:11px"><span class="reqbadge">'+(f.reqNo||f.id||'')+'</span></td>'
@@ -5393,6 +5394,7 @@ function renderTyreFitRequests() {
         + '<td style="font-family:monospace">'+(f.jobCardNo||'\u2014')+'</td>'
         + '<td>'+(f.driverName||'\u2014')+'</td>'
         + '<td style="font-size:11px">'+(f.removedReason||'\u2014')+'</td>'
+        + '<td style="font-size:11px;max-width:160px">'+(f.removalNotes||'\u2014')+'</td>'
         + '<td style="font-size:11px">'+(isIss?'\u2014':(f.nextStatus||'\u2014'))+'</td>'
         + '<td>'+(f.requestedBy||'\u2014')+'</td>'
         + '<td style="font-size:11px">'+fmtDate(f.requestDate||f.dateFitted)+'</td>'
@@ -5461,6 +5463,7 @@ function printFitRequests(){
       +'<td>'+(r.jobCardNo||'')+'</td>'
       +'<td>'+(r.driverName||'')+'</td>'
       +'<td>'+(r.removedReason||'')+'</td>'
+      +'<td>'+(r.removalNotes||'')+'</td>'
       +'</tr>';
   });
   var html='<!DOCTYPE html><html><head><meta charset="UTF-8"><title>AK Transport \u2014 Tyre Fitment/Removal Request</title>'
@@ -5497,6 +5500,7 @@ function printFitRequests(){
     +'<th style="width:80px">Job Card</th>'
     +'<th>Driver</th>'
     +'<th>Reason</th>'
+    +'<th>Notes</th>'
     +'</tr></thead>'
     +'<tbody>'+tblRows+'</tbody>'
     +'</table>'
@@ -5522,7 +5526,7 @@ function printFitRequests(){
 function exportFitRequests(){
   var rows=TYRE_FITS||[];
   if(!rows.length){toast('No records to export','er');return;}
-  var cols=['Req No','Type','Serial No','Brand/Size','Vehicle','Position','Job Card','Driver','Reason','Requested By','Request Date','Status','Approved/Rejected By'];
+  var cols=['Req No','Type','Serial No','Brand/Size','Vehicle','Position','Job Card','Driver','Reason','Notes','Requested By','Request Date','Status','Approved/Rejected By'];
   var csv=[cols.join(',')];
   rows.forEach(function(r){
     var tyre=(TYRES||[]).find(function(t){return t.serialNo===r.tyreSerial;})||{};
@@ -5531,7 +5535,7 @@ function exportFitRequests(){
     var type=s==='PENDING ISSUANCE'||s==='ACTIVE'?'ISSUANCE':'REMOVAL';
     var statusLabel=s==='ACTIVE'||s==='CLOSED'?'APPROVED':s;
     var processedBy=s==='ACTIVE'||s==='CLOSED'?(r.approvedBy||''):(r.rejectedBy||'');
-    csv.push([(r.reqNo||r.id||''),type,(r.tyreSerial||''),bs,(r.vehicle||''),(r.position||''),(r.jobCardNo||''),(r.driverName||''),(r.removedReason||''),(r.requestedBy||''),(r.requestDate||r.dateFitted||''),statusLabel,processedBy].map(function(v){return '"'+String(v||'').replace(/"/g,'""')+'"';}).join(','));
+    csv.push([(r.reqNo||r.id||''),type,(r.tyreSerial||''),bs,(r.vehicle||''),(r.position||''),(r.jobCardNo||''),(r.driverName||''),(r.removedReason||''),(r.removalNotes||''),(r.requestedBy||''),(r.requestDate||r.dateFitted||''),statusLabel,processedBy].map(function(v){return '"'+String(v||'').replace(/"/g,'""')+'"';}).join(','));
   });
   var blob=new Blob([csv.join('\n')],{type:'text/csv'});
   var a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='fitment_requests_'+todayStr()+'.csv';a.click();
@@ -5562,6 +5566,7 @@ function _doFitReqEdit(rows){
       +'<div><label style="font-size:11px;font-weight:600;color:#555;display:block;margin-bottom:4px">Driver <span style="color:#aaa;font-weight:400">(auto)</span></label><input value="'+(r.driverName||'')+'" readonly style="'+fsL+'"></div>'
       +'<div><label style="font-size:11px;font-weight:600;color:#555;display:block;margin-bottom:4px">KM at Fitting <span style="color:#aaa;font-weight:400">(auto)</span></label><input value="'+(r.kmAtFitting||0)+'" readonly style="'+fsL+'"></div>'
       +'<div style="grid-column:1/-1"><label style="font-size:11px;font-weight:600;color:#555;display:block;margin-bottom:4px">Reason Removed</label><input id="fre_reason_'+r.id+'" value="'+(r.removedReason||'')+'" '+(locked?'readonly':'')+' style="'+(locked?fsL:fs)+'"></div>'
+      +'<div style="grid-column:1/-1"><label style="font-size:11px;font-weight:600;color:#555;display:block;margin-bottom:4px">Notes</label><input id="fre_notes_'+r.id+'" value="'+(r.removalNotes||'')+'" '+(locked?'readonly':'')+' style="'+(locked?fsL:fs)+'"></div>'
       +'</div>'
       +'<div style="font-size:11px;color:#6b7280;margin-top:8px;background:#f3f4f6;padding:6px 10px;border-radius:6px">\u2139 Vehicle, Position, Job Card, Driver and KM are pulled from the tyre fitment \u2014 only Serial No and Reason Removed can be changed.</div>'
       +(locked?'<div style="font-size:11px;color:#b45309;margin-top:6px;background:#fffbeb;padding:6px 10px;border-radius:6px">\u26a0 Record is locked (approved/rejected). Password was required.</div>':'')+'</div>';
@@ -5581,7 +5586,8 @@ async function saveFitReqEdit(){
     var locked=s==='ACTIVE'||s==='CLOSED'||s==='REJECTED';
     var updated=Object.assign({},r,{
       tyreSerial:   locked?r.tyreSerial:((document.getElementById('fre_serial_'+r.id)||{value:r.tyreSerial||''}).value||r.tyreSerial||''),
-      removedReason:locked?r.removedReason:((document.getElementById('fre_reason_'+r.id)||{value:r.removedReason||''}).value||r.removedReason||'')
+      removedReason:locked?r.removedReason:((document.getElementById('fre_reason_'+r.id)||{value:r.removedReason||''}).value||r.removedReason||''),
+      removalNotes: locked?r.removalNotes:((document.getElementById('fre_notes_'+r.id)||{value:r.removalNotes||''}).value||r.removalNotes||'')
     });
     try{
       var res=await callAPI('updateFitRequest',{record:updated});
@@ -8190,15 +8196,16 @@ function addRemoveTyreLine() {
   var tyreOpts = '<option value="">Select tyre (FITTED)...</option>'
     + (TYRES||[]).filter(function(t){return t.status==='FITTED' && !usedRemSerials.includes(t.serialNo);}).map(function(t){
         return '<option value="'+t.serialNo+'">'+t.serialNo+' \u2014 '+t.brand+' '+t.size+' on '+t.currentVehicle+' ('+t.currentPosition+')</option>';}).join('');
-  var reasonOpts = ['','ROTATION','WORN \u2014 End of Life','PUNCTURE / DAMAGE','SENDING FOR RETREAD','BREAKDOWN','OTHER']
+  var reasonOpts = ['','ROTATION','MOVEMENT','WORN \u2014 SPARE','WORN \u2014 FIT TO BE REUSED','WORN \u2014 END OF LIFE','PUNCTURE','DAMAGE \u2014 SPARE','DAMAGE \u2014 END OF LIFE','DAMAGE \u2014 TO BE REUSED','SENDING FOR RETREAD','BREAKDOWN','OTHER']
     .map(function(r){return '<option value="'+r+'">'+r+'</option>';}).join('');
   var nextOpts = '<option value="IN STORE">IN STORE</option><option value="RETREADING">RETREADING</option><option value="SCRAPPED">SCRAPPED</option>';
   var div = document.createElement('div');
   div.id = 'rem_line_'+n;
-  div.style.cssText = 'display:grid;grid-template-columns:2fr 1.5fr 1.5fr 1fr;gap:8px;align-items:center;padding:8px;background:#fff;border:1.5px solid #e2e2e7;border-radius:9px';
+  div.style.cssText = 'display:grid;grid-template-columns:1.8fr 1.4fr 1.2fr 1.8fr 0.6fr;gap:8px;align-items:center;padding:8px;background:#fff;border:1.5px solid #e2e2e7;border-radius:9px';
   div.innerHTML = '<select id="rem_ser_'+n+'" onchange="refreshRemTyreOpts(this.id,this.value)" style="'+fs+'">'+tyreOpts+'</select>'
     + '<select id="rem_rsn_'+n+'" style="'+fs+'">'+reasonOpts+'</select>'
     + '<select id="rem_nxt_'+n+'" style="'+fs+'">'+nextOpts+'</select>'
+    + '<input id="rem_notes_'+n+'" type="text" placeholder="Notes *" style="'+fs+'">'
     + '<div style="display:flex;gap:6px;align-items:center">'
     + (n>1?'<button onclick="document.getElementById(\'rem_line_'+n+'\').remove();refreshRemTyreOpts()" style="background:none;border:none;color:#dc2626;cursor:pointer;font-size:18px;line-height:1">\u2715</button>':'<span style="width:22px"></span>')
     + '</div>';
@@ -9034,10 +9041,12 @@ async function saveRemoveTyre() {
     var serial=(document.getElementById('rem_ser_'+n)||{}).value||'';
     var reason=(document.getElementById('rem_rsn_'+n)||{}).value||'';
     var nextSt=(document.getElementById('rem_nxt_'+n)||{}).value||'IN STORE';
+    var notes=((document.getElementById('rem_notes_'+n)||{}).value||'').trim();
     if(!serial||!reason){toast('Line '+(i+1)+': Tyre and Reason required','er');return;}
+    if(!notes){toast('Line '+(i+1)+': Notes is required','er');return;}
     var pendRem=(TYRE_FITS||[]).find(function(f){return f.tyreSerial===serial&&(f.status||'').toUpperCase()==='PENDING REMOVAL';});
     if(pendRem){toast('Line '+(i+1)+': Tyre '+serial+' already has a PENDING REMOVAL request ('+( pendRem.reqNo||'')+'). Approve or reject it first.','er');return;}
-    remLines.push({serial:serial,reason:reason,nextSt:nextSt});
+    remLines.push({serial:serial,reason:reason,nextSt:nextSt,notes:notes});
   }
   if(!remLines.length){toast('Add at least one tyre line','er');return;}
   // Block duplicate serials
@@ -9052,7 +9061,7 @@ async function saveRemoveTyre() {
   var saved=0,failed=0;
   var remResults=await Promise.all(remLines.map(function(line,j){
     var reqNo=pregenRemReqNos[j];
-    return callAPI('removeTyre',{reqNo:reqNo,serialNo:line.serial,dateRemoved:dateRem,kmAtRemoval:kmRem,reason:line.reason,nextStatus:line.nextSt,status:'PENDING REMOVAL',requestedBy:reqBy,category:'REMOVAL'}).then(function(res){
+    return callAPI('removeTyre',{reqNo:reqNo,serialNo:line.serial,dateRemoved:dateRem,kmAtRemoval:kmRem,reason:line.reason,nextStatus:line.nextSt,status:'PENDING REMOVAL',requestedBy:reqBy,category:'REMOVAL',removalNotes:line.notes}).then(function(res){
       if(res&&res.success)return {ok:true};
       return {ok:false,err:res&&res.error?res.error:'Failed'};
     }).catch(function(e){return {ok:false,err:e.message||e};});
@@ -16703,10 +16712,11 @@ history.pushState(null, '', window.location.href);
         <div style="font-size:10px;font-weight:700;color:var(--ac);text-transform:uppercase;letter-spacing:.08em">&#128260; Removal Lines</div>
         <button class="btn bp" style="font-size:12px;padding:6px 16px" onclick="addRemoveTyreLine()">+ Add Tyre</button>
       </div>
-      <div style="display:grid;grid-template-columns:2fr 1.5fr 1.5fr 1fr;gap:8px;padding:0 4px;margin-bottom:4px">
+      <div style="display:grid;grid-template-columns:1.8fr 1.4fr 1.2fr 1.8fr 0.6fr;gap:8px;padding:0 4px;margin-bottom:4px">
         <span style="font-size:10px;font-weight:700;color:#888;text-transform:uppercase">Tyre Serial (Fitted) *</span>
         <span style="font-size:10px;font-weight:700;color:#888;text-transform:uppercase">Reason *</span>
         <span style="font-size:10px;font-weight:700;color:#888;text-transform:uppercase">Next Status *</span>
+        <span style="font-size:10px;font-weight:700;color:#888;text-transform:uppercase">Notes *</span>
         <span style="font-size:10px;font-weight:700;color:#888"></span>
       </div>
     </div>
