@@ -1656,7 +1656,7 @@ window.onerror = function(msg, src, line, col, err) {
   return false;
 };
 
-const API = 'https://script.google.com/macros/s/AKfycbwJ2801Er0p9OdbVtIuJysV_g5KRJmA-zWLDn4cKk6jsIkZ5N1OOVni1OFETPWsu8HJbg/exec';
+const API = 'https://script.google.com/macros/s/AKfycbzgJJNp1epgqQyIEPDvlYBgH0TTGgH4aSMF_dmlCalFZjZmzp4lZf906jL-MMPTa3ej3Q/exec';
 const APP_VERSION = '1780059676';
 
 // Version check removed for local file compatibility
@@ -2933,7 +2933,7 @@ function renderDashDrivers(){
     var d=(r.driverName||'').trim().toUpperCase();
     if(EXCLUDED.indexOf(d)>=0)return;
     if((r.status||'').toUpperCase()!=='RECEIVED')return;
-    if(!drvMap[d])drvMap[d]={total:0,count:0,ws:0,bd:0,trucks:{}};
+    if(!drvMap[d])drvMap[d]={total:0,count:0,ws:0,bd:0,tyreCost:0,batCost:0,trucks:{}};
     var cost=parseFloat(r.cost)||0;
     drvMap[d].total+=cost; drvMap[d].count++;
     var cat=(r.category||'').toUpperCase();
@@ -2965,9 +2965,9 @@ function renderDashDrivers(){
           &&(x.dateFitted||'')<(f.dateFitted||'');
       });
       if(priorFits.length>0)return;
-      if(!drvMap[d])drvMap[d]={total:0,count:0,ws:0,bd:0,trucks:{}};
+      if(!drvMap[d])drvMap[d]={total:0,count:0,ws:0,bd:0,tyreCost:0,batCost:0,trucks:{}};
       drvMap[d].total+=cost;
-      drvMap[d].ws+=cost;
+      drvMap[d].tyreCost+=cost;
       if(jc.vehicle)drvMap[d].trucks[String(jc.vehicle||'').trim().toUpperCase()]=1;
     });
   } catch(e){ console.error('Tyre driver cost error:',e); }
@@ -2988,9 +2988,9 @@ function renderDashDrivers(){
       var bat=(BATTERIES||[]).find(function(b){return String(b.batteryRef||'').trim().toUpperCase()===ref;});
       var cost=bat?parseFloat(bat.purchasePrice||bat.unitPrice||0):0;
       if(!cost)return;
-      if(!drvMap[d])drvMap[d]={total:0,count:0,ws:0,bd:0,trucks:{}};
+      if(!drvMap[d])drvMap[d]={total:0,count:0,ws:0,bd:0,tyreCost:0,batCost:0,trucks:{}};
       drvMap[d].total+=cost;
-      drvMap[d].ws+=cost;
+      drvMap[d].batCost+=cost;
       if(jc.vehicle)drvMap[d].trucks[String(jc.vehicle||'').trim().toUpperCase()]=1;
     });
   } catch(e){ console.error('Battery driver cost error:',e); }
@@ -3032,6 +3032,8 @@ function renderDashDrivers(){
       '<div style="display:flex;gap:14px;flex-wrap:wrap">' +
         '<span style="font-size:10px;color:#0a2d6e;font-weight:600">🏭 Workshop Spend: '+d[1].ws.toLocaleString()+'</span>' +
         '<span style="font-size:10px;color:#b91c1c;font-weight:600">🔧 Breakdown Spend: '+d[1].bd.toLocaleString()+'</span>' +
+        (d[1].tyreCost?'<span style="font-size:10px;color:#166534;font-weight:600">🛞 Tyre Spend: '+d[1].tyreCost.toLocaleString()+'</span>':'') +
+        (d[1].batCost?'<span style="font-size:10px;color:#92400e;font-weight:600">🔋 Battery Spend: '+d[1].batCost.toLocaleString()+'</span>':'') +
         (jc.total?'<span style="font-size:10px;color:#6b7280">📋 JCs: '+jc.total+' ('+jc.completed+' done'+(jc.stalled?' · '+jc.stalled+' stalled':'')+')</span>':'') +
         (avgD!==null?'<span style="font-size:10px;color:#6b7280">⏱ Avg '+avgD+'d/JC</span>':'') +
       '</div>' +
@@ -3061,6 +3063,8 @@ function renderDashDrivers(){
         '<div style="display:flex;gap:14px;flex-wrap:wrap">' +
           '<span style="font-size:10px;color:#0a2d6e;font-weight:600">🏭 Workshop Spend: '+d[1].ws.toLocaleString()+'</span>' +
           '<span style="font-size:10px;color:#b91c1c;font-weight:600">🔧 Breakdown Spend: '+d[1].bd.toLocaleString()+'</span>' +
+          (d[1].tyreCost?'<span style="font-size:10px;color:#166534;font-weight:600">🛞 Tyre Spend: '+d[1].tyreCost.toLocaleString()+'</span>':'') +
+          (d[1].batCost?'<span style="font-size:10px;color:#92400e;font-weight:600">🔋 Battery Spend: '+d[1].batCost.toLocaleString()+'</span>':'') +
           (jc.total?'<span style="font-size:10px;color:#6b7280">📋 JCs: '+jc.total+' ('+jc.completed+' done'+(jc.stalled?' · '+jc.stalled+' stalled':'')+')</span>':'') +
           (avgD!==null?'<span style="font-size:10px;color:#6b7280">⏱ Avg '+avgD+'d/JC</span>':'') +
         '</div>' +
@@ -7537,7 +7541,7 @@ function addBatPOLine() {
   div.id = 'bpo_line_'+n;
   div.style.cssText = 'display:grid;grid-template-columns:2fr 1fr 90px 80px 120px 110px 100px 1fr;gap:8px;align-items:center;padding:8px;background:#fff;border:1.5px solid #e2e2e7;border-radius:9px';
   div.innerHTML = '<select id="bpo_sup_'+n+'" style="'+fs+'">'+suppOpts+'</select>'
-    + '<select id="bpo_brand_'+n+'" style="'+fs+'"><option value="">Select brand...</option><option value="AOKLY">AOKLY</option><option value="DISCOVERY">DISCOVERY</option><option value="ELEPHANT">ELEPHANT</option><option value="APEX DRIVE">APEX DRIVE</option><option value="WENON">WENON</option><option value="BOSCH">BOSCH</option><option value="AMARON">AMARON</option><option value="VATRA">VATRA</option><option value="CHLORIDE EXIDE">CHLORIDE EXIDE</option><option value="INDEX">INDEX</option><option value="RHINO">RHINO</option><option value="BUFFALO">BUFFALO</option><option value="EVERSTART">EVERSTART</option><option value="KOJEAN">KOJEAN</option></select>'
+    + '<select id="bpo_brand_'+n+'" style="'+fs+'"><option value="">Select brand...</option><option value="AOKLY">AOKLY</option><option value="DISCOVERY">DISCOVERY</option><option value="ELEPHANT">ELEPHANT</option><option value="APEX DRIVE">APEX DRIVE</option><option value="WENON">WENON</option><option value="BOSCH">BOSCH</option><option value="AMARON">AMARON</option><option value="VATRA">VATRA</option><option value="CHLORIDE EXIDE">CHLORIDE EXIDE</option><option value="INDEX">INDEX</option><option value="RHINO">RHINO</option><option value="BUFFALO">BUFFALO</option><option value="EVERSTART">EVERSTART</option><option value="KOJEAN">KOJEAN</option><option value="GALAXY">GALAXY</option></select>'
     + '<select id="bpo_size_'+n+'" style="'+fs+'"><option value="">Select size...</option><option value="N150">N150</option><option value="N180">N180</option><option value="N200">N200</option><option value="N225">N225</option><option value="N165">N165</option></select>'
     + '<input type="number" id="bpo_qty_'+n+'" placeholder="Qty" min="1" style="'+fs+'" oninput="calcBatPOTotal('+n+')">'
     + '<input type="number" id="bpo_price_'+n+'" placeholder="e.g. 150000" min="0" style="'+fs+'" oninput="calcBatPOTotal('+n+')">'
@@ -12200,17 +12204,18 @@ async function saveStoreRequisition(){
   var saved=0,failed=0;
 
   if (editId) {
-    // UPDATE existing record
+    // UPDATE existing record — backend now handles inventory sync atomically.
+    // If status is becoming RECEIVED and inventory sync fails server-side,
+    // the backend returns an error and does NOT mark the requisition RECEIVED,
+    // so the two stay in sync (no silent partial state).
     try {
       var res = await callAPI('updateStoreReq', {record: lines[0]});
-      if (res && res.success !== false) {
+      if (res && res.error) {
+        toast(res.error, 'er');
+        failed = 1;
+      } else if (res && res.success !== false) {
         var ix = (STORE_REQS||[]).findIndex(function(r){ return r.id === editId; });
-        var prevStatus = ix !== -1 ? (STORE_REQS[ix].status||'').toUpperCase() : '';
         if (ix !== -1) STORE_REQS[ix] = Object.assign({}, STORE_REQS[ix], lines[0]);
-        // If status just changed to RECEIVED, update inventory
-        if (lines[0].status === 'RECEIVED' && prevStatus !== 'RECEIVED') {
-          await _sreqUpdateInventory(lines[0]);
-        }
         saved = 1;
       } else failed = 1;
     } catch(e) { failed = 1; }
@@ -12218,11 +12223,11 @@ async function saveStoreRequisition(){
     // ADD new records - fire all in parallel
     if(btn)btn.textContent='Saving '+lines.length+' record'+(lines.length>1?'s':'')+'...';
     var addResults = await Promise.all(lines.map(function(line,li){
-      return callAPI('addStoreReq',{record:line}).then(async function(res){
+      return callAPI('addStoreReq',{record:line}).then(function(res){
         if(res&&res.success!==false){
           var newRec=Object.assign({id:res.id||(Date.now()+'_'+li)},line);
           STORE_REQS.push(newRec);
-          if(line.status==='RECEIVED') await _sreqUpdateInventory(line);
+          if (res.inventoryWarning) toast('⚠️ '+line.reqNo+': '+res.inventoryWarning, 'er');
           return {ok:true};
         } return {ok:false};
       }).catch(function(){return {ok:false};});
@@ -12235,53 +12240,16 @@ async function saveStoreRequisition(){
   if(modal) modal.removeAttribute('data-edit-id');
   closeModal('sreqmodal');
   renderStoreRequisition(_sreqCurrentFilter||'all');
+  // Refresh inventory from backend so the just-synced row appears immediately
+  callAPI('getStoreInventory').then(function(r){if(r&&r.records)STORE_INVENTORY=r.records;}).catch(function(){});
   if(saved>0)toast(editId ? 'Updated ✓' : 'Saved '+saved+' store requisition'+(saved>1?'s':'')+' ✓','ok');
   if(failed>0)toast(failed+' line(s) failed','er');
 }
 
-// Add a received store requisition to inventory (or update qty if part+supplier already exists)
-async function _sreqUpdateInventory(rec) {
-  try {
-    var partName = (rec.description||'').toUpperCase();
-    var supplier = (rec.supplier||'').toUpperCase();
-    var lpoNo    = (rec.lpoNo||'').toUpperCase();
-    var qty      = Number(rec.qty||0);
-    var unitPrice= Number(rec.unitPrice||0);
-    // Match on Part + Supplier + LPO - each batch is a separate inventory row
-    var existing = (STORE_INVENTORY||[]).find(function(r){
-      return (r.partName||'').toUpperCase() === partName
-          && (r.supplier||'').toUpperCase()  === supplier
-          && (r.partCode||'').toUpperCase()  === lpoNo;
-    });
-    if (existing) {
-      var newQty  = Number(existing.qtyOnHand||0) + qty;
-      var updated = Object.assign({}, existing, { qtyOnHand: newQty, unitPrice: unitPrice });
-      var res = await callAPI('updateStoreItem', { record: updated });
-      if (res && res.success !== false) {
-        var ix = STORE_INVENTORY.findIndex(function(r){ return r.id === existing.id; });
-        if (ix !== -1) STORE_INVENTORY[ix] = updated;
-      }
-    } else {
-      var newInv = {
-        id:            'INV-' + Date.now(),
-        partCode:      lpoNo,
-        partName:      partName,
-        supplier:      supplier,
-        unitPrice:     unitPrice,
-        qtyOnHand:     qty,
-        minStockLevel: 0,
-        location:      '',
-        remarks:       'From Store Req ' + (rec.reqNo||'')
-      };
-      var res2 = await callAPI('addRecord', { sheetName: 'STORE_INVENTORY', record: newInv });
-      if (res2 && res2.success !== false) {
-        STORE_INVENTORY.push(Object.assign({}, newInv, { id: res2.id || newInv.id }));
-      }
-    }
-  } catch(e) {
-    console.warn('Inventory update failed:', e);
-  }
-}
+// NOTE: Store Inventory sync on RECEIVED is now handled atomically on the backend
+// (see updateStoreReqWithInventory / addStoreReqWithInventory in Apps Script).
+// This removes the old two-step client-side gap where a requisition could be
+// marked RECEIVED while the matching inventory write silently failed.
 
 // -- ISSUE FROM STORE --
 var _issLineCount=0;
@@ -12823,21 +12791,20 @@ async function saveSReqBulkEdit() {
   var saved=0,failed=0;
   // Parallel - all records fired at once, no 600ms delays
   var bulkRes=await Promise.all(updates.map(function(rec){
-    var prevStat='';
-    var ixp=(STORE_REQS||[]).findIndex(function(r){return r.id===rec.id;});
-    if(ixp!==-1) prevStat=(STORE_REQS[ixp].status||'').toUpperCase();
-    return callAPI('updateStoreReq',{record:upperRecord(rec)}).then(async function(res){
+    return callAPI('updateStoreReq',{record:upperRecord(rec)}).then(function(res){
+      if(res&&res.error){
+        toast(rec.reqNo+': '+res.error,'er');
+        return {ok:false};
+      }
       if(res&&res.success!==false){
         var ix2=(STORE_REQS||[]).findIndex(function(r){return r.id===rec.id;});
         if(ix2!==-1)STORE_REQS[ix2]=upperRecord(rec);
-        if((rec.status||'').toUpperCase()==='RECEIVED'&&prevStat!=='RECEIVED'){
-          await _sreqUpdateInventory(rec);
-        }
         return {ok:true};
       } return {ok:false};
     }).catch(function(){return {ok:false};});
   }));
   bulkRes.forEach(function(r){if(r.ok)saved++;else failed++;});
+  callAPI('getStoreInventory').then(function(r){if(r&&r.records)STORE_INVENTORY=r.records;}).catch(function(){});
   if(btn){btn.disabled=false;btn.textContent='💾 Save All Changes';}
   document.getElementById('sreqbulkmodal').classList.add('hidden');
   sreqClearSelection();
