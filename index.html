@@ -2111,41 +2111,50 @@ function dashSectionWithBtn(title, btnFn, btnColor){
 function truckCostMap(){
   var map={};
   // RECEIVED requisitions only
-  ALL.forEach(function(r){
-    if(!r.truck||!r.cost)return;
-    if((r.status||'').toUpperCase()!=='RECEIVED')return;
-    var t=r.truck.trim().toUpperCase();
-    if(!map[t])map[t]={total:0,ws:0,bd:0,oh:0,np:0,count:0,tyreCost:0,batCost:0};
-    var cost=parseFloat(r.cost)||0;
-    map[t].total+=cost; map[t].count++;
-    var cat=(r.category||'').toUpperCase();
-    if(cat==='WORKSHOP')map[t].ws+=cost;
-    else if(cat==='BREAKDOWN')map[t].bd+=cost;
-  });
+  try {
+    ALL.forEach(function(r){
+      if(!r.truck||!r.cost)return;
+      if(String(r.status||'').toUpperCase()!=='RECEIVED')return;
+      var t=String(r.truck||'').trim().toUpperCase();
+      if(!t)return;
+      if(!map[t])map[t]={total:0,ws:0,bd:0,oh:0,np:0,count:0,tyreCost:0,batCost:0};
+      var cost=parseFloat(r.cost)||0;
+      map[t].total+=cost; map[t].count++;
+      var cat=String(r.category||'').toUpperCase();
+      if(cat==='WORKSHOP')map[t].ws+=cost;
+      else if(cat==='BREAKDOWN')map[t].bd+=cost;
+    });
+  } catch(e){ console.error('truckCostMap workshop error:',e); }
   // Add fitted tyre costs (job card confirmed = has jobCardNo)
-  (TYRE_FITS||[]).forEach(function(f){
-    if(!f.vehicle||!f.jobCardNo)return;
-    var v=f.vehicle.trim().toUpperCase();
-    var serial=(f.tyreSerial||'').trim().toUpperCase();
-    var tyre=(TYRES||[]).find(function(t){return (t.serialNo||'').trim().toUpperCase()===serial;});
-    var cost=tyre?parseFloat(tyre.purchasePrice||0):0;
-    if(!cost)return;
-    if(!map[v])map[v]={total:0,ws:0,bd:0,oh:0,np:0,count:0,tyreCost:0,batCost:0};
-    map[v].tyreCost+=cost;
-    map[v].total+=cost;
-  });
+  try {
+    (TYRE_FITS||[]).forEach(function(f){
+      if(!f.vehicle||!f.jobCardNo)return;
+      var v=String(f.vehicle||'').trim().toUpperCase();
+      if(!v)return;
+      var serial=String(f.tyreSerial||'').trim().toUpperCase();
+      var tyre=(TYRES||[]).find(function(t){return String(t.serialNo||'').trim().toUpperCase()===serial;});
+      var cost=tyre?parseFloat(tyre.purchasePrice||0):0;
+      if(!cost)return;
+      if(!map[v])map[v]={total:0,ws:0,bd:0,oh:0,np:0,count:0,tyreCost:0,batCost:0};
+      map[v].tyreCost+=cost;
+      map[v].total+=cost;
+    });
+  } catch(e){ console.error('truckCostMap tyre error:',e); }
   // Add fitted battery costs (job card confirmed = has jobCardNo)
-  (BAT_FITS||[]).forEach(function(f){
-    if(!f.vehicle||!f.jobCardNo)return;
-    var v=f.vehicle.trim().toUpperCase();
-    var ref=(f.batteryRef||'').trim().toUpperCase();
-    var bat=(BATTERIES||[]).find(function(b){return (b.batteryRef||'').trim().toUpperCase()===ref;});
-    var cost=bat?parseFloat(bat.purchasePrice||bat.unitPrice||0):0;
-    if(!cost)return;
-    if(!map[v])map[v]={total:0,ws:0,bd:0,oh:0,np:0,count:0,tyreCost:0,batCost:0};
-    map[v].batCost+=cost;
-    map[v].total+=cost;
-  });
+  try {
+    (BAT_FITS||[]).forEach(function(f){
+      if(!f.vehicle||!f.jobCardNo)return;
+      var v=String(f.vehicle||'').trim().toUpperCase();
+      if(!v)return;
+      var ref=String(f.batteryRef||'').trim().toUpperCase();
+      var bat=(BATTERIES||[]).find(function(b){return String(b.batteryRef||'').trim().toUpperCase()===ref;});
+      var cost=bat?parseFloat(bat.purchasePrice||bat.unitPrice||0):0;
+      if(!cost)return;
+      if(!map[v])map[v]={total:0,ws:0,bd:0,oh:0,np:0,count:0,tyreCost:0,batCost:0};
+      map[v].batCost+=cost;
+      map[v].total+=cost;
+    });
+  } catch(e){ console.error('truckCostMap battery error:',e); }
   return map;
 }
 function monthLabel(d){ var m=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']; return m[d.getMonth()]+' '+d.getFullYear().toString().slice(2); }
@@ -2725,11 +2734,13 @@ function renderDashFleet(){
   window._applyFleetFilter = applyFleetFilter;
 
   var spikes = [];
-  Object.entries(map).forEach(function(e){
-    var tm=0,lm=0;
-    ALL.forEach(function(r){if(r.truck&&r.truck.trim().toUpperCase()===e[0]&&r.cost){var d=(r.dateReceived||r.dateRequested||'').substring(0,7);if(d===thisM)tm+=parseFloat(r.cost)||0;if(d===lastM)lm+=parseFloat(r.cost)||0;}});
-    if(lm>0&&tm>lm*1.5)spikes.push({truck:e[0],tm:tm,lm:lm,pct:Math.round(((tm-lm)/lm)*100)});
-  });
+  try {
+    Object.entries(map).forEach(function(e){
+      var tm=0,lm=0;
+      ALL.forEach(function(r){if(r.truck&&String(r.truck||'').trim().toUpperCase()===e[0]&&r.cost){var d=(r.dateReceived||r.dateRequested||'').substring(0,7);if(d===thisM)tm+=parseFloat(r.cost)||0;if(d===lastM)lm+=parseFloat(r.cost)||0;}});
+      if(lm>0&&tm>lm*1.5)spikes.push({truck:e[0],tm:tm,lm:lm,pct:Math.round(((tm-lm)/lm)*100)});
+    });
+  } catch(e){ console.error('renderDashFleet spikes error:',e); }
   spikes.sort(function(a,b){return b.pct-a.pct;});
 
   var spikeHTML = '';
@@ -2780,23 +2791,27 @@ function renderDashFleet(){
 // -- TAB 3: BREAKDOWNS --
 function renderDashBreakdowns(){
   var bdMap={};
-  ALL.forEach(function(r){
-    if((r.category||'').toUpperCase()!=='BREAKDOWN')return;
-    var t=(r.truck||'').trim().toUpperCase(); if(!t)return;
-    if(!bdMap[t])bdMap[t]={count:0,cost:0,jcs:{}};
-    bdMap[t].count++; bdMap[t].cost+=parseFloat(r.cost)||0;
-    if(r.jobCardNo)bdMap[t].jcs[r.jobCardNo.toUpperCase()]=1;
-  });
+  try {
+    ALL.forEach(function(r){
+      if(String(r.category||'').toUpperCase()!=='BREAKDOWN')return;
+      var t=String(r.truck||'').trim().toUpperCase(); if(!t)return;
+      if(!bdMap[t])bdMap[t]={count:0,cost:0,jcs:{}};
+      bdMap[t].count++; bdMap[t].cost+=parseFloat(r.cost)||0;
+      if(r.jobCardNo)bdMap[t].jcs[String(r.jobCardNo||'').toUpperCase()]=1;
+    });
+  } catch(e){ console.error('renderDashBreakdowns bdMap error:',e); }
   var bdTrucks=Object.entries(bdMap).sort(function(a,b){return b[1].count-a[1].count;});
   var maxBD=bdTrucks.length?bdTrucks[0][1].count:1;
 
   var partTruckMap={};
-  ALL.forEach(function(r){
-    var t=(r.truck||'').trim().toUpperCase(); var d=(r.description||'').trim().toUpperCase();
-    if(!t||!d)return;
-    var key=t+'||'+d;
-    partTruckMap[key]=(partTruckMap[key]||0)+1;
-  });
+  try {
+    ALL.forEach(function(r){
+      var t=String(r.truck||'').trim().toUpperCase(); var d=String(r.description||'').trim().toUpperCase();
+      if(!t||!d)return;
+      var key=t+'||'+d;
+      partTruckMap[key]=(partTruckMap[key]||0)+1;
+    });
+  } catch(e){ console.error('renderDashBreakdowns partTruckMap error:',e); }
   var recurring=Object.entries(partTruckMap).filter(function(e){return e[1]>=3;}).sort(function(a,b){return b[1]-a[1];}).slice(0,10);
 
   var rows=bdTrucks.map(function(t){
