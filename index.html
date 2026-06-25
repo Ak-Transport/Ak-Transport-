@@ -676,6 +676,7 @@ body.no-delete .actbtn.d:not(.ws-action):not(.jc-action):not(.fleet-action):not(
         <div onclick="openFreeReq();closeAllNDrops()">📝 Multi Requisition</div>
         <div onclick="openMultiReq();closeAllNDrops()">🚛 Single-Truck Requisition</div>
         <div onclick="openSupplierReq();closeAllNDrops()">🏪 Single-Supplier Requisition</div>
+        <div onclick="openSpareMoveForm();closeAllNDrops()">📦 Spare Movement Request</div>
       </div></div>
     <div class="newwrap-item" id="ndwrap-jc"><button class="nb-btn" onclick="toggleNDrop('nd_jc')">+ Job Card &#9662;</button>
       <div class="newdrop" id="nd_jc" style="min-width:160px">
@@ -918,6 +919,23 @@ body.no-delete .actbtn.d:not(.ws-action):not(.jc-action):not(.fleet-action):not(
         <div class="navitem" id="nav-bat_sales" onclick="switchView('bat_sales')">
           <span style="width:8px;height:8px;border-radius:50%;background:#f87171;flex-shrink:0;display:inline-block"></span>
           Battery Sales<span class="navbadge" id="badge-bat_sales">0</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Spare Movement -->
+    <div class="nav-section" id="navsec-sparemove">
+      <div class="nav-section-header" onclick="toggleNavSection('sparemove')">
+        <span>📦 Spare Movement</span><span class="nav-arrow">&#9658;</span>
+      </div>
+      <div class="nav-section-body">
+        <div class="navitem" id="nav-spm_requests" onclick="switchView('spm_requests')">
+          <span style="width:8px;height:8px;border-radius:50%;background:#60a5fa;flex-shrink:0;display:inline-block"></span>
+          Spare Movement Requests<span class="navbadge" id="badge-spm_requests">0</span>
+        </div>
+        <div class="navitem" id="nav-spm_hold" onclick="switchView('spm_hold')">
+          <span style="width:8px;height:8px;border-radius:50%;background:#f59e0b;flex-shrink:0;display:inline-block"></span>
+          Spare Movement On Hold<span class="navbadge" id="badge-spm_hold">0</span>
         </div>
       </div>
     </div>
@@ -1656,7 +1674,7 @@ window.onerror = function(msg, src, line, col, err) {
   return false;
 };
 
-const API = 'https://script.google.com/macros/s/AKfycbzgJJNp1epgqQyIEPDvlYBgH0TTGgH4aSMF_dmlCalFZjZmzp4lZf906jL-MMPTa3ej3Q/exec';
+const API = 'https://script.google.com/macros/s/AKfycbxY9gBOJatR7dab-YQf0naezfHzMMPZaPKnnfJbv6qK7pNVwVVTVSPf6nyl1YnZCF6hHQ/exec';
 const APP_VERSION = '1780059676';
 
 // Version check removed for local file compatibility
@@ -1789,23 +1807,23 @@ function buildRow(r,isRO){
   return `<tr data-id="${r.id}">
     <td style="text-align:center;width:36px"><input type="checkbox" class="row-chk" data-id="${r.id}" onchange="onRowCheck(this)" style="cursor:pointer;width:14px;height:14px;accent-color:var(--ac)"></td>
     <td><span class="reqbadge">${r.reqNo||''}</span></td>
-    <td>${fd(r.dateRequested)}</td><td><b>${r.truck||''}</b></td>
-    <td style="color:var(--t2);font-size:10px">${r.vehicleType||''}</td>
-    <td>${r.driverName||''}</td><td>${ph}</td>
-    <td style="color:var(--t2);font-size:10px">${r.jobCardNo||''}</td>
-    <td style="color:var(--t2);font-size:10px;font-family:monospace">${r.lpoNo||''}</td>
+    <td>${fd(r.dateRequested)}</td><td><b title="${r.truck||''}">${r.truck||''}</b></td>
+    <td style="color:var(--t2);font-size:10px" title="${r.vehicleType||''}">${r.vehicleType||''}</td>
+    <td title="${r.driverName||''}">${r.driverName||''}</td><td>${ph}</td>
+    <td style="color:var(--t2);font-size:10px" title="${r.jobCardNo||''}">${r.jobCardNo||''}</td>
+    <td style="color:var(--t2);font-size:10px;font-family:monospace" title="${r.lpoNo||''}">${r.lpoNo||''}</td>
     <td title="${desc}">${desc.length>28?desc.substring(0,28)+'…':desc}</td>
     <td style="font-family:monospace">${r.qty||''}</td>
     <td style="font-family:monospace">${r.unitPrice?Number(r.unitPrice).toLocaleString():''}</td>
     <td style="font-family:monospace;color:var(--ac);font-weight:600">${r.cost?Number(r.cost).toLocaleString():''}</td>
-    <td>${r.supplier||''}</td><td>${fd(r.dateReceived)}</td>
+    <td title="${r.supplier||''}">${r.supplier||''}</td><td>${fd(r.dateReceived)}</td>
     <td><span class="sb ${sc[r.status]||''}">${r.status||''}</span></td>
-    <td style="color:var(--t2);font-size:10px">${r.paymentMode||''}</td>
-    <td style="color:var(--t2);font-size:10px">${r.category||''}</td>
-    <td style="color:var(--t2);font-size:10px">${r.requestedBy||''}</td>
+    <td style="color:var(--t2);font-size:10px" title="${r.paymentMode||''}">${r.paymentMode||''}</td>
+    <td style="color:var(--t2);font-size:10px" title="${r.category||''}">${r.category||''}</td>
+    <td style="color:var(--t2);font-size:10px" title="${r.requestedBy||''}">${r.requestedBy||''}</td>
     <td style="color:var(--t2);font-size:10px">${fd(r.dateIssued)}</td>
     <td style="color:var(--t2);font-size:11px;min-width:80px" title="${r.remarks||''}">${(r.remarks||'').length>25?(r.remarks||'').substring(0,25)+'…':(r.remarks||'')}</td>
-    ${(function(){var i=getJCInfo(r.jobCardNo);return '<td style="font-size:12px">'+i.orderStatus+'</td><td style="font-size:12px;color:var(--t2)">'+i.clientName+'</td>';})()}
+    ${(function(){var i=getJCInfo(r.jobCardNo);return '<td style="font-size:12px" title="'+(i.orderStatus||'')+'">'+i.orderStatus+'</td><td style="font-size:12px;color:var(--t2)" title="'+(i.clientName||'')+'">'+i.clientName+'</td>';})()}
     ${ac}</tr>`;
 }
 
@@ -1847,7 +1865,7 @@ function switchView(v){
   openNavSection(v);
   currentView = v;
   // Hide all floating selection bars on view change
-  var _bars = ['tyreFitReqFilterRow','storeinvfilterrow','sreq_selbar','iss_req_selbar','iph_selbar','bat_remhold_selbar','tyre_remhold_selbar','tyre_scrap_selbar','tinv_selbar','batinv_selbar','batsales_selbar','selectionbar','tpo_selbar','fitreq_selbar','batfitreq_selbar','bpo_selbar'];
+  var _bars = ['tyreFitReqFilterRow','storeinvfilterrow','sreq_selbar','iss_req_selbar','iph_selbar','bat_remhold_selbar','tyre_remhold_selbar','tyre_scrap_selbar','tinv_selbar','batinv_selbar','batsales_selbar','selectionbar','tpo_selbar','fitreq_selbar','batfitreq_selbar','bpo_selbar','spm_selbar'];
   _bars.forEach(function(bid){ var b=document.getElementById(bid); if(b) b.style.display='none'; });
   _sreqSelected.clear();
   _issPendingSelected.clear();
@@ -1891,7 +1909,7 @@ function switchView(v){
   // -- View categories --
   var tyreViews    = ['tyre_inventory','tyre_pos','tyre_pos_rcv','tyre_pos_prcv','tyre_pos_pnr','tyre_pos_np','tyre_grns','tyre_fitted','tyre_fit_requests','tyre_rem_hold','tyre_scrap'];
   var batViews     = ['bat_inventory','bat_pos','bat_pos_rcv','bat_pos_prcv','bat_pos_pnr','bat_pos_np','bat_grns','bat_fitted','bat_fit_requests','bat_rem_hold','bat_sales'];
-  var storeViews   = ['storeinv','storereq','storercv','storereq_rcv','storereq_oh','storereq_pnr','storereq_np','storeiss','iss_pending'];
+  var storeViews   = ['storeinv','storereq','storercv','storereq_rcv','storereq_oh','storereq_pnr','storereq_np','storeiss','iss_pending','spm_requests','spm_hold'];
   var sreqViews    = ['storereq','storereq_rcv','storereq_pnr','storereq_np','storereq_oh'];
   var genericViews = ['drivers','vehicles','suppliers','spareparts'];
   var noTableViews = ['dashboard','suppliers','spareparts','jobcards','jcsummary','drivers','vehicles'].concat(storeViews).concat(tyreViews).concat(batViews);
@@ -2016,6 +2034,24 @@ function switchView(v){
     return;
   }
   if(v==='bat_sales')       { renderBatSales();        return; }
+  // Spare Movement views
+  if(v==='spm_requests'){
+    renderSpareMovements('all');
+    callAPI('getSpareMovements').then(function(r2){
+      if(r2&&r2.records){SPARE_MOVES=r2.records;if(currentView==='spm_requests')renderSpareMovements('all');}
+      else if(r2&&r2.error){toast('Failed to refresh Spare Movements: '+r2.error,'er');}
+    }).catch(function(){toast('Failed to refresh Spare Movements - showing cached data','er');});
+    return;
+  }
+  if(v==='spm_hold'){
+    if(!can('sparemove_approve')){toast('No permission to access Spare Movement On Hold','er');return;}
+    renderSpareMovements('PENDING');
+    callAPI('getSpareMovements').then(function(r2){
+      if(r2&&r2.records){SPARE_MOVES=r2.records;if(currentView==='spm_hold')renderSpareMovements('PENDING');}
+      else if(r2&&r2.error){toast('Failed to refresh Spare Movements: '+r2.error,'er');}
+    }).catch(function(){toast('Failed to refresh Spare Movements - showing cached data','er');});
+    return;
+  }
   // Workshop views
   buildHeader();
   applyFilters();
@@ -3414,12 +3450,15 @@ function updateBadges(){
   var bbgrn=document.getElementById('badge-bat_grns'); if(bbgrn) bbgrn.textContent=(BAT_GRNS||[]).length;
   // Battery Sales badge - show pending count
   var bbsal=document.getElementById('badge-bat_sales'); if(bbsal) bbsal.textContent=(BAT_SALES||[]).filter(function(r){return (r.status||'').toUpperCase()==='PENDING';}).length;
+  // Spare Movement badges
+  var bspmr=document.getElementById('badge-spm_requests'); if(bspmr) bspmr.textContent=(SPARE_MOVES||[]).length;
+  var bspmh=document.getElementById('badge-spm_hold'); if(bspmh) bspmh.textContent=(SPARE_MOVES||[]).filter(function(r){return (r.status||'').toUpperCase()==='PENDING';}).length;
   // Tyre scrap pending
   var btsp=document.getElementById('badge-tyre_scrap_pend'); if(btsp) btsp.textContent=(TYRE_SCRAPS||[]).filter(function(r){return (r.status||'').toUpperCase()==='PENDING';}).length;
 }
 
 // -- API --
-const READ_ACTIONS=['getAll','getSuppliers','getSpareParts','getJobCards','getDrivers','getVehicles','getStoreInventory','getStoreReqs','getStoreIssuances','getPendingIssuances','getTyres','getTyrePOs','getTyreGRNs','getTyreFitments','getTyreScrapSales','getBatteryPOs','getBatteryGRNs','getBatteries','getBatteryFitments','getBatterySales','getUsers','getSignedPdf','getFolderUrl'];
+const READ_ACTIONS=['getAll','getSuppliers','getSpareParts','getJobCards','getDrivers','getVehicles','getStoreInventory','getStoreReqs','getStoreIssuances','getPendingIssuances','getTyres','getTyrePOs','getTyreGRNs','getTyreFitments','getTyreScrapSales','getBatteryPOs','getBatteryGRNs','getBatteries','getBatteryFitments','getBatterySales','getSpareMovements','getUsers','getSignedPdf','getFolderUrl'];
 async function callAPI(action, data={}) {
   if (action==='getAll') setSyncStatus('sy');
   // Large batch operations get more time
@@ -4571,10 +4610,11 @@ var _navSectionMap = {
   'drivers':'fleet','vehicles':'fleet',
   'tyre_inventory':'tyres','tyre_grns':'tyres','tyre_pos':'tyres','tyre_pos_rcv':'tyres','tyre_pos_prcv':'tyres','tyre_pos_pnr':'tyres','tyre_pos_np':'tyres','tyre_grns':'tyres','tyre_fitted':'tyres','tyre_fit_requests':'tyres','tyre_rem_hold':'tyres','tyre_scrap':'tyres','bat_inventory':'batteries','bat_pos':'batteries','bat_pos_rcv':'batteries','bat_pos_prcv':'batteries','bat_pos_pnr':'batteries','bat_pos_np':'batteries','bat_grns':'batteries','bat_fitted':'batteries','bat_fit_requests':'batteries','bat_rem_hold':'batteries','bat_sales':'batteries',
   'suppliers':'suppliers','spareparts':'suppliers','usermgmt':'suppliers',
+  'spm_requests':'sparemove','spm_hold':'sparemove',
   'dashboard':'dashboard'
 };
 function toggleNavSection(id) {
-  var sections = ['workshop','jobcards','store','fleet','suppliers','tyres','batteries'];
+  var sections = ['workshop','jobcards','store','fleet','suppliers','tyres','batteries','sparemove'];
   sections.forEach(function(sec) {
     var hdr  = document.querySelector('#navsec-'+sec+' .nav-section-header');
     var body = document.querySelector('#navsec-'+sec+' .nav-section-body');
@@ -4592,7 +4632,7 @@ function toggleNavSection(id) {
 function openNavSection(view) {
   var sec = _navSectionMap[view];
   if (!sec || sec === 'dashboard') return;
-  var sections = ['workshop','jobcards','store','fleet','suppliers','tyres','batteries'];
+  var sections = ['workshop','jobcards','store','fleet','suppliers','tyres','batteries','sparemove'];
   sections.forEach(function(s) {
     var hdr  = document.querySelector('#navsec-'+s+' .nav-section-header');
     var body = document.querySelector('#navsec-'+s+' .nav-section-body');
@@ -7509,6 +7549,584 @@ async function approveBatterySale(id){
     toast(res&&res.error?res.error:'Approval failed','er');
     if(btn){btn.disabled=false;btn.textContent='\u2713 Approve';}
   }
+}
+
+
+// ═══════════════════ SPARE MOVEMENT (isolated from Workshop Requisitions) ═══════════════════
+var _spmCurrentFilter = 'all';
+var _spmSelected = new Set();
+function renderSpareMovements(filter) {
+  _spmCurrentFilter = filter || 'all';
+  _spmSelected.clear();
+  document.getElementById('viewtitle').textContent = filter==='PENDING' ? 'Spare Movement On Hold' : 'Spare Movement Requests';
+  var isAdmin = (window.CURRENT_USER && (window.CURRENT_USER.role === 'admin' || can('store_approve')));
+  var all = (SPARE_MOVES||[]).slice().sort(function(a,b){ return (b.dateRequested||'').localeCompare(a.dateRequested||''); });
+  document.getElementById('viewsub').textContent = all.length + ' request' + (all.length!==1?'s':'');
+
+  var fieldOpts = '<option value="reqNo">\ud83d\udd22 Req No</option>'
+    + '<option value="dateRequested">\ud83d\udcc5 Date Requested</option>'
+    + '<option value="truck">\ud83d\ude9b Truck</option>'
+    + '<option value="partName">\ud83d\udd27 Part</option>'
+    + '<option value="dateProcessed">\ud83d\udcc5 Date Processed</option>';
+
+  var html = '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">'
+    + '<div style="display:flex;gap:6px">'
+    + '<select id="SPMF1" style="background:var(--s1);border:1.5px solid var(--ac);border-radius:8px;padding:8px 10px;color:#1d3c6e;font-size:12px;font-weight:600;outline:none;cursor:pointer;width:148px;flex-shrink:0" onchange="onSpmFieldChange()">'
+    + '<option value="">\u2014 Filter 1 \u2014</option>' + fieldOpts
+    + '</select>'
+    + '<input type="text" id="SPMV1" placeholder="Search..." autocomplete="off" spellcheck="false" style="flex:1;min-width:0;background:var(--s1);border:1.5px solid var(--br);border-radius:8px;padding:8px 12px;color:var(--tx);font-size:13px;outline:none" oninput="applySpmFilter()">'
+    + '</div>'
+    + '<div style="display:flex;gap:6px">'
+    + '<select id="SPMF2" style="background:var(--s1);border:1.5px solid var(--ac);border-radius:8px;padding:8px 10px;color:#1d3c6e;font-size:12px;font-weight:600;outline:none;cursor:pointer;width:148px;flex-shrink:0" onchange="onSpmFieldChange()">'
+    + '<option value="">\u2014 Filter 2 \u2014</option>' + fieldOpts
+    + '</select>'
+    + '<input type="text" id="SPMV2" placeholder="Optional..." autocomplete="off" spellcheck="false" style="flex:1;min-width:0;background:var(--s1);border:1.5px solid var(--br);border-radius:8px;padding:8px 12px;color:var(--tx);font-size:13px;outline:none" oninput="applySpmFilter()">'
+    + '</div>'
+    + '<div id="spm_daterangerow" style="display:none;grid-column:1/-1">'
+    + '<div style="display:flex;gap:8px;align-items:center;background:rgba(29,60,110,.05);border:1px solid rgba(29,60,110,.15);border-radius:8px;padding:8px 12px">'
+    + '<span style="font-size:11px;font-weight:700;color:var(--ac);white-space:nowrap">\ud83d\udcc5 Date Range:</span>'
+    + '<input type="date" id="SPM_DATE_FROM" onchange="applySpmFilter()" title="From date">'
+    + '<span style="color:var(--t2);font-size:12px">to</span>'
+    + '<input type="date" id="SPM_DATE_TO" onchange="applySpmFilter()" title="To date">'
+    + '<span id="spm_daterange_label" style="font-size:11px;color:var(--t3);margin-left:4px"></span>'
+    + '<button class="btn bg" onclick="clearSpmDateRange()" style="padding:5px 10px;font-size:11px;margin-left:auto">\u2715 Clear Dates</button>'
+    + '</div>'
+    + '</div>'
+    + '</div>';
+
+  html += '<div style="display:flex;gap:10px;margin-bottom:12px;align-items:center">'
+    + '<select id="spmStatusFilter" style="padding:8px 10px;border:1.5px solid var(--br);border-radius:8px;font-size:12px" onchange="applySpmFilter()">'
+    + '<option value="">All Status</option><option value="PENDING">Pending</option><option value="APPROVED">Approved</option><option value="REJECTED">Rejected</option>'
+    + '</select>'
+    + '<button class="btn bg" onclick="clearSpmFilter()" style="padding:8px 14px;font-size:12px">\u2715 Clear</button>'
+    + '</div>';
+
+  html += '<div class="tyre-scroll-wrap"><table id="spmTable"><thead><tr>'
+    + '<th style="width:36px;text-align:center"><input type="checkbox" id="spm_chk_all" onclick="toggleAllSpm(this)" style="cursor:pointer;width:14px;height:14px;accent-color:var(--ac)"></th>'
+    + '<th>Req No</th><th>Date</th><th>Truck</th><th>Part</th><th>Current Worth</th><th>Reason</th><th>Notes</th><th>Requested By</th><th>Status</th><th>Approved/Rejected By</th><th>Date Processed</th><th>Actions</th>'
+    + '</tr></thead><tbody id="spmTbody">';
+  if (!all.length) {
+    html += '<tr><td colspan="13" style="text-align:center;color:var(--t3);padding:40px">No spare movement requests yet</td></tr>';
+  }
+  var isOnHold = (_spmCurrentFilter === 'PENDING');
+  all.forEach(function(r){
+    var s = (r.status||'').toUpperCase();
+    var sBadge = s==='APPROVED' ? 'sR' : s==='REJECTED' ? 'sNR' : 'sPNR';
+    var processedBy = s==='APPROVED' ? (r.approvedBy||'\u2014') : s==='REJECTED' ? (r.rejectedBy||'\u2014') : '\u2014';
+    var dateProcessed = s==='APPROVED' ? (fmtDate(r.dateApproved||'')||'\u2014') : s==='REJECTED' ? (fmtDate(r.dateRejected||'')||'\u2014') : '\u2014';
+    var canAct = isAdmin && s==='PENDING';
+    var isChk = _spmSelected.has(r.id);
+    var actionsCell = isOnHold
+      ? (canAct
+          ? '<button class="actbtn e store-approve-action" onclick="approveSpareMove(\''+r.id+'\')" style="font-size:11px">\u2705 Approve</button> <button class="actbtn d store-approve-action" onclick="rejectSpareMove(\''+r.id+'\')" style="font-size:11px">\u274c Reject</button>'
+          : '<button class="actbtn e" onclick="printSpareMove(\''+r.id+'\')" style="font-size:11px">\ud83d\udda8 Print</button>')
+      : '<button class="actbtn e" onclick="editSpareMove(\''+r.id+'\')" style="font-size:11px">\u270f Edit</button> <button class="actbtn d" onclick="deleteSpareMove(\''+r.id+'\')" style="font-size:11px">\ud83d\uddd1</button>';
+    html += '<tr data-dateprocessed="'+(dateProcessed!=='\u2014'?dateProcessed:'')+'">'
+      + '<td style="width:36px;text-align:center"><input type="checkbox" class="spm-chk" data-id="'+r.id+'" onchange="onSpmCheck(this)" '+(isChk?'checked':'')+' style="cursor:pointer;width:14px;height:14px;accent-color:var(--ac)"></td>'
+      + '<td><span class="reqbadge" style="cursor:pointer;text-decoration:underline" onclick="printSpareMove(\''+r.id+'\')">'+(r.reqNo||'')+'</span></td>'
+      + '<td style="font-size:11px">'+fmtDate(r.dateRequested||'')+'</td>'
+      + '<td style="font-weight:700">'+(r.truck||'')+'</td>'
+      + '<td>'+(r.partName||'')+'</td>'
+      + '<td style="font-family:monospace">'+(r.currentWorth?Number(r.currentWorth).toLocaleString():'')+'</td>'
+      + '<td style="font-size:11px">'+(r.reason||'')+'</td>'
+      + '<td style="font-size:11px;max-width:160px">'+(r.notes||'')+'</td>'
+      + '<td style="font-size:11px">'+(r.requestedBy||'')+'</td>'
+      + '<td><span class="sb '+sBadge+'">'+s+'</span></td>'
+      + '<td style="font-size:11px">'+processedBy+'</td>'
+      + '<td style="font-size:11px">'+dateProcessed+'</td>'
+      + '<td>'+actionsCell+'</td>'
+      + '</tr>';
+  });
+  html += '</tbody></table></div>';
+  document.getElementById('storecontent').innerHTML = html;
+  document.getElementById('storecontent').style.display = 'block';
+  updateSpmSelBar();
+}
+
+var SPM_DATE_FIELDS = ['dateRequested','dateProcessed'];
+var SPM_DATE_LABELS = { dateRequested:'Date Requested', dateProcessed:'Date Processed' };
+
+function onSpmFieldChange() {
+  var activeField = ['SPMF1','SPMF2'].map(function(id){ return (document.getElementById(id)||{}).value||''; }).find(function(v){ return SPM_DATE_FIELDS.includes(v); });
+  var drRow = document.getElementById('spm_daterangerow');
+  var lbl = document.getElementById('spm_daterange_label');
+  if (activeField) {
+    if (drRow) drRow.style.display = 'block';
+    if (lbl) lbl.textContent = 'Filtering by: ' + SPM_DATE_LABELS[activeField];
+    ['SPMF1','SPMF2'].forEach(function(fid, idx) {
+      if ((document.getElementById(fid)||{}).value === activeField) {
+        var inp = document.getElementById('SPMV'+(idx+1));
+        if (inp) { inp.value=''; inp.disabled=true; inp.placeholder='Use date pickers above'; }
+      }
+    });
+  } else {
+    if (drRow) drRow.style.display = 'none';
+    ['SPMV1','SPMV2'].forEach(function(id){ var el=document.getElementById(id); if(el){el.disabled=false; el.placeholder = id==='SPMV1'?'Search...':'Optional...';} });
+  }
+  applySpmFilter();
+}
+
+function clearSpmDateRange() {
+  ['SPM_DATE_FROM','SPM_DATE_TO'].forEach(function(id){ var el=document.getElementById(id); if(el) el.value=''; });
+  applySpmFilter();
+}
+
+function applySpmFilter() {
+  var f1 = (document.getElementById('SPMF1')||{}).value || '';
+  var v1 = ((document.getElementById('SPMV1')||{}).value || '').trim().toLowerCase();
+  var f2 = (document.getElementById('SPMF2')||{}).value || '';
+  var v2 = ((document.getElementById('SPMV2')||{}).value || '').trim().toLowerCase();
+  var st = (document.getElementById('spmStatusFilter')||{}).value || '';
+  var dFrom = (document.getElementById('SPM_DATE_FROM')||{}).value || '';
+  var dTo = (document.getElementById('SPM_DATE_TO')||{}).value || '';
+  var activeDateField = ['SPMF1','SPMF2'].map(function(id){ return (document.getElementById(id)||{}).value||''; }).find(function(v){ return SPM_DATE_FIELDS.includes(v); });
+  var all = (SPARE_MOVES||[]).slice().sort(function(a,b){ return (b.dateRequested||'').localeCompare(a.dateRequested||''); });
+
+  var fieldVal = function(r, field) {
+    if (field === 'dateProcessed') {
+      var s2 = (r.status||'').toUpperCase();
+      return s2==='APPROVED' ? (r.dateApproved||'') : s2==='REJECTED' ? (r.dateRejected||'') : '';
+    }
+    return r[field] || '';
+  };
+
+  var rows = document.querySelectorAll('#spmTbody tr');
+  var idx = 0;
+  all.forEach(function(r){
+    var tr = rows[idx]; idx++;
+    if (!tr) return;
+    var statusMatch = !st || (r.status||'').toUpperCase()===st;
+    var f1Match = SPM_DATE_FIELDS.includes(f1) || !f1 || !v1 || String(fieldVal(r,f1)).toLowerCase().indexOf(v1) >= 0;
+    var f2Match = SPM_DATE_FIELDS.includes(f2) || !f2 || !v2 || String(fieldVal(r,f2)).toLowerCase().indexOf(v2) >= 0;
+    var dateMatch = true;
+    if (activeDateField && (dFrom || dTo)) {
+      var dv = fieldVal(r, activeDateField);
+      if (dFrom && dv < dFrom) dateMatch = false;
+      if (dTo && dv > dTo) dateMatch = false;
+    }
+    tr.style.display = (statusMatch && f1Match && f2Match && dateMatch) ? '' : 'none';
+  });
+}
+
+function clearSpmFilter() {
+  ['SPMF1','SPMV1','SPMF2','SPMV2','spmStatusFilter','SPM_DATE_FROM','SPM_DATE_TO'].forEach(function(id){ var el=document.getElementById(id); if(el) el.value=''; });
+  ['SPMV1','SPMV2'].forEach(function(id){ var el=document.getElementById(id); if(el) el.disabled=false; });
+  document.getElementById('SPMV1').placeholder='Search...';
+  document.getElementById('SPMV2').placeholder='Optional...';
+  var drRow = document.getElementById('spm_daterangerow'); if(drRow) drRow.style.display='none';
+  applySpmFilter();
+}
+
+// -- SPARE MOVEMENT SELECTION --
+function onSpmCheck(cb) {
+  var id = cb.getAttribute('data-id');
+  if (cb.checked) _spmSelected.add(id);
+  else _spmSelected.delete(id);
+  updateSpmSelBar();
+}
+function toggleAllSpm(masterCb) {
+  var cbs = document.querySelectorAll('.spm-chk');
+  cbs.forEach(function(cb){
+    if (cb.closest('tr').style.display === 'none') return;
+    cb.checked = masterCb.checked;
+    var id = cb.getAttribute('data-id');
+    if (masterCb.checked) _spmSelected.add(id);
+    else _spmSelected.delete(id);
+  });
+  updateSpmSelBar();
+}
+function spmClearSelection() {
+  _spmSelected.clear();
+  document.querySelectorAll('.spm-chk').forEach(function(cb){ cb.checked=false; });
+  var ma = document.getElementById('spm_chk_all'); if(ma) ma.checked=false;
+  updateSpmSelBar();
+}
+function updateSpmSelBar() {
+  var bar = document.getElementById('spm_selbar');
+  var cnt = document.getElementById('spm_selcount');
+  if (!bar) return;
+  if (_spmSelected.size > 0) {
+    bar.style.display = 'flex';
+    if (cnt) cnt.textContent = _spmSelected.size + ' row' + (_spmSelected.size > 1 ? 's' : '') + ' selected';
+  } else {
+    bar.style.display = 'none';
+  }
+}
+function spmExportExcel() {
+  var ids = Array.from(_spmSelected);
+  var rows = (SPARE_MOVES||[]).filter(function(r){ return ids.includes(r.id); });
+  if (!rows.length) { toast('No rows selected','er'); return; }
+  var cols = ['reqNo','dateRequested','truck','partName','currentWorth','reason','notes','requestedBy','status','approvedBy','dateApproved','rejectedBy','dateRejected'];
+  var headers = ['Req No','Date Requested','Truck','Part','Current Worth','Reason','Notes','Requested By','Status','Approved By','Date Approved','Rejected By','Date Rejected'];
+  var wb = XLSX.utils.book_new();
+  var wsData = [headers].concat(rows.map(function(r){ return cols.map(function(c){ return r[c]||''; }); }));
+  var ws = XLSX.utils.aoa_to_sheet(wsData);
+  XLSX.utils.book_append_sheet(wb, ws, 'Spare Movements');
+  XLSX.writeFile(wb, 'Spare_Movements_' + todayStr() + '.xlsx');
+}
+function spmExportPdf() {
+  var ids = Array.from(_spmSelected);
+  var rows = (SPARE_MOVES||[]).filter(function(r){ return ids.includes(r.id); });
+  if (!rows.length) { toast('No rows selected','er'); return; }
+  var printDate = fmtDate(todayStr());
+  var totalWorth = rows.reduce(function(s,r){ return s+(parseFloat(r.currentWorth)||0); }, 0);
+  var tblRows = '';
+  rows.forEach(function(r,i){
+    var s = (r.status||'').toUpperCase();
+    tblRows += '<tr>'
+      + '<td style="text-align:center">'+(i+1)+'</td>'
+      + '<td style="font-family:monospace">'+(r.reqNo||'')+'</td>'
+      + '<td>'+fmtDate(r.dateRequested||'')+'</td>'
+      + '<td><b>'+(r.truck||'')+'</b></td>'
+      + '<td>'+(r.partName||'')+'</td>'
+      + '<td style="text-align:right;font-weight:700">'+(r.currentWorth?Number(r.currentWorth).toLocaleString('en-US',{minimumFractionDigits:2}):'')+'</td>'
+      + '<td>'+(r.reason||'')+'</td>'
+      + '<td>'+s+'</td>'
+      + '</tr>';
+  });
+  var html = '<!DOCTYPE html><html><head><meta charset="UTF-8"><title>AK Transport \u2014 Spare Movement Requests</title>'
+    +'<style>'
+    +'*{box-sizing:border-box;margin:0;padding:0}'
+    +'body{font-family:Arial,Helvetica,sans-serif;font-size:11px;color:#000;background:#fff;padding:20px}'
+    +'@media print{@page{margin:12mm;size:A4}body{padding:0}}'
+    +'table{width:100%;border-collapse:collapse}'
+    +'.tbl-main thead th{background:#fff;color:#000;padding:7px 6px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;border:1.5px solid #000}'
+    +'.tbl-main tbody td{padding:6px;border:1px solid #000;font-size:10px;vertical-align:middle;color:#000}'
+    +'.tbl-main tbody tr:nth-child(even) td{background:#f9f9f9}'
+    +'.tbl-main tfoot td{padding:7px 6px;border:1.5px solid #000;font-weight:700;background:#efefef;color:#000}'
+    +'.sig-box{border:1px solid #000;border-radius:4px;padding:14px 18px}'
+    +'</style></head><body>'
+    +'<table style="margin-bottom:14px"><tr>'
+    +'<td style="vertical-align:middle;padding:4px 0">'
+    +'<div style="font-size:22px;font-weight:900;color:#000;letter-spacing:-.3px">AK TRANSPORT</div>'
+    +'<div style="font-size:10px;color:#444;margin-top:3px;letter-spacing:.06em;text-transform:uppercase">Spare Movement Requests</div>'
+    +'</td>'
+    +'<td style="text-align:right;vertical-align:top;min-width:160px">'
+    +'<div style="display:inline-block;text-align:right">'
+    +'<div style="font-size:9px;color:#555;text-transform:uppercase;letter-spacing:.06em">Date Printed</div>'
+    +'<div style="font-size:12px;font-weight:700;color:#000;margin-bottom:6px">'+printDate+'</div>'
+    +'</div></td></tr></table>'
+    +'<div style="height:3px;background:#0a2d6e;border-radius:2px;margin-bottom:14px"></div>'
+    +'<table class="tbl-main" style="margin-bottom:20px">'
+    +'<thead><tr>'
+    +'<th style="width:22px;text-align:center">#</th>'
+    +'<th style="width:80px">Req No</th>'
+    +'<th style="width:68px">Date</th>'
+    +'<th style="width:80px">Truck</th>'
+    +'<th>Part</th>'
+    +'<th style="width:90px;text-align:right">Current Worth</th>'
+    +'<th style="width:130px">Reason</th>'
+    +'<th style="width:80px">Status</th>'
+    +'</tr></thead>'
+    +'<tbody>'+tblRows+'</tbody>'
+    +'<tfoot><tr>'
+    +'<td colspan="5" style="text-align:right;font-size:11px;color:#0a2d6e">GRAND TOTAL</td>'
+    +'<td style="text-align:right;font-size:12px;color:#0a2d6e">'+totalWorth.toLocaleString('en-US',{minimumFractionDigits:2})+'</td>'
+    +'<td colspan="2"></td>'
+    +'</tr></tfoot>'
+    +'</table>'
+    +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:24px;margin-top:8px">'
+    +'<div class="sig-box">'
+    +'<div style="font-size:10px;font-weight:700;color:#0a2d6e;text-transform:uppercase;letter-spacing:.1em;margin-bottom:20px;padding-bottom:6px;border-bottom:2px solid #0a2d6e">Requested By</div>'
+    +'<div style="margin-bottom:28px"><div style="font-size:10px;color:#888;margin-bottom:4px">Full Name</div><div style="border-bottom:1px solid #aaa;height:22px"></div></div>'
+    +'<div style="display:grid;grid-template-columns:2fr 1fr;gap:16px">'
+    +'<div><div style="font-size:10px;color:#888;margin-bottom:4px">Signature</div><div style="border-bottom:1px solid #aaa;height:34px"></div></div>'
+    +'<div><div style="font-size:10px;color:#888;margin-bottom:4px">Date</div><div style="border-bottom:1px solid #aaa;height:34px"></div></div>'
+    +'</div></div>'
+    +'<div class="sig-box">'
+    +'<div style="font-size:10px;font-weight:700;color:#0a2d6e;text-transform:uppercase;letter-spacing:.1em;margin-bottom:20px;padding-bottom:6px;border-bottom:2px solid #0a2d6e">Approved By</div>'
+    +'<div style="margin-bottom:28px"><div style="font-size:10px;color:#888;margin-bottom:4px">Full Name</div><div style="border-bottom:1px solid #aaa;height:22px"></div></div>'
+    +'<div style="display:grid;grid-template-columns:2fr 1fr;gap:16px">'
+    +'<div><div style="font-size:10px;color:#888;margin-bottom:4px">Signature</div><div style="border-bottom:1px solid #aaa;height:34px"></div></div>'
+    +'<div><div style="font-size:10px;color:#888;margin-bottom:4px">Date</div><div style="border-bottom:1px solid #aaa;height:34px"></div></div>'
+    +'</div></div></div>'
+    +'<div style="margin-top:20px;padding-top:10px;border-top:1px solid #e0e0e0;font-size:9px;color:#999;text-align:center">AK Transport \u2014 Workshop Management System \u2014 Generated '+printDate+'</div>'
+    +'<scr'+'ipt>window.onload=function(){window.print();window.onafterprint=function(){window.close();};};</'+'script>'
+    +'</body></html>';
+  var w = window.open('','_blank','width=1000,height=700');
+  if (w) { w.document.write(html); w.document.close(); } else toast('Pop-up blocked','er');
+}
+
+var _spmEditId = null;
+function openSpareMoveForm() {
+  if (!can('sparemove_create') && !can('sparemove')) { toast('No permission to create spare movement requests','er'); return; }
+  var modal = document.getElementById('spareMoveModal');
+  if (!modal) { toast('Spare Movement form not found','er'); return; }
+  _spmEditId = null;
+  modal.classList.remove('hidden');
+  var titleEl = document.getElementById('spm_modal_title'); if (titleEl) titleEl.textContent = '📦 New Spare Movement Request';
+  var saveBtn2 = document.getElementById('spm_save_btn'); if (saveBtn2) saveBtn2.textContent = '💾 Submit Request';
+  document.getElementById('spm_date').value = todayStr();
+  document.getElementById('spm_reqby').value = '';
+  document.getElementById('spm_truck').value = '';
+  document.getElementById('spm_part').value = '';
+  document.getElementById('spm_worth').value = '';
+  document.getElementById('spm_reason').value = '';
+  document.getElementById('spm_notes').value = '';
+  // Populate truck dropdown
+  var truckSel = document.getElementById('spm_truck');
+  if (truckSel.tomselect) truckSel.tomselect.destroy();
+  truckSel.innerHTML = '<option value="">Select truck...</option>';
+  (VEHICLES||[]).filter(function(v){return v.status!=='INACTIVE';}).forEach(function(v){
+    var o = document.createElement('option'); o.value = v.plate; o.textContent = v.plate + (v.vehicleType?' ('+v.vehicleType+')':'');
+    truckSel.appendChild(o);
+  });
+  new TomSelect(truckSel, { allowEmptyOption:true, placeholder:'Search truck...', dropdownParent:'body', maxOptions:500 });
+  // Populate spare part dropdown
+  var partSel = document.getElementById('spm_part');
+  if (partSel.tomselect) partSel.tomselect.destroy();
+  partSel.innerHTML = '<option value="">Select spare part...</option>';
+  (SPAREPARTS||[]).filter(function(p){return p.status!=='INACTIVE';}).forEach(function(p){
+    var o = document.createElement('option'); o.value = p.name; o.setAttribute('data-code', p.code||''); o.textContent = (p.code?p.code+' - ':'')+p.name;
+    partSel.appendChild(o);
+  });
+  new TomSelect(partSel, { allowEmptyOption:true, placeholder:'Search spare part...', dropdownParent:'body', maxOptions:500 });
+}
+
+function editSpareMove(id) {
+  if (!can('sparemove_edit') && !can('sparemove')) { toast('No permission to edit spare movement requests','er'); return; }
+  var r = (SPARE_MOVES||[]).find(function(x){return x.id===id;});
+  if (!r) { toast('Request not found','er'); return; }
+  var doEditSpm = function() {
+    openSpareMoveForm();
+    _spmEditId = id;
+    var titleEl2 = document.getElementById('spm_modal_title'); if (titleEl2) titleEl2.textContent = '✏ Edit Spare Movement Request';
+    var saveBtn = document.getElementById('spm_save_btn'); if (saveBtn) saveBtn.textContent = '💾 Update Request';
+    document.getElementById('spm_date').value = r.dateRequested || todayStr();
+    document.getElementById('spm_reqby').value = r.requestedBy || '';
+    var truckSelEdit = document.getElementById('spm_truck');
+    if (truckSelEdit.tomselect) truckSelEdit.tomselect.setValue(r.truck || '', true); else truckSelEdit.value = r.truck || '';
+    var partSelEdit = document.getElementById('spm_part');
+    if (partSelEdit.tomselect) partSelEdit.tomselect.setValue(r.partName || '', true); else partSelEdit.value = r.partName || '';
+    document.getElementById('spm_worth').value = r.currentWorth || '';
+    document.getElementById('spm_reason').value = r.reason || '';
+    document.getElementById('spm_notes').value = r.notes || '';
+  };
+  if ((r.status||'').toUpperCase() === 'APPROVED') askPassword(doEditSpm);
+  else doEditSpm();
+}
+
+async function saveSpareMove() {
+  var truck = (document.getElementById('spm_truck')||{}).value || '';
+  var partSel = document.getElementById('spm_part');
+  var part = partSel ? partSel.value : '';
+  var partRec = (SPAREPARTS||[]).find(function(p){ return p.name === part; });
+  var partCode = partRec ? (partRec.code||'') : '';
+  var worth = parseFloat((document.getElementById('spm_worth')||{}).value) || 0;
+  var reason = (document.getElementById('spm_reason')||{}).value || '';
+  var notes = ((document.getElementById('spm_notes')||{}).value || '').trim();
+  var reqBy = (document.getElementById('spm_reqby')||{}).value || '';
+  var date = (document.getElementById('spm_date')||{}).value || todayStr();
+
+  if (!date) { toast('Date Requested is required','er'); return; }
+  if (!reqBy) { toast('Requested By is required','er'); return; }
+  if (!truck) { toast('Truck is required','er'); return; }
+  if (!part) { toast('Spare part is required','er'); return; }
+  if (!worth || worth<=0) { toast('Current worth is required','er'); return; }
+  if (!reason) { toast('Reason is required','er'); return; }
+  if (!notes) { toast('Notes is required','er'); return; }
+
+  var btn = document.getElementById('spm_save_btn');
+  if (btn) { btn.disabled = true; btn.textContent = 'Saving...'; }
+
+  if (_spmEditId) {
+    // EDIT existing record
+    var existing = (SPARE_MOVES||[]).find(function(x){return x.id===_spmEditId;});
+    var updated = Object.assign({}, existing, {
+      dateRequested: date, truck: truck.toUpperCase(), partCode: partCode, partName: part.toUpperCase(),
+      currentWorth: worth, reason: reason.toUpperCase(), notes: notes.toUpperCase(), requestedBy: reqBy.toUpperCase()
+    });
+    try {
+      var res2 = await callAPI('updateSpareMovement', { record: updated });
+      if (res2 && res2.success !== false) {
+        var ix = SPARE_MOVES.findIndex(function(x){return x.id===_spmEditId;});
+        if (ix !== -1) SPARE_MOVES[ix] = updated;
+        closeModal('spareMoveModal');
+        toast('\u2705 Spare movement request updated','ok');
+        _spmEditId = null;
+        if (currentView==='spm_requests'||currentView==='spm_hold') renderSpareMovements(_spmCurrentFilter);
+      } else {
+        toast(res2&&res2.error?res2.error:'Failed to update request','er');
+      }
+    } catch(e) {
+      toast('Failed to update request','er');
+    }
+    if (btn) { btn.disabled = false; btn.textContent = '\ud83d\udce6 Submit Request'; }
+    return;
+  }
+
+  try {
+    var res = await callAPI('requestSpareMovement', {
+      truck: truck.toUpperCase(), partCode: partCode, partName: part.toUpperCase(),
+      supplier: '', currentWorth: worth, reason: reason.toUpperCase(),
+      notes: notes.toUpperCase(), requestedBy: reqBy.toUpperCase(), dateRequested: date
+    });
+    if (res && res.success) {
+      SPARE_MOVES.push({
+        id: res.id, reqNo: res.reqNo, dateRequested: date, truck: truck.toUpperCase(),
+        partCode: partCode, partName: part.toUpperCase(), supplier: '',
+        currentWorth: worth, reason: reason.toUpperCase(), notes: notes.toUpperCase(),
+        requestedBy: reqBy.toUpperCase(), status: 'PENDING'
+      });
+      closeModal('spareMoveModal');
+      toast('\u2705 Spare movement request '+res.reqNo+' submitted - awaiting approval','ok');
+      updateBadges();
+      if (currentView==='spm_requests'||currentView==='spm_hold') renderSpareMovements(_spmCurrentFilter);
+    } else {
+      toast(res&&res.error?res.error:'Failed to submit request','er');
+    }
+  } catch(e) {
+    toast('Failed to submit request','er');
+  }
+  if (btn) { btn.disabled = false; btn.textContent = '\ud83d\udce6 Submit Request'; }
+}
+
+function deleteSpareMove(id) {
+  if (!can('sparemove_edit') && !can('sparemove')) { toast('No permission to delete spare movement requests','er'); return; }
+  var rec = (SPARE_MOVES||[]).find(function(r){return r.id===id;});
+  var doDeleteSpm = async function() {
+    if (!confirm('Delete this spare movement request? Cannot be undone.')) return;
+    var bk = (SPARE_MOVES||[]).find(function(r){return r.id===id;});
+    SPARE_MOVES = SPARE_MOVES.filter(function(r){return r.id!==id;});
+    updateBadges();
+    if (currentView==='spm_requests'||currentView==='spm_hold') renderSpareMovements(_spmCurrentFilter);
+    toast('Deleting...','in');
+    try {
+      var res = await callAPI('deleteSpareMovement', { id: id });
+      if (res && res.success !== false) {
+        toast('Deleted \u2713','in');
+      } else {
+        throw new Error(res&&res.error?res.error:'Delete failed');
+      }
+    } catch(e) {
+      toast('Delete failed','er');
+      if (bk) { SPARE_MOVES.push(bk); updateBadges(); if (currentView==='spm_requests'||currentView==='spm_hold') renderSpareMovements(_spmCurrentFilter); }
+    }
+  };
+  if (rec && (rec.status||'').toUpperCase() === 'APPROVED') askPassword(doDeleteSpm);
+  else doDeleteSpm();
+}
+
+async function approveSpareMove(id) {
+  if (!can('sparemove_approve')) { toast('No permission to approve spare movement requests','er'); return; }
+  if (!confirm('Approve this spare movement? The spare will be added to Store Inventory.')) return;
+  var approvedBy = CURRENT_USER ? (CURRENT_USER.name||CURRENT_USER.username) : 'ADMIN';
+  toast('Approving...','in');
+  try {
+    var res = await callAPI('approveSpareMovement', { id: id, approvedBy: approvedBy.toUpperCase() });
+    if (res && res.success) {
+      var ix = SPARE_MOVES.findIndex(function(r){return r.id===id;});
+      if (ix!==-1) { SPARE_MOVES[ix].status='APPROVED'; SPARE_MOVES[ix].approvedBy=approvedBy.toUpperCase(); SPARE_MOVES[ix].dateApproved=todayStr(); }
+      if (res.inventoryWarning) toast('\u26a0\ufe0f '+res.inventoryWarning,'er');
+      else toast('\u2705 Approved - added to Store Inventory','ok');
+      callAPI('getStoreInventory').then(function(r){if(r&&r.records)STORE_INVENTORY=r.records;}).catch(function(){});
+      callAPI('getSpareMovements').then(function(r3){if(r3&&r3.records)SPARE_MOVES=r3.records;updateBadges();if(currentView==='spm_requests'||currentView==='spm_hold')renderSpareMovements(_spmCurrentFilter);}).catch(function(){});
+      updateBadges();
+      if (currentView==='spm_requests'||currentView==='spm_hold') renderSpareMovements(_spmCurrentFilter);
+    } else {
+      toast(res&&res.error?res.error:'Approval failed','er');
+    }
+  } catch(e) { toast('Approval failed','er'); }
+}
+
+async function rejectSpareMove(id) {
+  if (!can('sparemove_approve')) { toast('No permission to reject spare movement requests','er'); return; }
+  if (!confirm('Reject this spare movement request?')) return;
+  var rejectedBy = CURRENT_USER ? (CURRENT_USER.name||CURRENT_USER.username) : 'ADMIN';
+  toast('Rejecting...','in');
+  try {
+    var res = await callAPI('rejectSpareMovement', { id: id, rejectedBy: rejectedBy.toUpperCase() });
+    if (res && res.success) {
+      var ix = SPARE_MOVES.findIndex(function(r){return r.id===id;});
+      if (ix!==-1) { SPARE_MOVES[ix].status='REJECTED'; SPARE_MOVES[ix].rejectedBy=rejectedBy.toUpperCase(); SPARE_MOVES[ix].dateRejected=todayStr(); }
+      toast('Request rejected','ok');
+      callAPI('getSpareMovements').then(function(r3){if(r3&&r3.records)SPARE_MOVES=r3.records;updateBadges();if(currentView==='spm_requests'||currentView==='spm_hold')renderSpareMovements(_spmCurrentFilter);}).catch(function(){});
+      updateBadges();
+      if (currentView==='spm_requests'||currentView==='spm_hold') renderSpareMovements(_spmCurrentFilter);
+    } else {
+      toast(res&&res.error?res.error:'Rejection failed','er');
+    }
+  } catch(e) { toast('Rejection failed','er'); }
+}
+
+function printSpareMove(id) {
+  var r = (SPARE_MOVES||[]).find(function(x){return x.id===id;});
+  if (!r) { toast('Request not found','er'); return; }
+  var printDate = fmtDate(todayStr());
+  var s = (r.status||'').toUpperCase();
+  var processedBy = s==='APPROVED' ? (r.approvedBy||'') : s==='REJECTED' ? (r.rejectedBy||'') : '';
+  var dateProcessed = s==='APPROVED' ? fmtDate(r.dateApproved||'') : s==='REJECTED' ? fmtDate(r.dateRejected||'') : '';
+  var tblRows = '<tr>'
+    +'<td style="text-align:center">1</td>'
+    +'<td style="font-family:monospace">'+(r.reqNo||'')+'</td>'
+    +'<td>'+fmtDate(r.dateRequested||'')+'</td>'
+    +'<td><b>'+(r.truck||'')+'</b></td>'
+    +'<td>'+(r.partName||'')+'</td>'
+    +'<td style="text-align:right;font-weight:700">'+(r.currentWorth?Number(r.currentWorth).toLocaleString('en-US',{minimumFractionDigits:2}):'')+'</td>'
+    +'<td>'+(r.reason||'')+'</td>'
+    +'<td>'+(r.notes||'')+'</td>'
+    +'</tr>';
+  var html = '<!DOCTYPE html><html><head><meta charset="UTF-8"><title>AK Transport \u2014 Spare Movement Request</title>'
+    +'<style>'
+    +'*{box-sizing:border-box;margin:0;padding:0}'
+    +'body{font-family:Arial,Helvetica,sans-serif;font-size:11px;color:#000;background:#fff;padding:20px}'
+    +'@media print{@page{margin:12mm;size:A4}body{padding:0}}'
+    +'table{width:100%;border-collapse:collapse}'
+    +'.tbl-main thead th{background:#fff;color:#000;padding:7px 6px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;border:1.5px solid #000}'
+    +'.tbl-main tbody td{padding:6px;border:1px solid #000;font-size:10px;vertical-align:middle;color:#000}'
+    +'.tbl-main tbody tr:nth-child(even) td{background:#f9f9f9}'
+    +'.sig-box{border:1px solid #000;border-radius:4px;padding:14px 18px}'
+    +'</style></head><body>'
+    +'<table style="margin-bottom:14px"><tr>'
+    +'<td style="vertical-align:middle;padding:4px 0">'
+    +'<div style="font-size:22px;font-weight:900;color:#000;letter-spacing:-.3px">AK TRANSPORT</div>'
+    +'<div style="font-size:10px;color:#444;margin-top:3px;letter-spacing:.06em;text-transform:uppercase">Spare Movement Request</div>'
+    +'</td>'
+    +'<td style="text-align:right;vertical-align:top;min-width:160px">'
+    +'<div style="display:inline-block;text-align:right">'
+    +'<div style="font-size:9px;color:#555;text-transform:uppercase;letter-spacing:.06em">Date Printed</div>'
+    +'<div style="font-size:12px;font-weight:700;color:#000;margin-bottom:6px">'+printDate+'</div>'
+    +'<div style="font-size:9px;color:#555;text-transform:uppercase;letter-spacing:.06em">Status</div>'
+    +'<div style="font-size:12px;font-weight:700;color:#000">'+s+'</div>'
+    +'</div></td></tr></table>'
+    +'<div style="height:3px;background:#0a2d6e;border-radius:2px;margin-bottom:14px"></div>'
+    +'<table class="tbl-main" style="margin-bottom:20px">'
+    +'<thead><tr>'
+    +'<th style="width:22px;text-align:center">#</th>'
+    +'<th style="width:80px">Req No</th>'
+    +'<th style="width:68px">Date</th>'
+    +'<th style="width:80px">Truck</th>'
+    +'<th>Part</th>'
+    +'<th style="width:90px;text-align:right">Current Worth</th>'
+    +'<th style="width:120px">Reason</th>'
+    +'<th>Notes</th>'
+    +'</tr></thead>'
+    +'<tbody>'+tblRows+'</tbody>'
+    +'</table>'
+    +'<table style="margin-bottom:20px"><tr>'
+    +'<td style="width:50%;font-size:10px;color:#555">Requested By: <b style="color:#000">'+(r.requestedBy||'')+'</b></td>'
+    +'<td style="width:50%;font-size:10px;color:#555">'+(processedBy?(s==='APPROVED'?'Approved By':'Rejected By')+': <b style="color:#000">'+processedBy+'</b> on '+dateProcessed:'')+'</td>'
+    +'</tr></table>'
+    +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:24px;margin-top:8px">'
+    +'<div class="sig-box">'
+    +'<div style="font-size:10px;font-weight:700;color:#0a2d6e;text-transform:uppercase;letter-spacing:.1em;margin-bottom:20px;padding-bottom:6px;border-bottom:2px solid #0a2d6e">Requested By</div>'
+    +'<div style="margin-bottom:28px"><div style="font-size:10px;color:#888;margin-bottom:4px">Full Name</div><div style="border-bottom:1px solid #aaa;height:22px"></div></div>'
+    +'<div style="display:grid;grid-template-columns:2fr 1fr;gap:16px">'
+    +'<div><div style="font-size:10px;color:#888;margin-bottom:4px">Signature</div><div style="border-bottom:1px solid #aaa;height:34px"></div></div>'
+    +'<div><div style="font-size:10px;color:#888;margin-bottom:4px">Date</div><div style="border-bottom:1px solid #aaa;height:34px"></div></div>'
+    +'</div></div>'
+    +'<div class="sig-box">'
+    +'<div style="font-size:10px;font-weight:700;color:#0a2d6e;text-transform:uppercase;letter-spacing:.1em;margin-bottom:20px;padding-bottom:6px;border-bottom:2px solid #0a2d6e">Approved By</div>'
+    +'<div style="margin-bottom:28px"><div style="font-size:10px;color:#888;margin-bottom:4px">Full Name</div><div style="border-bottom:1px solid #aaa;height:22px"></div></div>'
+    +'<div style="display:grid;grid-template-columns:2fr 1fr;gap:16px">'
+    +'<div><div style="font-size:10px;color:#888;margin-bottom:4px">Signature</div><div style="border-bottom:1px solid #aaa;height:34px"></div></div>'
+    +'<div><div style="font-size:10px;color:#888;margin-bottom:4px">Date</div><div style="border-bottom:1px solid #aaa;height:34px"></div></div>'
+    +'</div></div></div>'
+    +'<div style="margin-top:20px;padding-top:10px;border-top:1px solid #e0e0e0;font-size:9px;color:#999;text-align:center">AK Transport \u2014 Workshop Management System \u2014 Generated '+printDate+'</div>'
+    +'<scr'+'ipt>window.onload=function(){window.print();window.onafterprint=function(){window.close();};};</'+'script>'
+    +'</body></html>';
+  var w = window.open('','_blank','width=1000,height=700');
+  if (w) { w.document.write(html); w.document.close(); } else toast('Pop-up blocked','er');
 }
 
 
@@ -10573,7 +11191,13 @@ function _applySINVFilters(rows){
   var df=(document.getElementById("SINV_DATE_FROM")||{}).value||"";
   var dt=(document.getElementById("SINV_DATE_TO")||{}).value||"";
   return rows.filter(function(r){
-    for(var i=0;i<fs.length;i++){if(String(r[fs[i].fld]||"").toLowerCase().indexOf(fs[i].val)<0)return false;}
+    for(var i=0;i<fs.length;i++){
+      var fld = fs[i].fld;
+      var rawVal = (fld==='supplier' && r._supplierDisplay!==undefined) ? r._supplierDisplay
+                 : (fld==='partCode' && r._lpoDisplay!==undefined) ? r._lpoDisplay
+                 : r[fld];
+      if(String(rawVal||"").toLowerCase().indexOf(fs[i].val)<0)return false;
+    }
     if(st){var isLow=r.qtyOnHand<=r.minStockLevel;var rSt=isLow?"LOW STOCK":"OK";if(rSt!==st)return false;}
     if(df&&(r._dateReceived||r.dateReceived||"")&&(r._dateReceived||r.dateReceived||"")<df)return false;
     if(dt&&(r._dateReceived||r.dateReceived||"")&&(r._dateReceived||r.dateReceived||"")>dt)return false;
@@ -10654,22 +11278,36 @@ function renderStoreInventory(tab) {
     html += '</tbody></table></div>';
 
   } else {
-    // Detailed tab - join with STORE_REQS to get original qty received and date
+    // Detailed tab - join with STORE_REQS (purchases) or SPARE_MOVES (internal movements)
     var reqLookup = {};
     (STORE_REQS||[]).forEach(function(r){ if(r.reqNo) reqLookup[r.reqNo.toUpperCase()] = r; });
+    var spmLookup = {};
+    (SPARE_MOVES||[]).forEach(function(r){ if(r.reqNo) spmLookup[r.reqNo.toUpperCase()] = r; });
 
     var detailed = STORE_INVENTORY.map(function(r){
-      var reqNo = ''; var dateReceived = ''; var qtyReceived = '';
-      var m = (r.remarks||'').match(/SREQ-\d+/i);
-      if (m) {
-        reqNo = m[0].toUpperCase();
+      var reqNo = ''; var dateReceived = ''; var qtyReceived = ''; var supplierDisplay = (r.supplier||''); var lpoDisplay = (r.partCode||'');
+      var mSreq = (r.remarks||'').match(/SREQ-\d+/i);
+      var mSpm  = (r.remarks||'').match(/SPM-\d+/i);
+      if (mSreq) {
+        reqNo = mSreq[0].toUpperCase();
         var match = reqLookup[reqNo];
         if (match) {
           dateReceived = match.dateReceived || '';
           qtyReceived  = match.qty || '';        // original qty received from store req
         }
+      } else if (mSpm) {
+        reqNo = mSpm[0].toUpperCase();
+        var spmMatch = spmLookup[reqNo];
+        if (spmMatch) {
+          dateReceived = spmMatch.dateApproved || '';
+          qtyReceived  = 1;
+          var reasonPart = spmMatch.reason || '';
+          var truckPart  = spmMatch.truck ? ('From ' + spmMatch.truck) : '';
+          supplierDisplay = [reasonPart, truckPart].filter(Boolean).join(' \u2014 ');
+          lpoDisplay = 'N/A';
+        }
       }
-      return Object.assign({}, r, { _reqNo: reqNo, _dateReceived: dateReceived, _qtyReceived: qtyReceived });
+      return Object.assign({}, r, { _reqNo: reqNo, _dateReceived: dateReceived, _qtyReceived: qtyReceived, _supplierDisplay: supplierDisplay, _lpoDisplay: lpoDisplay });
     }).filter(function(r){
       var _fmap={'reqNo':'_reqNo','dateReceived':'_dateReceived','partName':'partName','supplier':'supplier','lpoNo':'partCode'};
       return true;
@@ -10703,8 +11341,8 @@ function renderStoreInventory(tab) {
           + '<td style="'+tdS+';font-weight:600">'+(r.partName||'')+'</td>'
           + '<td style="'+tdS+';text-align:center">'+(r._qtyReceived||r.qtyOnHand||0)+'</td>'
           + '<td style="'+tdS+';text-align:right;font-family:monospace">'+(r.unitPrice?Number(r.unitPrice).toLocaleString('en-US',{minimumFractionDigits:2}):'-')+'</td>'
-          + '<td style="'+tdS+'">'+(r.supplier||'')+'</td>'
-          + '<td style="'+tdS+';font-family:monospace;font-weight:600">'+(r.partCode||'-')+'</td>'
+          + '<td style="'+tdS+'">'+(r._supplierDisplay||'')+'</td>'
+          + '<td style="'+tdS+';font-family:monospace;font-weight:600">'+(r._lpoDisplay||'-')+'</td>'
           + '<td style="'+tdS+';text-align:center;font-weight:700;color:'+(isLow?'#b91c1c':'#059669')+'">'+qtyOnHand+'</td>'
           + '<td style="'+tdS+';text-align:center">'+min+'</td>'
           + '<td style="'+tdS+';text-align:center"><span style="font-size:11px;font-weight:700;padding:2px 10px;border-radius:12px;background:'+(isLow?'#fee2e2':'#d1fae5')+';color:'+(isLow?'#b91c1c':'#059669')+'">'+(isLow?'LOW STOCK':'OK')+'</span></td>'
@@ -12271,10 +12909,20 @@ function addIssLine(){
   var wrap=document.getElementById('iss_lines_wrap');if(!wrap)return;
   // Build part options from inventory - one option per batch (Part + Supplier + LPO)
   var partOpts='<option value="">Select part in stock...</option>';
+  var spmLookup2={};
+  (SPARE_MOVES||[]).forEach(function(r){ if(r.reqNo) spmLookup2[r.reqNo.toUpperCase()]=r; });
   (STORE_INVENTORY||[]).filter(function(r){return Number(r.qtyOnHand||0)>0;}).forEach(function(r){
     var lpo = (r.partCode||'').toUpperCase();
     var key = r.partName+'|||'+r.supplier+'|||'+lpo;
-    var label = r.partName + ' - ' + r.supplier + (lpo?' ('+lpo+')':'') + ' - Qty: '+r.qtyOnHand;
+    var sourceLabel = r.supplier + (lpo?' ('+lpo+')':'');
+    var mSpm = (r.remarks||'').match(/SPM-\d+/i);
+    if (mSpm) {
+      var spmRec = spmLookup2[mSpm[0].toUpperCase()];
+      if (spmRec) {
+        sourceLabel = (spmRec.reason||'') + (spmRec.truck?(' \u2014 From '+spmRec.truck):'');
+      }
+    }
+    var label = r.partName + ' - ' + sourceLabel + ' - Qty: '+r.qtyOnHand;
     partOpts+='<option value="'+key+'">'+label+'</option>';
   });
   var truckOpts='<option value="">Select vehicle...</option>';
@@ -12330,7 +12978,7 @@ function onIssPartChange(n){
         && (r.partCode||'').toUpperCase()===lpoNo.toUpperCase();
   });
   var supEl=document.getElementById('iss_sup_'+n); if(supEl) supEl.value=supplier;
-  var lpoEl=document.getElementById('iss_lpo_'+n); if(lpoEl) lpoEl.value=lpoNo;
+  var lpoEl=document.getElementById('iss_lpo_'+n); if(lpoEl) lpoEl.value=(lpoNo.toUpperCase()==='N/A')?'MOVEMENT':lpoNo;
   var upEl=document.getElementById('iss_up_'+n); if(upEl&&inv) upEl.value=Number(inv.unitPrice||0).toLocaleString('en-US',{minimumFractionDigits:2});
   if(inv) sel.setAttribute('data-maxqty',inv.qtyOnHand||0);
   calcIssLine(n);
@@ -12427,6 +13075,7 @@ async function saveIssueFromStore(){
     if(!partVal){toast('Line '+i+': Select a part','er');return;}
     var parts=partVal.split('|||');
     var partName=parts[0]; var supplier=parts[1]||''; var batchLpo=parts[2]||'';
+    var displayLpo=(batchLpo.toUpperCase()==='N/A')?'MOVEMENT':batchLpo;
     var truckEl=document.getElementById('iss_truck_'+i);
     var truck=truckEl&&truckEl.tomselect?truckEl.tomselect.getValue():(truckEl?truckEl.value:'');
     if(!truck){toast('Line '+i+': Truck is required','er');return;}
@@ -12453,6 +13102,7 @@ async function saveIssueFromStore(){
       partName:partName.toUpperCase(),
       supplier:supplier.toUpperCase(),
       lpoNo:batchLpo.toUpperCase(),
+      displayLpoNo:displayLpo.toUpperCase(),
       truck:truck.toUpperCase(),
       vehicleType:vtype.toUpperCase(),
       driverName:driver.toUpperCase(),
@@ -13044,6 +13694,7 @@ let BAT_GRNS     = [];
 let BATTERIES    = [];
 let BAT_FITS     = [];
 let BAT_SALES    = [];
+let SPARE_MOVES  = [];
 let STORE_RECEIPTS = [];
 let STORE_ISSUANCES = [];
 let ISS_PENDING = []; // Issuance requests awaiting approval
@@ -14528,6 +15179,7 @@ const ROLE_PRESETS = {
     p_fleet:false,   p_fleet_create:false,   p_fleet_edit:false,
     p_supparts:false,p_supparts_create:false,p_supparts_edit:false,
     p_store:false,   p_store_create:false,   p_store_approve:false,p_store_edit:false,
+    p_sparemove:false,p_sparemove_create:false,p_sparemove_approve:false,p_sparemove_edit:false,
     p_tyre:false,    p_tyre_create:false,    p_tyre_approve:false, p_tyre_edit:false,
     p_battery:false, p_battery_create:false, p_battery_approve:false,p_battery_edit:false
   },
@@ -14538,6 +15190,7 @@ const ROLE_PRESETS = {
     p_fleet:true,    p_fleet_create:false,   p_fleet_edit:false,
     p_supparts:false,p_supparts_create:false,p_supparts_edit:false,
     p_store:false,   p_store_create:false,   p_store_approve:false,p_store_edit:false,
+    p_sparemove:false,p_sparemove_create:false,p_sparemove_approve:false,p_sparemove_edit:false,
     p_tyre:false,    p_tyre_create:false,    p_tyre_approve:false, p_tyre_edit:false,
     p_battery:false, p_battery_create:false, p_battery_approve:false,p_battery_edit:false
   },
@@ -14548,6 +15201,7 @@ const ROLE_PRESETS = {
     p_fleet:false,   p_fleet_create:false,   p_fleet_edit:false,
     p_supparts:false,p_supparts_create:false,p_supparts_edit:false,
     p_store:false,   p_store_create:false,   p_store_approve:false,p_store_edit:false,
+    p_sparemove:false,p_sparemove_create:false,p_sparemove_approve:false,p_sparemove_edit:false,
     p_tyre:true,     p_tyre_create:true,     p_tyre_approve:false, p_tyre_edit:true,
     p_battery:false, p_battery_create:false, p_battery_approve:false,p_battery_edit:false
   },
@@ -14558,6 +15212,7 @@ const ROLE_PRESETS = {
     p_fleet:false,   p_fleet_create:false,   p_fleet_edit:false,
     p_supparts:true, p_supparts_create:true, p_supparts_edit:true,
     p_store:true,    p_store_create:true,    p_store_approve:false,p_store_edit:true,
+    p_sparemove:true,p_sparemove_create:true,p_sparemove_approve:false,p_sparemove_edit:true,
     p_tyre:false,    p_tyre_create:false,    p_tyre_approve:false, p_tyre_edit:false,
     p_battery:false, p_battery_create:false, p_battery_approve:false,p_battery_edit:false
   },
@@ -14568,6 +15223,7 @@ const ROLE_PRESETS = {
     p_fleet:true,    p_fleet_create:true,    p_fleet_edit:true,
     p_supparts:false,p_supparts_create:false,p_supparts_edit:false,
     p_store:false,   p_store_create:false,   p_store_approve:false,p_store_edit:false,
+    p_sparemove:false,p_sparemove_create:false,p_sparemove_approve:false,p_sparemove_edit:false,
     p_tyre:true,     p_tyre_create:true,     p_tyre_approve:false, p_tyre_edit:true,
     p_battery:true,  p_battery_create:true,  p_battery_approve:false,p_battery_edit:true
   },
@@ -14578,6 +15234,7 @@ const ROLE_PRESETS = {
     p_fleet:true,    p_fleet_create:true,    p_fleet_edit:true,
     p_supparts:true, p_supparts_create:true, p_supparts_edit:true,
     p_store:true,    p_store_create:true,    p_store_approve:true, p_store_edit:true,
+    p_sparemove:true,p_sparemove_create:true,p_sparemove_approve:true,p_sparemove_edit:true,
     p_tyre:true,     p_tyre_create:true,     p_tyre_approve:true,  p_tyre_edit:true,
     p_battery:true,  p_battery_create:true,  p_battery_approve:true,p_battery_edit:true
   },
@@ -14588,6 +15245,7 @@ const ROLE_PRESETS = {
     p_fleet:true,    p_fleet_create:true,    p_fleet_edit:true,
     p_supparts:true, p_supparts_create:true, p_supparts_edit:true,
     p_store:true,    p_store_create:true,    p_store_approve:true, p_store_edit:true,
+    p_sparemove:true,p_sparemove_create:true,p_sparemove_approve:true,p_sparemove_edit:true,
     p_tyre:true,     p_tyre_create:true,     p_tyre_approve:true,  p_tyre_edit:true,
     p_battery:true,  p_battery_create:true,  p_battery_approve:true,p_battery_edit:true
   }
@@ -14837,6 +15495,8 @@ function applyPermissions() {
     if (txt.indexOf('Job Card')>-1) show=can('jobcard_create');
     else if (txt.indexOf('Driver')>-1) show=can('fleet_create');
     else if (txt.indexOf('Vehicle')>-1) show=can('fleet_create');
+    else if (txt.indexOf('Spare Movement')>-1) show=(can('sparemove_create')||can('sparemove'));
+    else if (txt.indexOf('Supplier Req')>-1) show=can('workshop_create');
     else if (txt.indexOf('Supplier')>-1) show=can('supparts_create');
     else if (txt.indexOf('Spare Part')>-1) show=can('supparts_create');
     items[i].style.display = show ? '' : 'none';
@@ -14897,6 +15557,8 @@ function applyPermissions() {
   if (tyreSection) tyreSection.style.display = (can('tyre')||can('tyre_approve')||can('tyre_create')||can('tyre_edit')) ? '' : 'none';
   var batSection = document.getElementById('navsec-batteries');
   if (batSection) batSection.style.display = (can('battery')||can('battery_approve')||can('battery_create')||can('battery_edit')) ? '' : 'none';
+  var spmSection = document.getElementById('navsec-sparemove');
+  if (spmSection) spmSection.style.display = (can('sparemove')||can('sparemove_approve')||can('sparemove_create')||can('sparemove_edit')) ? '' : 'none';
   // -- On Hold pages - approve permission required --
   var navIssPend = document.getElementById('nav-iss_pending');
   if (navIssPend) navIssPend.style.display = can('store_approve') ? '' : 'none';
@@ -14904,6 +15566,8 @@ function applyPermissions() {
   if (navTyreRH) navTyreRH.style.display = can('tyre_approve') ? '' : 'none';
   var navBatRH = document.getElementById('nav-bat_rem_hold');
   if (navBatRH) navBatRH.style.display = can('battery_approve') ? '' : 'none';
+  var navSpmHold = document.getElementById('nav-spm_hold');
+  if (navSpmHold) navSpmHold.style.display = can('sparemove_approve') ? '' : 'none';
   // Show/hide User Management in dropdown and sidebar based on role
   var isAdmin = CURRENT_USER.role === 'admin';
   var ul = document.getElementById('usermgmt_link');
@@ -15058,6 +15722,7 @@ function openEditUser(id) {
    'fleet','fleet_create','fleet_edit',
    'supparts','supparts_create','supparts_edit',
    'store','store_create','store_approve','store_edit',
+   'sparemove','sparemove_create','sparemove_approve','sparemove_edit',
    'tyre','tyre_create','tyre_approve','tyre_edit',
    'battery','battery_create','battery_approve','battery_edit'].forEach(p => {
     const el = document.getElementById('p_' + p);
@@ -15100,8 +15765,8 @@ async function saveUser() {
     p_vehicle: document.getElementById('p_fleet_create').checked,
     p_supplier: document.getElementById('p_supparts_create').checked,
     p_parts: document.getElementById('p_supparts_create').checked,
-    p_edit: document.getElementById('p_workshop_edit').checked || document.getElementById('p_jobcard_edit').checked || document.getElementById('p_fleet_edit').checked || document.getElementById('p_supparts_edit').checked || document.getElementById('p_store_edit').checked || document.getElementById('p_tyre_edit').checked || document.getElementById('p_battery_edit').checked,
-    p_delete: document.getElementById('p_workshop_edit').checked || document.getElementById('p_jobcard_edit').checked || document.getElementById('p_fleet_edit').checked || document.getElementById('p_supparts_edit').checked || document.getElementById('p_store_edit').checked || document.getElementById('p_tyre_edit').checked || document.getElementById('p_battery_edit').checked,
+    p_edit: document.getElementById('p_workshop_edit').checked || document.getElementById('p_jobcard_edit').checked || document.getElementById('p_fleet_edit').checked || document.getElementById('p_supparts_edit').checked || document.getElementById('p_store_edit').checked || document.getElementById('p_sparemove_edit').checked || document.getElementById('p_tyre_edit').checked || document.getElementById('p_battery_edit').checked,
+    p_delete: document.getElementById('p_workshop_edit').checked || document.getElementById('p_jobcard_edit').checked || document.getElementById('p_fleet_edit').checked || document.getElementById('p_supparts_edit').checked || document.getElementById('p_store_edit').checked || document.getElementById('p_sparemove_edit').checked || document.getElementById('p_tyre_edit').checked || document.getElementById('p_battery_edit').checked,
     p_workshop: document.getElementById('p_workshop').checked,
     p_workshop_create: document.getElementById('p_workshop_create').checked,
     p_workshop_edit: document.getElementById('p_workshop_edit').checked,
@@ -15118,6 +15783,10 @@ async function saveUser() {
     p_store_create: document.getElementById('p_store_create').checked,
     p_store_approve: document.getElementById('p_store_approve').checked,
     p_store_edit: document.getElementById('p_store_edit').checked,
+    p_sparemove: document.getElementById('p_sparemove').checked,
+    p_sparemove_create: document.getElementById('p_sparemove_create').checked,
+    p_sparemove_approve: document.getElementById('p_sparemove_approve').checked,
+    p_sparemove_edit: document.getElementById('p_sparemove_edit').checked,
     p_tyre: document.getElementById('p_tyre').checked,
     p_tyre_create: document.getElementById('p_tyre_create').checked,
     p_tyre_approve: document.getElementById('p_tyre_approve').checked,
@@ -15586,7 +16255,8 @@ async function loadAppData(){
       loadSafe('getBatteryGRNs'),
       loadSafe('getBatteries'),
       loadSafe('getBatteryFitments'),
-      loadSafe('getBatterySales')
+      loadSafe('getBatterySales'),
+      loadSafe('getSpareMovements')
     ]);
     SUPPLIERS       = all[0];
     SPAREPARTS      = all[1];
@@ -15607,6 +16277,7 @@ async function loadAppData(){
     BATTERIES       = all[16];
     BAT_FITS        = all[17];
     BAT_SALES       = all[18];
+    SPARE_MOVES     = all[19];
   }
   hideLoad();
   if(ok){
@@ -15985,6 +16656,13 @@ history.pushState(null, '', window.location.href);
           <label class="perm-item"><input type="checkbox" id="p_store_approve"><span>Approve / Reject Issuances</span></label>
           <label class="perm-item"><input type="checkbox" id="p_store_edit"><span>Edit &amp; Delete Store Records</span></label>
         </div>
+        <div style="margin-top:10px;font-size:11px;font-weight:700;color:var(--t2);text-transform:uppercase;letter-spacing:.08em;padding-bottom:4px;border-bottom:1px solid var(--br)">Spare Movement Module</div>
+        <div class="perm-grid" style="margin-top:6px">
+          <label class="perm-item"><input type="checkbox" id="p_sparemove"><span>Access Spare Movement</span></label>
+          <label class="perm-item"><input type="checkbox" id="p_sparemove_create"><span>Create Spare Movement Requests</span></label>
+          <label class="perm-item"><input type="checkbox" id="p_sparemove_approve"><span>Approve / Reject Spare Movements</span></label>
+          <label class="perm-item"><input type="checkbox" id="p_sparemove_edit"><span>Edit &amp; Delete Spare Movement Records</span></label>
+        </div>
         <div style="margin-top:10px;font-size:11px;font-weight:700;color:var(--t2);text-transform:uppercase;letter-spacing:.08em;padding-bottom:4px;border-bottom:1px solid var(--br)">Tyre Module</div>
         <div class="perm-grid" style="margin-top:6px">
           <label class="perm-item"><input type="checkbox" id="p_tyre"><span>Access Tyres</span></label>
@@ -16198,6 +16876,15 @@ history.pushState(null, '', window.location.href);
   <button onclick="sreqClearSelection()" style="background:none;border:none;color:rgba(255,255,255,.7);cursor:pointer;font-size:20px;line-height:1;padding:0 4px">✕</button>
 </div>
 
+<!-- SPARE MOVEMENT FLOATING ACTION BAR -->
+<div id="spm_selbar" style="display:none;position:fixed;bottom:28px;left:50%;transform:translateX(-50%);background:#0a2d6e;color:#fff;border-radius:12px;padding:11px 20px;align-items:center;gap:12px;box-shadow:0 8px 32px rgba(10,45,110,.4);z-index:5000;white-space:nowrap">
+  <span id="spm_selcount" style="font-size:13px;font-weight:600">0 selected</span>
+  <div style="width:1px;background:rgba(255,255,255,.3);height:18px;flex-shrink:0"></div>
+  <button onclick="spmExportExcel()" style="background:rgba(255,255,255,.18);border:1px solid rgba(255,255,255,.3);color:#fff;padding:6px 14px;border-radius:7px;cursor:pointer;font-size:12px;font-weight:600">⬇ Export Excel</button>
+  <button onclick="spmExportPdf()" style="background:rgba(255,255,255,.18);border:1px solid rgba(255,255,255,.3);color:#fff;padding:6px 14px;border-radius:7px;cursor:pointer;font-size:12px;font-weight:600">🖨 Print Form</button>
+  <button onclick="spmClearSelection()" style="background:none;border:none;color:rgba(255,255,255,.7);cursor:pointer;font-size:20px;line-height:1;padding:0 4px">✕</button>
+</div>
+
 <!-- BATTERY FITMENT/REMOVAL REQUEST FLOATING ACTION BAR -->
 <div id="batfitreq_selbar" style="display:none;position:fixed;bottom:28px;left:50%;transform:translateX(-50%);background:#1e3a5f;color:#fff;border-radius:12px;padding:11px 20px;align-items:center;gap:12px;box-shadow:0 8px 32px rgba(10,45,110,.4);z-index:5000;white-space:nowrap">
   <span id="batfitreq_selcount" style="font-size:13px;font-weight:600">0 selected</span>
@@ -16318,6 +17005,64 @@ history.pushState(null, '', window.location.href);
   <button onclick="issPendingExport()" style="background:rgba(255,255,255,.18);border:1px solid rgba(255,255,255,.3);color:#fff;padding:6px 14px;border-radius:7px;cursor:pointer;font-size:12px;font-weight:600">⬇ Export Excel</button>
   <button onclick="issPendingPrint()" style="background:rgba(255,255,255,.18);border:1px solid rgba(255,255,255,.3);color:#fff;padding:6px 14px;border-radius:7px;cursor:pointer;font-size:12px;font-weight:600">🖨 Print Form</button>
   <button onclick="clearIssPendingSelection()" style="background:none;border:none;color:rgba(255,255,255,.7);cursor:pointer;font-size:20px;line-height:1;padding:0 4px">✕</button>
+</div>
+
+<!-- SPARE MOVEMENT REQUEST MODAL -->
+<div class="overlay hidden" id="spareMoveModal" style="padding:0;align-items:flex-start;overflow-y:auto">
+  <div style="background:#fff;width:100vw;min-height:100vh;display:flex;flex-direction:column">
+    <div style="background:var(--ac);color:#fff;padding:14px 24px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0">
+      <div id="spm_modal_title" style="font-family:'Outfit',sans-serif;font-size:18px;font-weight:700">📦 Spare Movement Request</div>
+      <button onclick="closeModal('spareMoveModal')" style="background:rgba(255,255,255,.15);border:none;color:#fff;width:32px;height:32px;border-radius:8px;cursor:pointer;font-size:16px">✕</button>
+    </div>
+    <div style="padding:14px 24px;background:#f0f4ff;border-bottom:1px solid rgba(10,45,110,.1);flex-shrink:0">
+      <div style="display:grid;grid-template-columns:160px 1fr 1fr;gap:14px;max-width:600px">
+        <div class="formgroup"><label>Date Requested <span style="color:#f87171">*</span></label><input type="date" id="spm_date"></div>
+        <div class="formgroup"><label>Requested By <span style="color:#f87171">*</span></label>
+          <select id="spm_reqby" style="width:100%;height:38px;padding:0 10px;font-size:13px;border:1.5px solid #d2d2d7;border-radius:7px;background:#fff">
+            <option value="">Select...</option><option>SABRI ABRI</option><option>RAMADHAN LUDEGE</option><option>MUSTAKIM RAMADHAN</option><option>MOHAMED AL JABRY</option>
+          </select>
+        </div>
+        <div class="formgroup"><label>Truck (Current Vehicle) <span style="color:#f87171">*</span></label>
+          <select id="spm_truck" style="width:100%;height:38px;padding:0 10px;font-size:13px;border:1.5px solid #d2d2d7;border-radius:7px;background:#fff"><option value="">Select truck...</option></select>
+        </div>
+      </div>
+    </div>
+    <div style="flex:1;overflow-y:auto;padding:16px 24px">
+      <div id="spm_card" style="border:1.5px solid #dde3f0;border-radius:12px;padding:16px;background:#fff;box-shadow:0 1px 4px rgba(0,0,0,.04)">
+        <div style="display:grid;grid-template-columns:2fr 1fr 1.6fr;gap:16px;margin-bottom:16px;align-items:end">
+          <div style="display:flex;flex-direction:column;gap:5px">
+            <label style="font-size:10px;font-weight:700;color:#515154;text-transform:uppercase;letter-spacing:.06em">Spare Part <span style="color:#f87171">*</span></label>
+            <select id="spm_part" style="width:100%;height:38px;padding:0 10px;font-size:13px;border:1.5px solid #d2d2d7;border-radius:7px;background:#fff;box-sizing:border-box"><option value="">Select spare part...</option></select>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:5px">
+            <label style="font-size:10px;font-weight:700;color:#515154;text-transform:uppercase;letter-spacing:.06em">Current Worth <span style="color:#f87171">*</span></label>
+            <input type="number" id="spm_worth" placeholder="0.00" min="0" style="width:100%;height:38px;padding:0 10px;font-size:13px;border:1.5px solid #d2d2d7;border-radius:7px;background:#fff;box-sizing:border-box">
+          </div>
+          <div style="display:flex;flex-direction:column;gap:5px">
+            <label style="font-size:10px;font-weight:700;color:#515154;text-transform:uppercase;letter-spacing:.06em">Reason <span style="color:#f87171">*</span></label>
+            <select id="spm_reason" style="width:100%;height:38px;padding:0 10px;font-size:13px;border:1.5px solid #d2d2d7;border-radius:7px;background:#fff;box-sizing:border-box">
+              <option value="">Select reason...</option>
+              <option value="MOVEMENT TO ANOTHER TRUCK">MOVEMENT TO ANOTHER TRUCK</option>
+              <option value="TRUCK PARKED LONG TERM">TRUCK PARKED LONG TERM</option>
+              <option value="TRUCK SOLD/DISPOSED">TRUCK SOLD/DISPOSED</option>
+              <option value="TRUCK BREAKDOWN - PART NOT NEEDED">TRUCK BREAKDOWN - PART NOT NEEDED</option>
+              <option value="OTHER">OTHER</option>
+            </select>
+          </div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:5px">
+          <label style="font-size:10px;font-weight:700;color:#515154;text-transform:uppercase;letter-spacing:.06em">Notes <span style="color:#f87171">*</span></label>
+          <textarea id="spm_notes" rows="3" placeholder="Additional details..." style="width:100%;padding:9px 10px;font-size:13px;border:1.5px solid #d2d2d7;border-radius:7px;background:#fff;box-sizing:border-box;resize:vertical;font-family:Inter,sans-serif"></textarea>
+        </div>
+      </div>
+    </div>
+    <div style="padding:12px 24px;border-top:1px solid #e2e2e7;display:flex;align-items:center;justify-content:flex-end;background:#f5f5f7;flex-shrink:0">
+      <div style="display:flex;gap:10px">
+        <button class="btn bg" onclick="closeModal('spareMoveModal')">Cancel</button>
+        <button class="btn bp" id="spm_save_btn" onclick="saveSpareMove()">💾 Submit Request</button>
+      </div>
+    </div>
+  </div>
 </div>
 
 <!-- --- TYRE MANAGEMENT MODALS --- -->
