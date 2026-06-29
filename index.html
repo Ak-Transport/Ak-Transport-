@@ -7629,7 +7629,7 @@ function renderSpareMovements(filter) {
       + '<td>'+(r.partName||'')+'</td>'
       + '<td style="font-family:monospace">'+(r.currentWorth?Number(r.currentWorth).toLocaleString():'')+'</td>'
       + '<td style="font-size:11px">'+(r.reason||'')+'</td>'
-      + '<td style="font-size:11px;max-width:160px">'+(r.notes||'')+'</td>'
+      + '<td style="font-size:11px;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="'+(r.notes||'')+'">'+(r.notes||'')+'</td>'
       + '<td style="font-size:11px">'+(r.requestedBy||'')+'</td>'
       + '<td><span class="sb '+sBadge+'">'+s+'</span></td>'
       + '<td style="font-size:11px">'+processedBy+'</td>'
@@ -12963,6 +12963,8 @@ function addIssLine(){
     + fg2('Remarks', '<input type="text" id="iss_rem_'+n+'" placeholder="Remarks..." style="'+fs+'">', false)
     + '</div>';
   wrap.appendChild(card);
+  // Tom Select for part
+  new TomSelect(document.getElementById('iss_part_'+n),{allowEmptyOption:true,placeholder:'Search part...',maxOptions:500,onChange:function(){onIssPartChange(n);}});
   // Tom Select for truck
   new TomSelect(document.getElementById('iss_truck_'+n),{allowEmptyOption:true,placeholder:'Search vehicle...',onChange:function(v){onIssTruckChange(n,v);}});
 }
