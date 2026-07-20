@@ -213,6 +213,7 @@ td,td *{font-size:13px!important;font-family:'Inter',sans-serif!important}
         <div class="navitem active" id="nav-releases" onclick="switchView('releases')">&#128230; Releases<span class="navbadge" id="badge-releases">0</span></div>
         <div class="navitem" id="nav-budget" onclick="switchView('budget')">&#128203; Release Budget<span class="navbadge" id="badge-budget"></span></div>
         <div class="navitem" id="nav-alltrips" onclick="switchView('alltrips')">&#128666; All Trips<span class="navbadge" id="badge-alltrips">0</span></div>
+        <div class="navitem" id="nav-waitingload" onclick="switchView('waitingload')"><span style="width:8px;height:8px;border-radius:50%;background:#6b7fd7;flex-shrink:0;display:inline-block"></span>Waiting to Load<span class="navbadge" id="badge-waitingload">0</span></div>
         <div class="navitem" id="nav-intransit" onclick="switchView('intransit')"><span style="width:8px;height:8px;border-radius:50%;background:#d97706;flex-shrink:0;display:inline-block"></span>In Transit<span class="navbadge" id="badge-intransit">0</span></div>
         <div class="navitem" id="nav-completed" onclick="switchView('completed')"><span style="width:8px;height:8px;border-radius:50%;background:#34d399;flex-shrink:0;display:inline-block"></span>Completed<span class="navbadge" id="badge-completed">0</span></div>
         <div class="navitem" id="nav-reqforms" onclick="switchView('reqforms')">&#128196; All Requests</div>
@@ -720,7 +721,7 @@ td,td *{font-size:13px!important;font-family:'Inter',sans-serif!important}
                   <input type="file" id="et-loaddoc-file" accept=".pdf,.jpg,.jpeg,.png" style="display:none" onchange="_handleAtDocSelect(this,'et-loaddoc')">
                   <span id="et-loaddoc-label">&#128206; Click to attach loading document</span>
                 </div>
-                <a id="et-loaddoc-view" href="#" target="_blank" class="btn bg" style="font-size:12px;padding:8px 12px;text-decoration:none;display:none">&#128065; View</a>
+                <a id="et-loaddoc-view" href="#" target="_blank" onclick="return downloadDoc(this.href)" class="btn bg" style="font-size:12px;padding:8px 12px;text-decoration:none;display:none">&#128065; View</a>
               </div>
             </div>
             <div id="et-offdoc-wrap" style="display:none">
@@ -730,12 +731,12 @@ td,td *{font-size:13px!important;font-family:'Inter',sans-serif!important}
                   <input type="file" id="et-offdoc-file" accept=".pdf,.jpg,.jpeg,.png" style="display:none" onchange="_handleAtDocSelect(this,'et-offdoc')">
                   <span id="et-offdoc-label">&#128206; Click to attach offloading document</span>
                 </div>
-                <a id="et-offdoc-view" href="#" target="_blank" class="btn bg" style="font-size:12px;padding:8px 12px;text-decoration:none;display:none">&#128065; View</a>
+                <a id="et-offdoc-view" href="#" target="_blank" onclick="return downloadDoc(this.href)" class="btn bg" style="font-size:12px;padding:8px 12px;text-decoration:none;display:none">&#128065; View</a>
               </div>
             </div>
           </div>
           <div style="display:grid;grid-template-columns:200px 1fr;gap:14px">
-            <div class="formgroup"><label>Status</label><select id="et-status"><option>IN TRANSIT</option><option>COMPLETED</option><option>CANCELLED</option></select></div>
+            <div class="formgroup"><label>Status</label><select id="et-status"><option>WAITING TO LOAD</option><option>IN TRANSIT</option><option>COMPLETED</option><option>CANCELLED</option></select></div>
             <div class="formgroup"><label>Notes</label><textarea id="et-notes" style="height:60px"></textarea></div>
           </div>
         </div>
@@ -829,6 +830,85 @@ td,td *{font-size:13px!important;font-family:'Inter',sans-serif!important}
           <th>Vol Loaded</th><th>Vol Offloaded</th><th>Excess Loss</th><th>Status</th>
         </tr></thead><tbody id="intransit-tbody"></tbody></table>
         <div class="emptystate hidden" id="intransit-empty"><div style="font-size:48px">&#128993;</div><h3>No Trips In Transit</h3></div>
+      </div>
+    </div>
+    <!-- WAITING TO LOAD -->
+    <div id="view-waitingload" class="hidden" style="display:flex;flex-direction:column;overflow:hidden;flex:1">
+      <div id="toolbar">
+        <div><div class="vtitle">&#128337; Waiting to Load</div><div class="viewsub" id="waitingload-sub">Loading...</div></div>
+        <div class="tb-divider"></div>
+        <div id="wl-bulk-btns" style="display:none;align-items:center;gap:8px">
+          <span id="wl-sel-count" style="font-size:12px;color:var(--t2);font-weight:600"></span>
+          <button class="btn bp" style="background:#b91c1c;font-size:12px" onclick="exportTripsPDF('waitingload')">&#128196; Export PDF</button>
+          <button class="btn bp" style="background:#166534;font-size:12px" onclick="exportTripsExcel('waitingload')">&#128202; Export Excel</button>
+        </div>
+      </div>
+      <!-- Filters -->
+      <div style="padding:10px 22px 8px;flex-shrink:0">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:6px">
+          <div style="display:flex;gap:6px">
+            <select id="WLF1" onchange="onWLFChange();renderWaitingToLoad()" style="background:#f0f4ff;border:1.5px solid var(--ac);border-radius:8px;padding:8px 10px;color:#1d3c6e;font-size:12px;font-weight:600;outline:none;cursor:pointer;width:160px;flex-shrink:0">
+              <option value="">— Filter 1 —</option>
+              <option value="tripNo">🔢 Trip No</option><option value="releaseNo">📋 Release No</option>
+              <option value="customer">🏢 Customer</option><option value="horse">🚛 Horse</option>
+              <option value="trailer">🚌 Trailer</option><option value="driver">👤 Driver</option>
+              <option value="destination">📍 Destination</option><option value="product">📦 Product</option>
+              <option value="loadingPoint">📍 Loading Point</option>
+              <option value="loadingDate">📅 Loading Date</option><option value="offloadingDate">📅 Offloading Date</option>
+              <option value="loadedQty">📊 Vol Loaded</option>
+            </select>
+            <input type="text" id="WLV1" placeholder="Search..." autocomplete="off" oninput="renderWaitingToLoad()" style="flex:1;min-width:0;border:1.5px solid var(--br);border-radius:8px;padding:8px 12px;font-size:13px;outline:none">
+          </div>
+          <div style="display:flex;gap:6px">
+            <select id="WLF2" onchange="onWLFChange();renderWaitingToLoad()" style="background:#f0f4ff;border:1.5px solid var(--ac);border-radius:8px;padding:8px 10px;color:#1d3c6e;font-size:12px;font-weight:600;outline:none;cursor:pointer;width:160px;flex-shrink:0">
+              <option value="">— Filter 2 —</option>
+              <option value="tripNo">🔢 Trip No</option><option value="releaseNo">📋 Release No</option>
+              <option value="customer">🏢 Customer</option><option value="horse">🚛 Horse</option>
+              <option value="trailer">🚌 Trailer</option><option value="driver">👤 Driver</option>
+              <option value="destination">📍 Destination</option><option value="product">📦 Product</option>
+              <option value="loadingPoint">📍 Loading Point</option>
+              <option value="loadingDate">📅 Loading Date</option><option value="offloadingDate">📅 Offloading Date</option>
+              <option value="loadedQty">📊 Vol Loaded</option>
+            </select>
+            <input type="text" id="WLV2" placeholder="Optional..." autocomplete="off" oninput="renderWaitingToLoad()" style="flex:1;min-width:0;border:1.5px solid var(--br);border-radius:8px;padding:8px 12px;font-size:13px;outline:none">
+          </div>
+          <div style="display:flex;gap:6px">
+            <select id="WLF3" onchange="onWLFChange();renderWaitingToLoad()" style="background:#f0f4ff;border:1.5px solid var(--ac);border-radius:8px;padding:8px 10px;color:#1d3c6e;font-size:12px;font-weight:600;outline:none;cursor:pointer;width:160px;flex-shrink:0">
+              <option value="">— Filter 3 —</option>
+              <option value="tripNo">🔢 Trip No</option><option value="releaseNo">📋 Release No</option>
+              <option value="customer">🏢 Customer</option><option value="horse">🚛 Horse</option>
+              <option value="trailer">🚌 Trailer</option><option value="driver">👤 Driver</option>
+              <option value="destination">📍 Destination</option><option value="product">📦 Product</option>
+              <option value="loadingPoint">📍 Loading Point</option>
+              <option value="loadingDate">📅 Loading Date</option><option value="offloadingDate">📅 Offloading Date</option>
+              <option value="loadedQty">📊 Vol Loaded</option>
+            </select>
+            <input type="text" id="WLV3" placeholder="Optional..." autocomplete="off" oninput="renderWaitingToLoad()" style="flex:1;min-width:0;border:1.5px solid var(--br);border-radius:8px;padding:8px 12px;font-size:13px;outline:none">
+          </div>
+          <div style="display:flex;gap:6px">
+            <button class="btn bg" onclick="clearWLFilter()" style="padding:8px 14px;font-size:12px;white-space:nowrap">&#10005; Clear</button>
+          </div>
+        </div>
+        <div id="wl-daterange-row" style="display:none;margin-top:4px">
+          <div style="display:flex;gap:8px;align-items:center;background:rgba(10,45,110,.05);border:1px solid rgba(10,45,110,.15);border-radius:8px;padding:8px 12px">
+            <span style="font-size:11px;font-weight:700;color:var(--ac);white-space:nowrap">&#128197; Date Range:</span>
+            <input type="date" id="WLF_DATE_FROM" onchange="renderWaitingToLoad()" style="border:1.5px solid var(--br);border-radius:7px;padding:7px 10px;font-size:13px;outline:none;min-width:160px">
+            <span style="color:var(--t2);font-size:12px">to</span>
+            <input type="date" id="WLF_DATE_TO" onchange="renderWaitingToLoad()" style="border:1.5px solid var(--br);border-radius:7px;padding:7px 10px;font-size:13px;outline:none;min-width:160px">
+            <span id="wl-daterange-label" style="font-size:11px;color:var(--t3);margin-left:4px"></span>
+            <button class="btn bg" onclick="clearWLDateRange()" style="padding:5px 10px;font-size:11px;margin-left:auto">&#10005; Clear Dates</button>
+          </div>
+        </div>
+      </div>
+      <div id="tablearea">
+        <table><thead><tr>
+          <th style="width:32px"><input type="checkbox" id="wl-check-all" onchange="toggleAllWLChecks(this)"></th>
+          <th>Trip No</th><th>Release</th><th>Customer</th><th>Horse</th><th>Trailer</th>
+          <th>Driver</th><th>Destination</th><th>Product</th><th>Loading Pt</th>
+          <th>Loading Date</th><th>Offloading Date</th>
+          <th>Vol Loaded</th><th>Vol Offloaded</th><th>Excess Loss</th><th>Status</th>
+        </tr></thead><tbody id="waitingload-tbody"></tbody></table>
+        <div class="emptystate hidden" id="waitingload-empty"><div style="font-size:48px">&#128337;</div><h3>No Trips Waiting to Load</h3></div>
       </div>
     </div>
     <!-- COMPLETED -->
@@ -1083,7 +1163,7 @@ td,td *{font-size:13px!important;font-family:'Inter',sans-serif!important}
           <button class="btn bp" id="rf-bulk-reject-btn" style="background:#b91c1c;font-size:12px" onclick="rfBulkReject()">&#10060; Reject Selected</button>
           <button class="btn bp" style="background:#0a2d6e;font-size:12px" onclick="rfPrintSelected()">&#128424; Print Selected</button>
           <button class="btn bp" style="background:#166534;font-size:12px" onclick="rfExportExcel()">&#128202; Export Excel</button>
-          <button class="btn bp" style="background:#b91c1c;font-size:12px" onclick="rfDeleteSelected()">&#128465; Delete Selected</button>
+          <button class="btn bp" id="rf-bulk-delete-btn" style="background:#b91c1c;font-size:12px" onclick="rfDeleteSelected()">&#128465; Delete Selected</button>
           <span id="rf-sel-count" style="font-size:12px;color:var(--t2);font-weight:600"></span>
         </div>
       </div>
@@ -2258,6 +2338,31 @@ function toast(msg,type){
 
 // ── MODAL ──
 function closeModal(id){var el=id?document.getElementById(id):document.querySelector('.overlay:not(.hidden)');if(el)el.classList.add('hidden');editingId=null;}
+
+// Forces a direct download of a stored document (permit, letter, POD,
+// etc.) instead of navigating to Google Drive's own viewer page.
+// Drive's "export=download" URL format serves the file with a
+// Content-Disposition: attachment header, so the browser just downloads
+// it and stays on the current page — no Drive UI or URL ever appears,
+// and the user sees a normal download notification.
+function _driveDownloadUrl(url) {
+  if (!url) return url;
+  var m = url.match(/\/file\/d\/([a-zA-Z0-9_-]+)/) || url.match(/[?&]id=([a-zA-Z0-9_-]+)/);
+  if (m && m[1]) return 'https://drive.google.com/uc?export=download&id=' + m[1];
+  return url;
+}
+function downloadDoc(url) {
+  if (!url) return false;
+  var downloadUrl = _driveDownloadUrl(url);
+  toast('📥 Downloading document...', 'ok');
+  var a = document.createElement('a');
+  a.href = downloadUrl;
+  a.rel  = 'noopener';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  return false; // prevent the link's default navigation
+}
 document.addEventListener('keydown',function(e){if(e.key==='Escape')closeModal();});
 var _overlayMouseDownTarget = null;
 document.addEventListener('mousedown',function(e){ _overlayMouseDownTarget = e.target; });
@@ -2324,7 +2429,7 @@ function switchView(v){
 
   var renders={
     dashboard:renderDashboard, releases:renderReleases,
-    alltrips:renderTrips, intransit:renderInTransit, completed:renderCompleted,
+    alltrips:renderTrips, waitingload:renderWaitingToLoad, intransit:renderInTransit, completed:renderCompleted,
     budget:renderBudget, permits:renderPermits,
     agents:renderAgents, fuel:renderFuelRequests,
     invoicing:renderInvoicing, settings:renderSettings,
@@ -2430,9 +2535,11 @@ function updateBadges(){
   set('badge-releases', openRels||RELEASES.length);
 
   // Trips
-  var inTransit=TRIPS.filter(function(t){return(t.status||'').toUpperCase()==='IN TRANSIT';}).length;
+  var waitingLoad=TRIPS.filter(isWaitingToLoad).length;
+  var inTransit=TRIPS.filter(function(t){return(t.status||'').toUpperCase()==='IN TRANSIT' && !isWaitingToLoad(t);}).length;
   var completed=TRIPS.filter(function(t){return(t.status||'').toUpperCase()==='COMPLETED';}).length;
   set('badge-alltrips', TRIPS.length);
+  set('badge-waitingload', waitingLoad);
   set('badge-intransit', inTransit);
   set('badge-completed', completed);
 
@@ -2488,6 +2595,74 @@ function updateBadges(){
 
 // ── HELPERS ──
 function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+
+// ═══════════════════════════════════════════════════════════════════
+// SHARED PRINT/PDF FORM SHELL — matches Workshop's print form design:
+// opens in a new window, solid-bordered table, boxed signature areas,
+// A4 page sizing, auto-prints on open and auto-closes after printing.
+// Every print/export-to-PDF function in Trips builds its table content
+// and calls this instead of rolling its own HTML/CSS.
+// ═══════════════════════════════════════════════════════════════════
+function _sigBox(label, prefillName) {
+  return '<div class="sig-box"><div style="font-size:10px;font-weight:700;color:#0a2d6e;text-transform:uppercase;letter-spacing:.1em;margin-bottom:20px;padding-bottom:6px;border-bottom:2px solid #0a2d6e">'+esc(label)+'</div>'
+    +'<div style="margin-bottom:28px"><div style="font-size:10px;color:#888;margin-bottom:4px">Full Name</div><div style="border-bottom:1px solid #aaa;height:22px;font-size:11px;padding-top:2px">'+esc(prefillName||'')+'</div></div>'
+    +'<div style="display:grid;grid-template-columns:2fr 1fr;gap:16px">'
+    +'<div><div style="font-size:10px;color:#888;margin-bottom:4px">Signature</div><div style="border-bottom:1px solid #aaa;height:34px"></div></div>'
+    +'<div><div style="font-size:10px;color:#888;margin-bottom:4px">Date</div><div style="border-bottom:1px solid #aaa;height:34px"></div></div>'
+    +'</div></div>';
+}
+
+function _printFormWindow(opts) {
+  opts = opts || {};
+  var company   = SETTINGS.companyName    || 'AK TRANSPORT (T) LIMITED';
+  var printDate = new Date().toLocaleDateString('en-GB',{day:'2-digit',month:'long',year:'numeric'});
+  var sigHtml = opts.noSignatures ? '' :
+    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:24px;margin-top:8px">'
+    + _sigBox(opts.sigLeftLabel||'Requested By', opts.sigLeftName||'')
+    + _sigBox(opts.sigRightLabel||'Approved By', opts.sigRightName||'')
+    + '</div>';
+  var html = '<!DOCTYPE html><html><head><meta charset="UTF-8"><title>'+esc(opts.title||'AK Transport Form')+'</title>'
+    +'<style>'
+    +'*{box-sizing:border-box;margin:0;padding:0}'
+    +'body{font-family:Arial,Helvetica,sans-serif;font-size:11px;color:#000;background:#fff;padding:20px}'
+    +'@media print{@page{margin:12mm;size:A4}body{padding:0}}'
+    +'table{width:100%;border-collapse:collapse}'
+    +'th{background:#fff;color:#000;padding:7px 6px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;border:1.5px solid #000}'
+    +'td{padding:6px;border:1px solid #000;font-size:10px;vertical-align:middle;color:#000}'
+    +'tbody tr:nth-child(even) td{background:#f9f9f9}'
+    +'tfoot td{padding:7px 6px;border:1.5px solid #000;font-weight:700;background:#efefef;color:#000}'
+    +'.tbl-main thead th{background:#fff;color:#000;padding:7px 6px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;border:1.5px solid #000}'
+    +'.tbl-main tbody td{padding:6px;border:1px solid #000;font-size:10px;vertical-align:middle;color:#000}'
+    +'.tbl-main tbody tr:nth-child(even) td{background:#f9f9f9}'
+    +'.tbl-main tfoot td{padding:7px 6px;border:1.5px solid #000;font-weight:700;background:#efefef;color:#000}'
+    +'.sig-box{border:1px solid #000;border-radius:4px;padding:14px 18px}'
+    +'</style></head><body>'
+    +'<table style="margin-bottom:14px"><tr>'
+    +'<td style="vertical-align:middle;padding:4px 0">'
+    +'<div style="font-size:22px;font-weight:900;color:#000;letter-spacing:-.3px">'+esc(company)+'</div>'
+    +'<div style="font-size:10px;color:#444;margin-top:3px;letter-spacing:.06em;text-transform:uppercase">'+esc(opts.formTitle||'')+'</div>'
+    +'</td>'
+    +'<td style="text-align:right;vertical-align:top;min-width:160px">'
+    +'<div style="display:inline-block;text-align:right">'
+    +'<div style="font-size:9px;color:#555;text-transform:uppercase;letter-spacing:.06em">Date Printed</div>'
+    +'<div style="font-size:12px;font-weight:700;color:#000;margin-bottom:6px">'+printDate+'</div>'
+    +'</div></td></tr></table>'
+    +'<div style="height:3px;background:#0a2d6e;border-radius:2px;margin-bottom:14px"></div>'
+    + (opts.extraInfoHtml || '')
+    + (opts.customBodyHtml || (
+      '<table class="tbl-main" style="margin-bottom:20px">'
+      +'<thead>'+(opts.theadHtml||'')+'</thead>'
+      +'<tbody>'+(opts.tbodyHtml||'')+'</tbody>'
+      + (opts.tfootHtml ? '<tfoot>'+opts.tfootHtml+'</tfoot>' : '')
+      +'</table>'
+    ))
+    + sigHtml
+    +'<div style="margin-top:20px;padding-top:10px;border-top:1px solid #e0e0e0;font-size:9px;color:#999;text-align:center">'+esc(company)+' \u2014 Trip Management System \u2014 Generated '+printDate+'</div>'
+    +'<scr'+'ipt>window.onload=function(){window.print();window.onafterprint=function(){window.close();};};</'+'script>'
+    +'</body></html>';
+  var win = window.open('','_blank','width=1000,height=700');
+  if (win) { win.document.write(html); win.document.close(); } else { toast('Pop-up blocked — please allow pop-ups for this site','er'); }
+}
 function fmt(n){return parseFloat(n||0).toLocaleString(undefined,{minimumFractionDigits:0,maximumFractionDigits:0});}
 function today(){return new Date().toISOString().split('T')[0];}
 function fmtDate(d){if(!d)return '—';var dt=new Date(d);return isNaN(dt)?d:dt.toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'});}
@@ -2515,7 +2690,7 @@ function toYMD(d){
 function uuid(){return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g,function(c){var r=Math.random()*16|0;return(c==='x'?r:(r&0x3|0x8)).toString(16);});}
 function nextId(arr,prefix,field){field=field||'releaseNo';var nums=arr.map(function(r){return parseInt((r[field]||'').replace(/\D/g,'')||0);});var max=nums.length?Math.max.apply(null,nums):0;return prefix+String(max+1).padStart(4,'0');}
 function statusBadge(s){var m={OPEN:'sGR',ACTIVE:'sGR','IN PROGRESS':'sBL',COMPLETED:'sGY',CANCELLED:'sRD','PENDING APPROVAL':'sAM'};return '<span class="sb '+(m[(s||'').toUpperCase()]||'sGY')+'">'+esc(s||'—')+'</span>';}
-function tripStatusBadge(s){var m={'IN TRANSIT':'sAM',COMPLETED:'sGR',CANCELLED:'sRD'};return '<span class="sb '+(m[(s||'').toUpperCase()]||'sGY')+'">'+esc(s||'—')+'</span>';}
+function tripStatusBadge(s){var m={'WAITING TO LOAD':'sBL','IN TRANSIT':'sAM',COMPLETED:'sGR',CANCELLED:'sRD'};return '<span class="sb '+(m[(s||'').toUpperCase()]||'sGY')+'">'+esc(s||'—')+'</span>';}
 function txnStatusBadge(s){var m={PENDING:'sAM',APPROVED:'sBL',PAID:'sGR',REJECTED:'sRD'};return '<span class="sb '+(m[(s||'').toUpperCase()]||'sGY')+'">'+esc(s||'—')+'</span>';}
 function renewalStatusBadge(s){var m={PENDING:'sAM',APPROVED:'sBL',PROCESSING:'sPR',COMPLETED:'sGR',REJECTED:'sRD'};return '<span class="sb '+(m[(s||'').toUpperCase()]||'sGY')+'">'+esc(s||'—')+'</span>';}
 function shortageStatusBadge(s,pendingCount){
@@ -2992,11 +3167,11 @@ function renderTrips(){
       + '<td style="font-family:monospace;font-size:11px">'+(t.loadedQty?fmt(t.loadedQty)+' L':'—')+'</td>'
       + '<td style="font-family:monospace;font-size:11px">'+(t.offloadedQty?fmt(t.offloadedQty)+' L':'—')+'</td>'
       + '<td style="font-family:monospace;font-size:11px">'+excessCell+'</td>'
-      + '<td>'+tripStatusBadge(t.status)+'</td>'
+      + '<td>'+tripStatusBadge(effectiveTripStatus(t))+'</td>'
       + '<td style="font-size:11px;white-space:nowrap">'
-        +(t.loadDocUrl?'<a href="'+esc(t.loadDocUrl)+'" target="_blank" style="color:var(--hi);font-weight:600">&#128206; Load</a>':'<span style="color:var(--t3)">—</span>')
+        +(t.loadDocUrl?'<a href="'+esc(t.loadDocUrl)+'" target="_blank" onclick="return downloadDoc(this.href)" style="color:var(--hi);font-weight:600">&#128229; Load</a>':'<span style="color:var(--t3)">—</span>')
         +' '
-        +(t.offDocUrl?'<a href="'+esc(t.offDocUrl)+'" target="_blank" style="color:var(--hi);font-weight:600">&#128206; Offload</a>':'<span style="color:var(--t3)">—</span>')
+        +(t.offDocUrl?'<a href="'+esc(t.offDocUrl)+'" target="_blank" onclick="return downloadDoc(this.href)" style="color:var(--hi);font-weight:600">&#128228; Offload</a>':'<span style="color:var(--t3)">—</span>')
       + '</td>'
       + '<td class="td-actions">'
       + '<button class="actbtn e" style="position:relative" onclick="tripEditClick(\''+t.id+'\')" title="'+(isCompleted?'Password required':'Edit')+'">Edit'+lockE+'</button> '
@@ -3114,7 +3289,7 @@ function bulkEditTrips() {
         +'<input type="file" id="bet-loaddoc-file-'+n+'" accept=".pdf,.jpg,.jpeg,.png" style="display:none" onchange="_handleAtDocSelect(this,\'bet-loaddoc-'+n+'\')">'
         +'<span id="bet-loaddoc-'+n+'-label">&#128206; '+(t.loadDocUrl?'Replace loading document':'Click to attach loading document')+'</span>'
         +'</div>'
-        +(t.loadDocUrl?'<a href="'+esc(t.loadDocUrl)+'" target="_blank" class="btn bg" style="font-size:12px;padding:8px 12px;text-decoration:none">&#128065;</a>':'')
+        +(t.loadDocUrl?'<a href="'+esc(t.loadDocUrl)+'" target="_blank" onclick="return downloadDoc(this.href)" class="btn bg" style="font-size:12px;padding:8px 12px;text-decoration:none">&#128065;</a>':'')
         +'</div></div>'
       +'<div id="bet-offdoc-wrap-'+n+'" style="'+(t.offloadingDate?'':'display:none')+'">'
         +'<label style="font-size:10px;font-weight:700;color:#515154;text-transform:uppercase;letter-spacing:.06em">Offloading Document *</label>'
@@ -3123,7 +3298,7 @@ function bulkEditTrips() {
         +'<input type="file" id="bet-offdoc-file-'+n+'" accept=".pdf,.jpg,.jpeg,.png" style="display:none" onchange="_handleAtDocSelect(this,\'bet-offdoc-'+n+'\')">'
         +'<span id="bet-offdoc-'+n+'-label">&#128206; '+(t.offDocUrl?'Replace offloading document':'Click to attach offloading document')+'</span>'
         +'</div>'
-        +(t.offDocUrl?'<a href="'+esc(t.offDocUrl)+'" target="_blank" class="btn bg" style="font-size:12px;padding:8px 12px;text-decoration:none">&#128065;</a>':'')
+        +(t.offDocUrl?'<a href="'+esc(t.offDocUrl)+'" target="_blank" onclick="return downloadDoc(this.href)" class="btn bg" style="font-size:12px;padding:8px 12px;text-decoration:none">&#128065;</a>':'')
         +'</div></div>'
       +'</div>'
       +'<div style="display:grid;grid-template-columns:150px 150px 130px 110px 110px 130px 160px 1fr;gap:14px">'
@@ -3267,7 +3442,7 @@ function buildTripRow(t, cbClass) {
     + '<td style="font-family:monospace;font-size:11px">'+(t.loadedQty?fmt(t.loadedQty)+' L':'—')+'</td>'
     + '<td style="font-family:monospace;font-size:11px">'+(t.offloadedQty?fmt(t.offloadedQty)+' L':'—')+'</td>'
     + '<td style="font-family:monospace;font-size:11px">'+excessCell+'</td>'
-    + '<td>'+tripStatusBadge(t.status)+'</td>'
+    + '<td>'+tripStatusBadge(effectiveTripStatus(t))+'</td>'
     + '</tr>';
 }
 
@@ -3321,13 +3496,66 @@ function clearITFilter(){
 function toggleAllITChecks(cb){ document.querySelectorAll('.it-cb').forEach(function(c){c.checked=cb.checked;}); updateExportBulkBtns(); }
 
 function renderInTransit(){
-  var base = TRIPS.filter(function(t){return(t.status||'').toUpperCase()==='IN TRANSIT';});
+  var base = TRIPS.filter(function(t){return(t.status||'').toUpperCase()==='IN TRANSIT' && !isWaitingToLoad(t);});
   var data = applyTripFilters(base,'ITF');
   var tbody=document.getElementById('intransit-tbody');var empty=document.getElementById('intransit-empty');
   var sub=document.getElementById('intransit-sub');if(sub)sub.textContent=data.length+' truck'+(data.length!==1?'s':'')+' in transit';
   if(!tbody)return;if(!data.length){tbody.innerHTML='';if(empty)empty.classList.remove('hidden');updateExportBulkBtns();return;}
   if(empty)empty.classList.add('hidden');
   tbody.innerHTML=data.map(function(t){ return buildTripRow(t,'it-cb'); }).join('');
+  updateExportBulkBtns();
+}
+
+// ── WAITING TO LOAD ────────────────────────────────────────────────
+// A trip is "waiting to load" if it hasn't been marked Completed/
+// Cancelled and doesn't yet have a Loaded Qty recorded — regardless of
+// what its stored status field says. This covers both brand-new trips
+// (created with no loadedQty yet) and older trips that were stamped
+// "IN TRANSIT" before this distinction existed but were never actually
+// loaded.
+function isWaitingToLoad(t) {
+  if (!t) return false;
+  var st = (t.status||'').toUpperCase();
+  if (st === 'COMPLETED' || st === 'CANCELLED') return false;
+  return !(parseFloat(t.loadedQty||0) > 0);
+}
+function effectiveTripStatus(t) {
+  return isWaitingToLoad(t) ? 'WAITING TO LOAD' : (t.status || 'IN TRANSIT');
+}
+
+function onWLFChange() {
+  var hasDate = ['WLF1','WLF2','WLF3'].some(function(id){ return TRIP_DATE_FIELDS.includes((document.getElementById(id)||{}).value||''); });
+  var drRow = document.getElementById('wl-daterange-row'); if(drRow) drRow.style.display=hasDate?'block':'none';
+  var labels={loadingDate:'Loading Date',offloadingDate:'Offloading Date'};
+  ['WLF1','WLF2','WLF3'].forEach(function(id,i){
+    var sel=document.getElementById(id); var inp=document.getElementById('WLV'+(i+1));
+    if(!sel||!inp)return; var isDate=TRIP_DATE_FIELDS.includes(sel.value);
+    inp.disabled=isDate; inp.placeholder=isDate?'Use date pickers below ↓':(i===0?'Search...':'Optional...'); if(isDate)inp.value='';
+  });
+  var activeDF=['WLF1','WLF2','WLF3'].map(function(id){return(document.getElementById(id)||{}).value||'';}).find(function(v){return TRIP_DATE_FIELDS.includes(v);});
+  var lbl=document.getElementById('wl-daterange-label'); if(lbl)lbl.textContent=activeDF?'Filtering: '+(labels[activeDF]||activeDF):'';
+}
+function clearWLDateRange(){
+  ['WLF_DATE_FROM','WLF_DATE_TO'].forEach(function(id){var el=document.getElementById(id);if(el)el.value='';});
+  ['WLF1','WLF2','WLF3'].forEach(function(id,i){var sel=document.getElementById(id);if(sel)sel.value='';var inp=document.getElementById('WLV'+(i+1));if(inp){inp.disabled=false;inp.placeholder=(i===0?'Search...':'Optional...');inp.value='';}});
+  var drRow=document.getElementById('wl-daterange-row');if(drRow)drRow.style.display='none'; renderWaitingToLoad();
+}
+function clearWLFilter(){
+  ['WLF1','WLF2','WLF3'].forEach(function(id){var el=document.getElementById(id);if(el)el.value='';});
+  ['WLV1','WLV2','WLV3'].forEach(function(id,i){var el=document.getElementById(id);if(el){el.value='';el.disabled=false;el.placeholder=(i===0?'Search...':'Optional...');}});
+  ['WLF_DATE_FROM','WLF_DATE_TO'].forEach(function(id){var el=document.getElementById(id);if(el)el.value='';});
+  var drRow=document.getElementById('wl-daterange-row');if(drRow)drRow.style.display='none'; renderWaitingToLoad();
+}
+function toggleAllWLChecks(cb){ document.querySelectorAll('.wl-cb').forEach(function(c){c.checked=cb.checked;}); updateExportBulkBtns(); }
+
+function renderWaitingToLoad(){
+  var base = TRIPS.filter(isWaitingToLoad);
+  var data = applyTripFilters(base,'WLF');
+  var tbody=document.getElementById('waitingload-tbody');var empty=document.getElementById('waitingload-empty');
+  var sub=document.getElementById('waitingload-sub');if(sub)sub.textContent=data.length+' truck'+(data.length!==1?'s':'')+' waiting to load';
+  if(!tbody)return;if(!data.length){tbody.innerHTML='';if(empty)empty.classList.remove('hidden');updateExportBulkBtns();return;}
+  if(empty)empty.classList.add('hidden');
+  tbody.innerHTML=data.map(function(t){ return buildTripRow(t,'wl-cb'); }).join('');
   updateExportBulkBtns();
 }
 
@@ -3372,10 +3600,13 @@ function renderCompleted(){
 function updateExportBulkBtns() {
   var itChecked = document.querySelectorAll('.it-cb:checked').length;
   var cpChecked = document.querySelectorAll('.cp-cb:checked').length;
+  var wlChecked = document.querySelectorAll('.wl-cb:checked').length;
   var itBulk = document.getElementById('it-bulk-btns'); if(itBulk) itBulk.style.display=itChecked>0?'flex':'none';
   var cpBulk = document.getElementById('cp-bulk-btns'); if(cpBulk) cpBulk.style.display=cpChecked>0?'flex':'none';
+  var wlBulk = document.getElementById('wl-bulk-btns'); if(wlBulk) wlBulk.style.display=wlChecked>0?'flex':'none';
   var itCount = document.getElementById('it-sel-count'); if(itCount) itCount.textContent=itChecked+' selected';
   var cpCount = document.getElementById('cp-sel-count'); if(cpCount) cpCount.textContent=cpChecked+' selected';
+  var wlCount = document.getElementById('wl-sel-count'); if(wlCount) wlCount.textContent=wlChecked+' selected';
   // Also handle all trips
   var allChecked = document.querySelectorAll('.trip-cb:checked').length;
   var atBulk = document.getElementById('trip-bulk-btns');
@@ -3394,6 +3625,7 @@ function updateExportBulkBtns() {
   }
   var itAllCb=document.getElementById('it-check-all'); if(itAllCb){var all=document.querySelectorAll('.it-cb');itAllCb.checked=all.length>0&&itChecked===all.length;}
   var cpAllCb=document.getElementById('cp-check-all'); if(cpAllCb){var all2=document.querySelectorAll('.cp-cb');cpAllCb.checked=all2.length>0&&cpChecked===all2.length;}
+  var wlAllCb=document.getElementById('wl-check-all'); if(wlAllCb){var all3=document.querySelectorAll('.wl-cb');wlAllCb.checked=all3.length>0&&wlChecked===all3.length;}
 }
 
 // ── EXPORT HELPERS ────────────────────────────────────────────────
@@ -3401,7 +3633,7 @@ var TRIP_EXPORT_HEADERS = ['Trip No','Release','Customer','Horse','Trailer','Dri
 var TRIP_EXPORT_FIELDS  = ['tripNo','releaseNo','customer','horse','trailer','driver','destination','border','product','loadingPoint','loadingDate','offloadingDate','loadedQty','offloadedQty','excessLoss','status'];
 
 function getSelectedTripsForExport(view) {
-  var cbClass = view==='intransit'?'it-cb':view==='completed'?'cp-cb':'trip-cb';
+  var cbClass = view==='intransit'?'it-cb':view==='completed'?'cp-cb':view==='waitingload'?'wl-cb':'trip-cb';
   var ids = Array.from(document.querySelectorAll('.'+cbClass+':checked')).map(function(c){return c.value;});
   return TRIPS.filter(function(t){return ids.includes(t.id);});
 }
@@ -3409,53 +3641,31 @@ function getSelectedTripsForExport(view) {
 function exportTripsPDF(view) {
   var trips  = getSelectedTripsForExport(view);
   if(!trips.length){ toast('Select at least one trip','er'); return; }
-  var title  = view==='intransit'?'In Transit Trips':view==='completed'?'Completed Trips':'All Trips';
-  var co     = SETTINGS.companyName||'AK Transport';
-  var date   = new Date().toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'});
+  var title  = view==='intransit'?'In Transit Trips':view==='completed'?'Completed Trips':view==='waitingload'?'Waiting to Load Trips':'All Trips';
   var rows   = trips.map(function(t){
     return '<tr>'+TRIP_EXPORT_FIELDS.map(function(f){
-      var v=t[f]||'—';
+      var v = f==='status' ? effectiveTripStatus(t) : (t[f]||'—');
       if(f==='loadingDate'||f==='offloadingDate') v=fmtDate(v);
       if(f==='loadedQty'||f==='offloadedQty'||f==='excessLoss') v=v!=='—'?fmt(parseFloat(v))+' L':'—';
-      return '<td style="padding:5px 8px;border:1px solid #e2e2e7;font-size:11px">'+esc(String(v))+'</td>';
+      return '<td>'+esc(String(v))+'</td>';
     }).join('')+'</tr>';
   }).join('');
-  var html = '<!DOCTYPE html><html><head><meta charset="UTF-8"><title>'+title+'</title>'
-    +'<style>body{font-family:Arial,sans-serif;margin:20px}h1{color:#0a2d6e;font-size:18px;margin-bottom:4px}p{color:#515154;font-size:12px;margin:0 0 16px}table{width:100%;border-collapse:collapse}th{background:#0a2d6e;color:#fff;padding:6px 8px;font-size:11px;text-align:left}tr:nth-child(even){background:#f8f9fc}</style>'
-    +'</head><body><h1>'+co+' — '+title+'</h1><p>Generated: '+date+' &nbsp;|&nbsp; '+trips.length+' trip'+(trips.length!==1?'s':'')+'</p>'
-    +'<table><thead><tr>'+TRIP_EXPORT_HEADERS.map(function(h){return '<th>'+h+'</th>';}).join('')+'</tr></thead><tbody>'+rows+'</tbody></table>'
-    +'</body></html>';
-  var w=window.open('','_blank'); if(w){w.document.write(html);w.document.close();setTimeout(function(){w.print();},400);}
-}
-
-function exportTripsPDF(view) {
-  var trips  = getSelectedTripsForExport(view);
-  if(!trips.length){ toast('Select at least one trip','er'); return; }
-  var title  = view==='intransit'?'In Transit Trips':view==='completed'?'Completed Trips':'All Trips';
-  var co     = SETTINGS.companyName||'AK Transport';
-  var date   = new Date().toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'});
-  var rows   = trips.map(function(t){
-    return '<tr>'+TRIP_EXPORT_FIELDS.map(function(f){
-      var v=t[f]||'--';
-      if(f==='loadingDate'||f==='offloadingDate') v=fmtDate(v);
-      if(f==='loadedQty'||f==='offloadedQty'||f==='excessLoss') v=v!=='--'?fmt(parseFloat(v))+' L':'--';
-      return '<td style="padding:5px 8px;border:1px solid #e2e2e7;font-size:11px">'+esc(String(v))+'</td>';
-    }).join('')+'</tr>';
-  }).join('');
-  var html = '<!DOCTYPE html><html><head><meta charset="UTF-8"><title>'+title+'</title>'
-    +'<style>body{font-family:Arial,sans-serif;margin:20px}h1{color:#0a2d6e}table{width:100%;border-collapse:collapse}th{background:#0a2d6e;color:#fff;padding:6px 8px;font-size:11px}tr:nth-child(even){background:#f8f9fc}td{padding:5px 8px;font-size:11px;border:1px solid #e2e2e7}</style>'
-    +'</head><body><h1>'+co+' - '+title+'</h1><p>'+date+' | '+trips.length+' trip'+(trips.length!==1?'s':'')+'</p>'
-    +'<table><thead><tr>'+TRIP_EXPORT_HEADERS.map(function(h){return '<th>'+h+'</th>';}).join('')+'</tr></thead><tbody>'+rows+'</tbody></table></body></html>';
-  var w=window.open('','_blank'); if(w){w.document.write(html);w.document.close();setTimeout(function(){w.print();},400);}
+  _printFormWindow({
+    title: title,
+    formTitle: title + ' (' + trips.length + ' trip' + (trips.length!==1?'s':'') + ')',
+    theadHtml: '<tr>'+TRIP_EXPORT_HEADERS.map(function(h){return '<th>'+h+'</th>';}).join('')+'</tr>',
+    tbodyHtml: rows,
+    noSignatures: true
+  });
 }
 
 function exportTripsExcel(view) {
   var trips = getSelectedTripsForExport(view);
   if(!trips.length){ toast('Select at least one trip','er'); return; }
-  var title = view==='intransit'?'In Transit Trips':view==='completed'?'Completed Trips':'All Trips';
+  var title = view==='intransit'?'In Transit Trips':view==='completed'?'Completed Trips':view==='waitingload'?'Waiting to Load Trips':'All Trips';
   var rows  = [TRIP_EXPORT_HEADERS].concat(trips.map(function(t){
     return TRIP_EXPORT_FIELDS.map(function(f){
-      var v=t[f]||'';
+      var v = f==='status' ? effectiveTripStatus(t) : (t[f]||'');
       if(f==='loadingDate'||f==='offloadingDate') v=fmtDate(v)||'';
       return v;
     });
@@ -3473,20 +3683,20 @@ function exportReleasesPDF() {
   var ids = getSelectedReleaseIds();
   if(!ids.length){ toast('Select at least one release','er'); return; }
   var releases = RELEASES.filter(function(r){return ids.includes(r.id);});
-  var co  = SETTINGS.companyName||'AK Transport';
-  var date = new Date().toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'});
   var headers = ['Release No','Date','Customer','Destination','Product','Loading Point','Trucks','Assigned','Remaining','Status'];
   var rows = releases.map(function(r){
     var assigned  = TRIPS.filter(function(t){return t.releaseId===r.id;}).length;
     var remaining = Math.max(0,parseInt(r.noOfTrucks||0)-assigned);
     var vals=[r.releaseNo,fmtDate(r.releaseDate),r.customer,r.destination,r.product||'—',r.loadingPoint||'—',r.noOfTrucks||0,assigned,remaining,r.status];
-    return '<tr>'+vals.map(function(v){return '<td style="padding:5px 8px;border:1px solid #e2e2e7;font-size:11px">'+esc(String(v||'—'))+'</td>';}).join('')+'</tr>';
+    return '<tr>'+vals.map(function(v){return '<td>'+esc(String(v||'—'))+'</td>';}).join('')+'</tr>';
   }).join('');
-  var html='<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Releases</title>'
-    +'<style>body{font-family:Arial,sans-serif;margin:20px}h1{color:#0a2d6e;font-size:18px;margin-bottom:4px}p{color:#515154;font-size:12px;margin:0 0 16px}table{width:100%;border-collapse:collapse}th{background:#0a2d6e;color:#fff;padding:6px 8px;font-size:11px;text-align:left}tr:nth-child(even){background:#f8f9fc}</style>'
-    +'</head><body><h1>'+co+' — Releases</h1><p>Generated: '+date+' &nbsp;|&nbsp; '+releases.length+' release'+(releases.length!==1?'s':'')+'</p>'
-    +'<table><thead><tr>'+headers.map(function(h){return '<th>'+h+'</th>';}).join('')+'</tr></thead><tbody>'+rows+'</tbody></table></body></html>';
-  var w=window.open('','_blank');if(w){w.document.write(html);w.document.close();setTimeout(function(){w.print();},400);}
+  _printFormWindow({
+    title: 'Releases',
+    formTitle: 'Releases (' + releases.length + ' release' + (releases.length!==1?'s':'') + ')',
+    theadHtml: '<tr>'+headers.map(function(h){return '<th>'+h+'</th>';}).join('')+'</tr>',
+    tbodyHtml: rows,
+    noSignatures: true
+  });
 }
 
 function exportReleasesExcel() {
@@ -3587,7 +3797,7 @@ function editTrip(id) {
   setV('et-excessloss',  t.excessLoss||'');
   // Rate per Litre is no longer edited from this form.
   setV('et-notes',       t.notes||'');
-  document.getElementById('et-status').value = t.status||'IN TRANSIT';
+  document.getElementById('et-status').value = effectiveTripStatus(t);
 
   // Reset & initialize document upload fields based on current trip state
   window['_letterFileData_et-loaddoc'] = null;
@@ -3674,8 +3884,14 @@ async function saveEditTrip() {
   var driver   = document.getElementById('et-driver').value;
   var loadDate = document.getElementById('et-loaddate').value;
   var offDate  = document.getElementById('et-offdate').value;
+  var loaded    = parseFloat(document.getElementById('et-loaded').value)||0;
+  var offloaded = parseFloat(document.getElementById('et-offloaded').value)||0;
   if (!horse || !trailer || !driver) { toast('Fill required fields (Horse, Trailer, Driver)','er'); return; }
-  if (offDate && !loadDate) { toast('Add Loading Date before Offloading Date','er'); return; }
+  if (loadDate && !(loaded > 0)) { toast('Vol Loaded is required when Loading Date is filled','er'); return; }
+  if (loaded > 0 && !loadDate) { toast('Loading Date is required when Vol Loaded is filled','er'); return; }
+  if ((offDate || offloaded > 0) && !(loadDate && loaded > 0)) { toast('Complete Loading Date and Vol Loaded before entering Offloading details','er'); return; }
+  if (offDate && !(offloaded > 0)) { toast('Vol Offloaded is required when Offloading Date is filled','er'); return; }
+  if (offloaded > 0 && !offDate) { toast('Offloading Date is required when Vol Offloaded is filled','er'); return; }
   var _etExisting = TRIPS.find(function(x){return x.id===_editingTripId;})||{};
   if (loadDate && !window['_letterFileData_et-loaddoc'] && !_etExisting.loadDocUrl) {
     toast('Loading Document is required when Loading Date is filled','er'); return;
@@ -3697,8 +3913,6 @@ async function saveEditTrip() {
     if (newOffDocUrl) t.offDocUrl = newOffDocUrl;
   } catch(e) { toast('Document upload failed: '+e.message,'er'); btn.disabled=false; btn.innerHTML='&#128190; Save Changes'; return; }
 
-  var loaded    = parseFloat(document.getElementById('et-loaded').value)||0;
-  var offloaded = parseFloat(document.getElementById('et-offloaded').value)||0;
   var allow     = loaded * 0.003;
   var actual    = Math.max(0, loaded - offloaded);
   var excess    = Math.max(0, actual - allow);
@@ -3728,6 +3942,10 @@ async function saveEditTrip() {
     // Both filled — auto-set COMPLETED
     t.status = 'COMPLETED';
     document.getElementById('et-status').value = 'COMPLETED';
+  } else if (loaded > 0 && (t.status||'').toUpperCase() !== 'CANCELLED') {
+    // Loaded Qty now on record — no longer waiting to load
+    t.status = 'IN TRANSIT';
+    document.getElementById('et-status').value = 'IN TRANSIT';
   } else if ((t.status||'').toUpperCase() === 'COMPLETED') {
     // User manually set COMPLETED but missing data
     var missing = [];
@@ -4127,7 +4345,7 @@ function renderPermits(){
     else{sb='<span class="sb sGR">✅ Valid</span>';dd='<span style="color:#166534;font-weight:600">'+daysLeft+' days</span>';}
     if(!p.documentUrl)sb+=' <span class="sb sAM" style="font-size:9px">📄 No Doc</span>';
     return '<tr><td><b>'+esc(p.vehicle)+'</b></td><td>'+esc(p.vehicleType)+'</td><td>'+esc(p.permitType)+'</td><td>'+fmtDate(p.paymentDate)+'</td><td>'+fmtDate(p.expiryDate)+'</td><td>'+dd+'</td>'
-      +'<td>'+(p.documentUrl?'<a href="'+p.documentUrl+'" target="_blank" style="color:var(--hi);font-size:11px">📄 View</a>':'<span style="color:var(--t3);font-size:11px">No doc</span>')+'</td>'
+      +'<td>'+(p.documentUrl?'<a href="'+p.documentUrl+'" target="_blank" onclick="return downloadDoc(this.href)" style="color:var(--hi);font-size:11px">📄 View</a>':'<span style="color:var(--t3);font-size:11px">No doc</span>')+'</td>'
       +'<td>'+sb+'</td><td><button class="actbtn e" onclick="toast(\'Edit permit — Phase 2\',\'in\')">Edit</button></td></tr>';
   }).join('');
 }
@@ -4455,6 +4673,7 @@ window.addEventListener('load',function(){initLogin();var el=document.getElement
 </div>
 
 
+
 <!-- PRINTABLE RENEWAL LETTER (hidden, for printing) -->
 <div id="print-area" style="display:none">
   <div id="print-content"></div>
@@ -4655,7 +4874,7 @@ window.renderPermits = function() {
     } else if (inRenewal) {
       docCell = '<span style="color:var(--t3);font-size:11px">—</span>';
     } else if (p && p.documentUrl) {
-      docCell = '<a href="'+esc(p.documentUrl)+'" target="_blank" style="color:var(--hi);font-size:11px">📄 View</a>';
+      docCell = '<a href="'+esc(p.documentUrl)+'" target="_blank" onclick="return downloadDoc(this.href)" style="color:var(--hi);font-size:11px">📄 View</a>';
     } else if (p) {
       docCell = '<span style="color:#b91c1c;font-size:11px">⚠ Missing</span>';
     } else {
@@ -4987,7 +5206,7 @@ function openPermitHistory(vehicle, type) {
         + '<td style="font-weight:600;color:' + (exp<today_dt?'#b91c1c':exp<=warn_dt?'#92400e':'#166534') + '">' + fmtDate(p.expiryDate) + '</td>'
         + '<td style="font-family:monospace;color:var(--ac)">TZS ' + fmt(p.amountPaid) + '</td>'
         + '<td>' + esc(p.receiptNo||'—') + '</td>'
-        + '<td>' + (p.documentUrl ? '<a href="'+esc(p.documentUrl)+'" target="_blank" style="color:var(--hi);font-weight:600;font-size:12px">📄 Open Doc</a>' : '<button class="actbtn" style="font-size:11px;color:#0071e3;border-color:#0071e3" onclick="openDocUpload(\''+p.id+'\')">⬆ Upload Doc</button>') + '</td>'
+        + '<td>' + (p.documentUrl ? '<a href="'+esc(p.documentUrl)+'" target="_blank" onclick="return downloadDoc(this.href)" style="color:var(--hi);font-weight:600;font-size:12px">📄 Open Doc</a>' : '<button class="actbtn" style="font-size:11px;color:#0071e3;border-color:#0071e3" onclick="openDocUpload(\''+p.id+'\')">⬆ Upload Doc</button>') + '</td>'
         + '<td>' + sb + '</td>'
         + '<td><button class="actbtn e" onclick="editPermitRecord(\'' + p.id + '\')">Edit</button></td>'
         + '</tr>';
@@ -5045,7 +5264,7 @@ function openVehiclePermitOverview(plate) {
         + '<span style="font-weight:700;color:var(--ac)">'+esc(t.tripNo)+'</span>'
         + '<span style="color:var(--t2)">'+esc(t.destination)+'</span>'
         + '<span style="color:var(--t3);font-size:11px">'+fmtDate(t.loadingDate)+'</span>'
-        + tripStatusBadge(t.status)
+        + tripStatusBadge(effectiveTripStatus(t))
         + '</div>';
     });
   }
@@ -6307,33 +6526,31 @@ function printRequestLetter(id) {
     if (r.description) detailRows += '<div style="grid-column:1/-1;background:#f5f5f7;border-radius:8px;padding:10px 14px;font-size:12px"><b>Description:</b> '+esc(r.description)+'</div>';
   }
 
-  var content = '<div class="print-header"><h1>'+esc(company)+'</h1><p>'+esc(address)+'</p></div>'
-    + '<div class="print-title">'+title+'</div>'
-    + '<div class="print-meta">'
-    + '<div><span class="lbl">Request No</span><span class="val">'+esc(r.reqNo||'—')+'</span></div>'
-    + '<div><span class="lbl">Date</span><span class="val">'+fmtDate(r.requestedAt||r.requestDate||today())+'</span></div>'
-    + '<div><span class="lbl">Requested By</span><span class="val">'+esc(r.requestedBy||'—')+'</span></div>'
-    + '<div><span class="lbl">Status</span><span class="val">'+esc(r.status||'PENDING')+'</span></div>'
-    + '</div>'
-    + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:24px">'+detailRows+'</div>'
-    + (r.notes ? '<div style="margin-bottom:20px;font-size:12px;color:#515154"><b>Notes:</b> '+esc(r.notes)+'</div>' : '')
-    + '<div class="print-sigs">'
-    + '<div class="print-sig"><div style="font-weight:700;margin-bottom:24px">Requested By</div><div class="lbl">'+esc(r.requestedBy||'')+'</div><div class="lbl">Signature ___________________</div><div class="lbl">Date ___________________</div></div>'
-    + '<div class="print-sig"><div style="font-weight:700;margin-bottom:24px">Approved By</div><div class="lbl">Manager</div><div class="lbl">Signature ___________________</div><div class="lbl">Date ___________________</div></div>'
-    + '</div>'
-    + '<div class="print-footer">'+esc(company)+' — Trip Management System — Printed: '+printDate+'</div>';
+  var metaGrid = '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:16px">'
+    + metaBlockPrint('Request No', esc(r.reqNo||'—'))
+    + metaBlockPrint('Date', fmtDate(r.requestedAt||r.requestDate||today()))
+    + metaBlockPrint('Requested By', esc(r.requestedBy||'—'))
+    + metaBlockPrint('Status', esc(r.status||'PENDING'))
+    + '</div>';
+  var bodyHtml = metaGrid
+    + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:20px">'+detailRows+'</div>'
+    + (r.notes ? '<div style="margin-bottom:16px;font-size:11px;color:#333"><b>Notes:</b> '+esc(r.notes)+'</div>' : '');
 
-  document.getElementById('print-content').innerHTML = content;
-  document.getElementById('print-area').style.display = 'block';
-  window.print();
-  setTimeout(function(){ document.getElementById('print-area').style.display = 'none'; }, 500);
+  _printFormWindow({
+    title: title,
+    formTitle: title,
+    customBodyHtml: bodyHtml,
+    sigLeftLabel: 'Requested By',
+    sigLeftName: r.requestedBy||'',
+    sigRightLabel: 'Approved By'
+  });
 }
 
 function metaBlockPrint(label, val) {
   if (!label) return '<div></div>';
-  return '<div style="background:#f8f9fc;border:1px solid #e2e2e7;border-radius:8px;padding:10px 14px">'
-    + '<div style="font-size:10px;font-weight:700;color:#515154;text-transform:uppercase;letter-spacing:.06em;margin-bottom:3px">'+label+'</div>'
-    + '<div style="font-size:13px;font-weight:600;color:#1d1d1f">'+val+'</div></div>';
+  return '<div style="border:1px solid #000;border-radius:4px;padding:9px 12px">'
+    + '<div style="font-size:9px;font-weight:700;color:#444;text-transform:uppercase;letter-spacing:.06em;margin-bottom:3px">'+label+'</div>'
+    + '<div style="font-size:12px;font-weight:600;color:#000">'+val+'</div></div>';
 }
 
 
@@ -6644,7 +6861,7 @@ async function _uploadReleaseDocIfNeeded(prefix, refLabel) {
 }
 function _letterViewLink(url) {
   return url
-    ? '<a href="'+esc(url)+'" target="_blank" style="color:var(--hi);font-weight:600;font-size:11px">&#128206; View Letter</a>'
+    ? '<a href="'+esc(url)+'" target="_blank" onclick="return downloadDoc(this.href)" style="color:var(--hi);font-weight:600;font-size:11px">&#128206; View Letter</a>'
     : '<span style="color:var(--t3);font-size:11px">No letter</span>';
 }
 
@@ -6820,6 +7037,8 @@ async function rejectShortagePayment(paymentId, fuelLossId, btnEl) {
 // ── DRIVER ACCOUNTS VIEW ──────────────────────────────────────────
 
 // ── DRIVER SUMMARY + STATEMENT ───────────────────────────────────
+var _dsumRows = []; // computed summary rows, kept so export functions can read selections against them
+
 function renderDriverSummary() {
   var wrap = document.getElementById('driveraccts-table-wrap');
   if(!wrap) return;
@@ -6831,15 +7050,10 @@ function renderDriverSummary() {
   }).forEach(function(t){ if(t.driver) driverSet[t.driver]=true; });
   if(typeof DEDUCTIONS!=='undefined') DEDUCTIONS.forEach(function(d){ if(d.driver) driverSet[d.driver]=true; });
   var drivers = Object.keys(driverSet).sort();
-  var sub = document.getElementById('driveraccts-sub');
-  if(sub) sub.textContent = drivers.length+' driver'+(drivers.length!==1?'s':'');
-  if(!drivers.length){ wrap.innerHTML='<div class="emptystate"><div style="font-size:48px">&#128100;</div><h3>No Driver Records</h3></div>'; return; }
-  var thS='padding:9px 14px;text-align:left;font-size:11px;font-weight:700;color:rgba(255,255,255,.85);text-transform:uppercase;letter-spacing:.06em';
-  var html='<table style="width:100%;border-collapse:collapse"><thead><tr style="background:var(--ac)">'
-    +'<th style="'+thS+'">Driver</th><th style="'+thS+'">Shortage Owed</th><th style="'+thS+'">Deductions Owed</th>'
-    +'<th style="'+thS+'">Total Owed</th><th style="'+thS+'">Total Paid</th><th style="'+thS+'">Balance</th>'
-    +'<th style="'+thS+'">Status</th><th style="'+thS+'">Actions</th></tr></thead><tbody>';
-  drivers.forEach(function(driver,idx){
+
+  // Compute every driver's summary row once, regardless of filters —
+  // export/selection reads from this, filters below just decide what's shown.
+  _dsumRows = drivers.map(function(driver){
     var shortRecs=FUEL_LOSS.filter(function(f){return f.driver===driver;});
     var autoRecs=TRIPS.filter(function(t){
       return t.driver===driver&&(t.status||'').toUpperCase()==='COMPLETED'&&parseFloat(t.excessLoss||0)>0
@@ -6850,7 +7064,7 @@ function renderDriverSummary() {
     var shortPaid=SHORTAGE_PMTS.filter(function(p){
       return shortRecs.some(function(f){return f.id===p.fuelLossId;})&&(p.status||'').toUpperCase()==='APPROVED';
     }).reduce(function(s,p){return s+parseFloat(p.amountTZS||0);},0);
-    var dedRecs=typeof DEDUCTIONS!=='undefined'?DEDUCTIONS.filter(function(d){return d.driver===driver;}):[]; 
+    var dedRecs=typeof DEDUCTIONS!=='undefined'?DEDUCTIONS.filter(function(d){return d.driver===driver;}):[];
     var dedOwed=dedRecs.reduce(function(s,d){return s+parseFloat(d.amountTZS||0);},0);
     var dedPaid=typeof DEDUCTION_PMTS!=='undefined'?DEDUCTION_PMTS.filter(function(p){
       return dedRecs.some(function(d){return d.id===p.deductionId;})&&(p.status||'').toUpperCase()==='APPROVED';
@@ -6858,22 +7072,130 @@ function renderDriverSummary() {
     var totalOwed=shortOwed+dedOwed; var totalPaid=shortPaid+dedPaid;
     var balance=Math.max(0,totalOwed-totalPaid);
     var stt=balance<=0?'PAID':totalPaid>0?'PARTIAL':'UNPAID';
+    return {driver:driver, shortOwed:shortOwed, dedOwed:dedOwed, totalOwed:totalOwed, totalPaid:totalPaid, balance:balance, status:stt};
+  });
+
+  var searchInputEl = document.getElementById('dsum-search-driver');
+  var hadFocus = document.activeElement === searchInputEl;
+  var caretPos = hadFocus ? searchInputEl.selectionStart : null;
+  var searchDriver = (searchInputEl && searchInputEl.value || '').trim().toLowerCase();
+  var statusFilter = (document.getElementById('dsum-filter-status')||{}).value||'';
+  var visibleRows = _dsumRows.filter(function(r){
+    if (searchDriver && r.driver.toLowerCase().indexOf(searchDriver) === -1) return false;
+    if (statusFilter && r.status !== statusFilter) return false;
+    return true;
+  });
+
+  var sub = document.getElementById('driveraccts-sub');
+  if(sub) sub.textContent = visibleRows.length+' driver'+(visibleRows.length!==1?'s':'')+(visibleRows.length!==drivers.length?' (of '+drivers.length+')':'');
+
+  var filterBar = '<div style="display:flex;gap:8px;align-items:center;margin-bottom:12px;flex-wrap:nowrap">'
+    + '<input type="text" id="dsum-search-driver" placeholder="🔍 Search driver..." autocomplete="off" oninput="renderDriverSummary()" value="'+esc(searchInputEl ? searchInputEl.value : '')+'" style="flex:1;min-width:170px;max-width:260px;border:1.5px solid var(--br);border-radius:8px;padding:8px 12px;font-size:13px;outline:none">'
+    + '<select id="dsum-filter-status" onchange="renderDriverSummary()" style="border:1.5px solid var(--br);border-radius:8px;padding:8px 10px;font-size:12px;font-weight:600;color:var(--ac);outline:none;cursor:pointer">'
+      + '<option value="">All Statuses</option>'
+      + '<option value="UNPAID"'+(statusFilter==='UNPAID'?' selected':'')+'>🔴 Unpaid</option>'
+      + '<option value="PARTIAL"'+(statusFilter==='PARTIAL'?' selected':'')+'>🟡 Partial</option>'
+      + '<option value="PAID"'+(statusFilter==='PAID'?' selected':'')+'>✅ Paid</option>'
+    + '</select>'
+    + '<div style="flex:1"></div>'
+    + '<div id="dsum-bulk-btns" style="display:none;align-items:center;gap:8px">'
+      + '<span id="dsum-sel-count" style="font-size:12px;color:var(--t2);font-weight:600"></span>'
+      + '<button class="btn bp" style="background:#0a2d6e;font-size:12px" onclick="dsumExportPDF()">📄 Export PDF</button>'
+      + '<button class="btn bp" style="background:#166534;font-size:12px" onclick="dsumExportExcel()">📊 Export Excel</button>'
+    + '</div>'
+    + '</div>';
+
+  if(!visibleRows.length){
+    wrap.innerHTML = filterBar + '<div class="emptystate"><div style="font-size:48px">&#128100;</div><h3>No Driver Records</h3></div>';
+    if (hadFocus) { var _si=document.getElementById('dsum-search-driver'); if(_si){ _si.focus(); _si.setSelectionRange(caretPos,caretPos); } }
+    return;
+  }
+  var thS='padding:9px 14px;text-align:left;font-size:11px;font-weight:700;color:rgba(255,255,255,.85);text-transform:uppercase;letter-spacing:.06em';
+  var html='<table style="width:100%;border-collapse:collapse"><thead><tr style="background:var(--ac)">'
+    +'<th style="'+thS+';width:36px"><input type="checkbox" id="dsum-cb-all" onchange="toggleAllDsumChecks(this)"></th>'
+    +'<th style="'+thS+'">Driver</th><th style="'+thS+'">Shortage Owed</th><th style="'+thS+'">Deductions Owed</th>'
+    +'<th style="'+thS+'">Total Owed</th><th style="'+thS+'">Total Paid</th><th style="'+thS+'">Balance</th>'
+    +'<th style="'+thS+'">Status</th><th style="'+thS+'">Actions</th></tr></thead><tbody>';
+  visibleRows.forEach(function(r,idx){
     var rowBg=idx%2===0?'':'background:#fafbfc;';
     html+='<tr style="border-bottom:1px solid #f0f0f4;'+rowBg+'">'
+      +'<td style="padding:12px 14px"><input type="checkbox" class="dsum-cb" value="'+esc(r.driver)+'" onchange="updateDsumBulkBtns()"></td>'
       +'<td style="padding:12px 14px;font-weight:700;color:var(--ac)">'
         +'<div style="display:flex;align-items:center;gap:10px">'
-        +'<div style="width:34px;height:34px;background:var(--ac);border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:13px;flex-shrink:0">'+esc(driver.charAt(0))+'</div>'
-        +esc(driver)+'</div></td>'
-      +'<td style="padding:12px 14px;font-family:monospace;color:#b91c1c">TZS '+fmt(shortOwed)+'</td>'
-      +'<td style="padding:12px 14px;font-family:monospace;color:#b91c1c">TZS '+fmt(dedOwed)+'</td>'
-      +'<td style="padding:12px 14px;font-family:monospace;font-weight:700;color:#b91c1c">TZS '+fmt(totalOwed)+'</td>'
-      +'<td style="padding:12px 14px;font-family:monospace;color:#166534">TZS '+fmt(totalPaid)+'</td>'
-      +'<td style="padding:12px 14px;font-family:monospace;font-weight:800;font-size:14px;color:'+(balance>0?'#b91c1c':'#166534')+'">TZS '+fmt(balance)+'</td>'
-      +'<td style="padding:12px 14px">'+shortageStatusBadge(stt)+'</td>'
-      +'<td style="padding:12px 14px"><button class="btn bp" style="font-size:11px;padding:5px 12px" onclick="openDriverStatement(\''+driver.replace(/'/g,"\\'")+'\')" >&#128196; Statement</button></td>'
+        +'<div style="width:34px;height:34px;background:var(--ac);border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:13px;flex-shrink:0">'+esc(r.driver.charAt(0))+'</div>'
+        +esc(r.driver)+'</div></td>'
+      +'<td style="padding:12px 14px;font-family:monospace;color:#b91c1c">TZS '+fmt(r.shortOwed)+'</td>'
+      +'<td style="padding:12px 14px;font-family:monospace;color:#b91c1c">TZS '+fmt(r.dedOwed)+'</td>'
+      +'<td style="padding:12px 14px;font-family:monospace;font-weight:700;color:#b91c1c">TZS '+fmt(r.totalOwed)+'</td>'
+      +'<td style="padding:12px 14px;font-family:monospace;color:#166534">TZS '+fmt(r.totalPaid)+'</td>'
+      +'<td style="padding:12px 14px;font-family:monospace;font-weight:800;font-size:14px;color:'+(r.balance>0?'#b91c1c':'#166534')+'">TZS '+fmt(r.balance)+'</td>'
+      +'<td style="padding:12px 14px">'+shortageStatusBadge(r.status)+'</td>'
+      +'<td style="padding:12px 14px"><button class="btn bp" style="font-size:11px;padding:5px 12px" onclick="openDriverStatement(\''+r.driver.replace(/'/g,"\\'")+'\')" >&#128196; Statement</button></td>'
       +'</tr>';
   });
-  wrap.innerHTML=html+'</tbody></table>';
+  wrap.innerHTML=filterBar+html+'</tbody></table>';
+  if (hadFocus) { var _si2=document.getElementById('dsum-search-driver'); if(_si2){ _si2.focus(); _si2.setSelectionRange(caretPos,caretPos); } }
+}
+
+function toggleAllDsumChecks(cb) {
+  document.querySelectorAll('.dsum-cb').forEach(function(c){ c.checked = cb.checked; });
+  updateDsumBulkBtns();
+}
+
+function updateDsumBulkBtns() {
+  var checked = document.querySelectorAll('.dsum-cb:checked').length;
+  var bulkDiv = document.getElementById('dsum-bulk-btns');
+  var countEl = document.getElementById('dsum-sel-count');
+  if (bulkDiv) bulkDiv.style.display = checked > 0 ? 'flex' : 'none';
+  if (countEl) countEl.textContent = checked + ' selected';
+}
+
+function _getSelectedDsumRows() {
+  var names = Array.from(document.querySelectorAll('.dsum-cb:checked')).map(function(c){ return c.value; });
+  return _dsumRows.filter(function(r){ return names.indexOf(r.driver) !== -1; });
+}
+
+function dsumExportExcel() {
+  var selected = _getSelectedDsumRows();
+  if (!selected.length) { toast('Select at least one driver','er'); return; }
+  var headers = ['Driver','Shortage Owed (TZS)','Deductions Owed (TZS)','Total Owed (TZS)','Total Paid (TZS)','Balance (TZS)','Status'];
+  var csvRows = [headers.join(',')];
+  selected.forEach(function(r){
+    var cells = [r.driver, r.shortOwed, r.dedOwed, r.totalOwed, r.totalPaid, r.balance, r.status];
+    csvRows.push(cells.map(function(c){ return '"'+String(c).replace(/"/g,'""')+'"'; }).join(','));
+  });
+  var csv  = csvRows.join('\n');
+  var blob = new Blob([csv], {type:'text/csv;charset=utf-8;'});
+  var url  = URL.createObjectURL(blob);
+  var a    = document.createElement('a');
+  var filename = 'AK_Driver_Summary_'+today()+'.csv';
+  a.href=url; a.download=filename; a.click();
+  URL.revokeObjectURL(url);
+  toast(selected.length+' driver'+(selected.length!==1?'s':'')+' exported to '+filename+' ✓','ok');
+}
+
+function dsumExportPDF() {
+  var selected = _getSelectedDsumRows();
+  if (!selected.length) { toast('Select at least one driver','er'); return; }
+  var totalOwed=0, totalPaid=0, totalBal=0;
+  var rows = selected.map(function(r){
+    totalOwed+=r.totalOwed; totalPaid+=r.totalPaid; totalBal+=r.balance;
+    return '<tr><td><b>'+esc(r.driver)+'</b></td>'
+      +'<td style="text-align:right">'+fmt(r.shortOwed)+'</td>'
+      +'<td style="text-align:right">'+fmt(r.dedOwed)+'</td>'
+      +'<td style="text-align:right;font-weight:700">'+fmt(r.totalOwed)+'</td>'
+      +'<td style="text-align:right">'+fmt(r.totalPaid)+'</td>'
+      +'<td style="text-align:right;font-weight:800">'+fmt(r.balance)+'</td>'
+      +'<td>'+esc(r.status)+'</td></tr>';
+  }).join('');
+  _printFormWindow({
+    title: 'Driver Accounts Summary',
+    formTitle: 'Driver Accounts Summary',
+    theadHtml: '<tr><th>Driver</th><th style="text-align:right">Shortage Owed</th><th style="text-align:right">Deductions Owed</th><th style="text-align:right">Total Owed</th><th style="text-align:right">Total Paid</th><th style="text-align:right">Balance</th><th>Status</th></tr>',
+    tbodyHtml: rows,
+    tfootHtml: '<tr><td style="text-align:right">TOTAL</td><td></td><td></td><td style="text-align:right">'+fmt(totalOwed)+'</td><td style="text-align:right">'+fmt(totalPaid)+'</td><td style="text-align:right">'+fmt(totalBal)+'</td><td></td></tr>',
+    noSignatures: true
+  });
 }
 
 function openDriverStatement(driver) {
@@ -6954,14 +7276,17 @@ function printDriverStatement(driver) {
   var safeId='stmt-'+driver.replace(/[^a-zA-Z0-9]/g,'-');
   var bodyEl=document.getElementById(safeId); if(!bodyEl) return;
   var co=SETTINGS.companyName||'AK TRANSPORT';
-  var today=new Date().toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'});
-  var w=window.open('','_blank');
+  var today=new Date().toLocaleDateString('en-GB',{day:'2-digit',month:'long',year:'numeric'});
+  var w=window.open('','_blank','width=1000,height=700');
   if(w){
     w.document.write('<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Statement - '+driver+'</title>'
-      +'<style>body{font-family:Arial,sans-serif;margin:24px;color:#1d1d1f}h1{color:#0a2d6e;font-size:18px;margin:0}h2{font-size:13px;color:#515154;margin:4px 0 20px}table{width:100%;border-collapse:collapse;margin-bottom:16px}th{background:#0a2d6e;color:#fff;padding:7px 10px;font-size:10px;text-align:left;text-transform:uppercase}td{padding:7px 10px;font-size:12px;border-bottom:1px solid #e2e2e7}tr:nth-child(even){background:#f8f9fc}.section{font-size:10px;font-weight:700;text-transform:uppercase;color:#0a2d6e;border-bottom:2px solid #0a2d6e;padding-bottom:4px;margin:16px 0 8px}@media print{body{margin:12px}}</style>'
-      +'</head><body><h1>'+esc(co)+'</h1><h2>Driver Statement \u2014 '+esc(driver)+' | '+today+'</h2>'
-      +bodyEl.innerHTML+'</body></html>');
-    w.document.close(); setTimeout(function(){w.print();},400);
+      +'<style>*{box-sizing:border-box;margin:0;padding:0}body{font-family:Arial,Helvetica,sans-serif;font-size:11px;color:#000;background:#fff;padding:20px}@media print{@page{margin:12mm;size:A4}body{padding:0}}h1{color:#000;font-size:22px;font-weight:900;letter-spacing:-.3px;margin:0}h2{font-size:10px;color:#444;margin:3px 0 14px;text-transform:uppercase;letter-spacing:.06em}table{width:100%;border-collapse:collapse;margin-bottom:16px}th{background:#fff;color:#000;padding:7px 6px;font-size:10px;font-weight:700;text-align:left;text-transform:uppercase;letter-spacing:.04em;border:1.5px solid #000}td{padding:6px;font-size:10px;border:1px solid #000;color:#000}tr:nth-child(even) td{background:#f9f9f9}.section{font-size:10px;font-weight:700;text-transform:uppercase;color:#0a2d6e;border-bottom:2px solid #0a2d6e;padding-bottom:4px;margin:16px 0 8px}.accent{height:3px;background:#0a2d6e;border-radius:2px;margin-bottom:14px}.pfooter{margin-top:20px;padding-top:10px;border-top:1px solid #e0e0e0;font-size:9px;color:#999;text-align:center}</style>'
+      +'</head><body><h1>'+esc(co)+'</h1><h2>Driver Statement \u2014 '+esc(driver)+' | '+today+'</h2><div class="accent"></div>'
+      +bodyEl.innerHTML
+      +'<div class="pfooter">'+esc(co)+' \u2014 Trip Management System \u2014 Generated '+today+'</div>'
+      +'<scr'+'ipt>window.onload=function(){window.print();window.onafterprint=function(){window.close();};};</'+'script>'
+      +'</body></html>');
+    w.document.close();
   }
 }
 
@@ -6991,6 +7316,7 @@ function switchDATab(tab) {
 }
 
 // ── SHARED: Build pending deduction list for a method ─────────────
+var _ddmItems = _ddmItems || []; // computed rows for the current method tab
 function _buildDedMethodList(method) {
   // Collect from SHORTAGE_PMTS
   var shortPmts = SHORTAGE_PMTS.filter(function(p){
@@ -7032,17 +7358,59 @@ function _buildDedMethodList(method) {
 function _renderDedMethodTab(method, emptyMsg) {
   var content = document.getElementById('driveraccts-table-wrap');
   var sub     = document.getElementById('driveraccts-sub');
-  var items   = _buildDedMethodList(method);
+  _ddmItems   = _buildDedMethodList(method);
 
-  if(sub) sub.textContent = items.length + ' pending ' + method + ' deduction'+(items.length!==1?'s':'');
+  var searchDriverEl = document.getElementById('ddm-search-driver');
+  var hadFocusDriver  = document.activeElement === searchDriverEl;
+  var caretDriver      = hadFocusDriver ? searchDriverEl.selectionStart : null;
+  var searchTypeEl   = document.getElementById('ddm-search-type');
+  var hadFocusType    = document.activeElement === searchTypeEl;
+  var caretType         = hadFocusType ? searchTypeEl.selectionStart : null;
+
+  var searchDriver = (searchDriverEl && searchDriverEl.value || '').trim().toLowerCase();
+  var searchType   = (searchTypeEl && searchTypeEl.value || '').trim().toLowerCase();
+  var statusFilter = (document.getElementById('ddm-filter-status')||{}).value || '';
+
+  var items = _ddmItems.filter(function(it){
+    if (searchDriver && (it.driver||'').toLowerCase().indexOf(searchDriver) === -1) return false;
+    if (searchType && (it.type||'').toLowerCase().indexOf(searchType) === -1) return false;
+    if (statusFilter && (it.status||'').toUpperCase() !== statusFilter) return false;
+    return true;
+  });
+
+  if(sub) sub.textContent = items.length + ' pending ' + method + ' deduction'+(items.length!==1?'s':'')+(items.length!==_ddmItems.length?' (of '+_ddmItems.length+')':'');
+
+  var filterBar = '<div style="display:flex;gap:8px;align-items:center;margin-bottom:12px;flex-wrap:nowrap">'
+    + '<input type="text" id="ddm-search-driver" placeholder="🔍 Search driver..." autocomplete="off" oninput="_renderDedMethodTab(\''+method+'\',\''+emptyMsg.replace(/'/g,"\\'")+'\')" value="'+esc(searchDriverEl?searchDriverEl.value:'')+'" style="flex:1;min-width:170px;max-width:260px;border:1.5px solid var(--br);border-radius:8px;padding:8px 12px;font-size:13px;outline:none">'
+    + '<input type="text" id="ddm-search-type" placeholder="🔍 Search type..." autocomplete="off" oninput="_renderDedMethodTab(\''+method+'\',\''+emptyMsg.replace(/'/g,"\\'")+'\')" value="'+esc(searchTypeEl?searchTypeEl.value:'')+'" style="flex:1;min-width:170px;max-width:260px;border:1.5px solid var(--br);border-radius:8px;padding:8px 12px;font-size:13px;outline:none">'
+    + '<select id="ddm-filter-status" onchange="_renderDedMethodTab(\''+method+'\',\''+emptyMsg.replace(/'/g,"\\'")+'\')" style="border:1.5px solid var(--br);border-radius:8px;padding:8px 10px;font-size:12px;font-weight:600;color:var(--ac);outline:none;cursor:pointer">'
+      + '<option value="">All Statuses</option>'
+      + '<option value="PENDING"'+(statusFilter==='PENDING'?' selected':'')+'>🟡 Pending</option>'
+      + '<option value="APPROVED"'+(statusFilter==='APPROVED'?' selected':'')+'>✅ Approved</option>'
+      + '<option value="REJECTED"'+(statusFilter==='REJECTED'?' selected':'')+'>🔴 Rejected</option>'
+    + '</select>'
+    + '<div style="flex:1"></div>'
+    + '<div id="ddm-bulk-btns" style="display:none;align-items:center;gap:8px">'
+      + '<span id="ddm-sel-count" style="font-size:12px;color:var(--t2);font-weight:600"></span>'
+      + '<button class="btn bp" style="background:#0a2d6e;font-size:12px" onclick="ddmExportPDF(\''+method+'\')">📄 Export PDF</button>'
+      + '<button class="btn bp" style="background:#166534;font-size:12px" onclick="ddmExportExcel()">📊 Export Excel</button>'
+    + '</div>'
+    + '</div>';
+
+  function restoreFocus() {
+    if (hadFocusDriver) { var e=document.getElementById('ddm-search-driver'); if(e){ e.focus(); e.setSelectionRange(caretDriver,caretDriver); } }
+    if (hadFocusType)   { var e2=document.getElementById('ddm-search-type'); if(e2){ e2.focus(); e2.setSelectionRange(caretType,caretType); } }
+  }
 
   if(!items.length){
-    if(content) content.innerHTML = '<div class="emptystate"><div style="font-size:48px">&#9989;</div><h3>No Pending '+method+' Deductions</h3><p>'+emptyMsg+'</p></div>';
+    if(content) content.innerHTML = filterBar + '<div class="emptystate"><div style="font-size:48px">&#9989;</div><h3>No Pending '+method+' Deductions</h3><p>'+emptyMsg+'</p></div>';
+    restoreFocus();
     return;
   }
 
   var thS = 'padding:9px 14px;text-align:left;font-size:11px;font-weight:700;color:rgba(255,255,255,.85);text-transform:uppercase;letter-spacing:.06em';
   var html = '<table style="width:100%;border-collapse:collapse"><thead><tr style="background:var(--ac)">'
+    +'<th style="'+thS+';width:36px"><input type="checkbox" id="ddm-cb-all" onchange="toggleAllDdmChecks(this)"></th>'
     +'<th style="'+thS+'">Driver</th>'
     +'<th style="'+thS+'">Type</th>'
     +'<th style="'+thS+'">Description</th>'
@@ -7059,6 +7427,7 @@ function _renderDedMethodTab(method, emptyMsg) {
   html += items.map(function(item){
     var rowBg = driverOrder.indexOf(item.driver)%2===0 ? '' : 'background:#fafbfc;';
     return '<tr style="border-bottom:1px solid #f0f0f4;'+rowBg+'">'
+      +'<td style="padding:10px 14px"><input type="checkbox" class="ddm-cb" value="'+esc(item.id)+'" onchange="updateDdmBulkBtns()"></td>'
       +'<td style="padding:10px 14px;font-weight:700;color:var(--ac)">'+esc(item.driver)+'</td>'
       +'<td style="padding:10px 14px"><span style="font-size:11px;font-weight:700;padding:2px 8px;border-radius:10px;background:#fef2f2;color:#b91c1c">'+esc(item.type)+'</span></td>'
       +'<td style="padding:10px 14px;font-size:12px;color:var(--t2)">'+esc(item.description)+'</td>'
@@ -7071,7 +7440,68 @@ function _renderDedMethodTab(method, emptyMsg) {
 
   html += '</tbody></table>';
 
-  if(content) content.innerHTML = html;
+  if(content) content.innerHTML = filterBar + html;
+  restoreFocus();
+}
+
+function toggleAllDdmChecks(cb) {
+  document.querySelectorAll('.ddm-cb').forEach(function(c){ c.checked = cb.checked; });
+  updateDdmBulkBtns();
+}
+
+function updateDdmBulkBtns() {
+  var checked = document.querySelectorAll('.ddm-cb:checked').length;
+  var bulkDiv = document.getElementById('ddm-bulk-btns');
+  var countEl = document.getElementById('ddm-sel-count');
+  if (bulkDiv) bulkDiv.style.display = checked > 0 ? 'flex' : 'none';
+  if (countEl) countEl.textContent = checked + ' selected';
+}
+
+function _getSelectedDdmItems() {
+  var ids = Array.from(document.querySelectorAll('.ddm-cb:checked')).map(function(c){ return c.value; });
+  return _ddmItems.filter(function(it){ return ids.indexOf(it.id) !== -1; });
+}
+
+function ddmExportExcel() {
+  var selected = _getSelectedDdmItems();
+  if (!selected.length) { toast('Select at least one record','er'); return; }
+  var headers = ['Driver','Type','Description','Date','Amount (TZS)','Status'];
+  var csvRows = [headers.join(',')];
+  selected.forEach(function(it){
+    var cells = [it.driver, it.type, it.description, fmtDate(it.receivedDate), it.amountTZS, it.status];
+    csvRows.push(cells.map(function(c){ return '"'+String(c).replace(/"/g,'""')+'"'; }).join(','));
+  });
+  var csv  = csvRows.join('\n');
+  var blob = new Blob([csv], {type:'text/csv;charset=utf-8;'});
+  var url  = URL.createObjectURL(blob);
+  var a    = document.createElement('a');
+  var filename = 'AK_Driver_Deductions_'+today()+'.csv';
+  a.href=url; a.download=filename; a.click();
+  URL.revokeObjectURL(url);
+  toast(selected.length+' record'+(selected.length!==1?'s':'')+' exported to '+filename+' ✓','ok');
+}
+
+function ddmExportPDF(method) {
+  var selected = _getSelectedDdmItems();
+  if (!selected.length) { toast('Select at least one record','er'); return; }
+  var totalAmt = 0;
+  var rows = selected.map(function(it){
+    totalAmt += parseFloat(it.amountTZS||0);
+    return '<tr><td><b>'+esc(it.driver)+'</b></td>'
+      +'<td>'+esc(it.type)+'</td>'
+      +'<td>'+esc(it.description)+'</td>'
+      +'<td>'+fmtDate(it.receivedDate)+'</td>'
+      +'<td style="text-align:right;font-weight:700">'+fmt(it.amountTZS)+'</td>'
+      +'<td>'+esc(it.status)+'</td></tr>';
+  }).join('');
+  _printFormWindow({
+    title: method+' Deductions',
+    formTitle: method+' Deductions',
+    theadHtml: '<tr><th>Driver</th><th>Type</th><th>Description</th><th>Date</th><th style="text-align:right">Amount (TZS)</th><th>Status</th></tr>',
+    tbodyHtml: rows,
+    tfootHtml: '<tr><td colspan="4" style="text-align:right">TOTAL</td><td style="text-align:right">'+fmt(totalAmt)+'</td><td></td></tr>',
+    noSignatures: true
+  });
 }
 
 function renderSalaryDeductions() {
@@ -7246,10 +7676,10 @@ function renderDriverAccounts() {
 function exportTripsExcel(view) {
   var trips = getSelectedTripsForExport(view);
   if(!trips.length){ toast('Select at least one trip','er'); return; }
-  var title = view==='intransit'?'In Transit Trips':view==='completed'?'Completed Trips':'All Trips';
+  var title = view==='intransit'?'In Transit Trips':view==='completed'?'Completed Trips':view==='waitingload'?'Waiting to Load Trips':'All Trips';
   var rows  = [TRIP_EXPORT_HEADERS].concat(trips.map(function(t){
     return TRIP_EXPORT_FIELDS.map(function(f){
-      var v=t[f]||'';
+      var v = f==='status' ? effectiveTripStatus(t) : (t[f]||'');
       if(f==='loadingDate'||f==='offloadingDate') v=fmtDate(v)||'';
       return v;
     });
@@ -7267,20 +7697,20 @@ function exportReleasesPDF() {
   var ids = getSelectedReleaseIds();
   if(!ids.length){ toast('Select at least one release','er'); return; }
   var releases = RELEASES.filter(function(r){return ids.includes(r.id);});
-  var co  = SETTINGS.companyName||'AK Transport';
-  var date = new Date().toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'});
   var headers = ['Release No','Date','Customer','Destination','Product','Loading Point','Trucks','Assigned','Remaining','Status'];
   var rows = releases.map(function(r){
     var assigned  = TRIPS.filter(function(t){return t.releaseId===r.id;}).length;
     var remaining = Math.max(0,parseInt(r.noOfTrucks||0)-assigned);
     var vals=[r.releaseNo,fmtDate(r.releaseDate),r.customer,r.destination,r.product||'—',r.loadingPoint||'—',r.noOfTrucks||0,assigned,remaining,r.status];
-    return '<tr>'+vals.map(function(v){return '<td style="padding:5px 8px;border:1px solid #e2e2e7;font-size:11px">'+esc(String(v||'—'))+'</td>';}).join('')+'</tr>';
+    return '<tr>'+vals.map(function(v){return '<td>'+esc(String(v||'—'))+'</td>';}).join('')+'</tr>';
   }).join('');
-  var html='<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Releases</title>'
-    +'<style>body{font-family:Arial,sans-serif;margin:20px}h1{color:#0a2d6e;font-size:18px;margin-bottom:4px}p{color:#515154;font-size:12px;margin:0 0 16px}table{width:100%;border-collapse:collapse}th{background:#0a2d6e;color:#fff;padding:6px 8px;font-size:11px;text-align:left}tr:nth-child(even){background:#f8f9fc}</style>'
-    +'</head><body><h1>'+co+' — Releases</h1><p>Generated: '+date+' &nbsp;|&nbsp; '+releases.length+' release'+(releases.length!==1?'s':'')+'</p>'
-    +'<table><thead><tr>'+headers.map(function(h){return '<th>'+h+'</th>';}).join('')+'</tr></thead><tbody>'+rows+'</tbody></table></body></html>';
-  var w=window.open('','_blank');if(w){w.document.write(html);w.document.close();setTimeout(function(){w.print();},400);}
+  _printFormWindow({
+    title: 'Releases',
+    formTitle: 'Releases (' + releases.length + ' release' + (releases.length!==1?'s':'') + ')',
+    theadHtml: '<tr>'+headers.map(function(h){return '<th>'+h+'</th>';}).join('')+'</tr>',
+    tbodyHtml: rows,
+    noSignatures: true
+  });
 }
 
 function exportReleasesExcel() {
@@ -7352,7 +7782,7 @@ function editTrip(id) {
   setV('et-excessloss',  t.excessLoss||'');
   // Rate per Litre is no longer edited from this form.
   setV('et-notes',       t.notes||'');
-  document.getElementById('et-status').value = t.status||'IN TRANSIT';
+  document.getElementById('et-status').value = effectiveTripStatus(t);
 
   // Reset & initialize document upload fields based on current trip state
   window['_letterFileData_et-loaddoc'] = null;
@@ -7423,8 +7853,14 @@ async function saveEditTrip() {
   var driver   = document.getElementById('et-driver').value;
   var loadDate = document.getElementById('et-loaddate').value;
   var offDate  = document.getElementById('et-offdate').value;
+  var loaded    = parseFloat(document.getElementById('et-loaded').value)||0;
+  var offloaded = parseFloat(document.getElementById('et-offloaded').value)||0;
   if (!horse || !trailer || !driver) { toast('Fill required fields (Horse, Trailer, Driver)','er'); return; }
-  if (offDate && !loadDate) { toast('Add Loading Date before Offloading Date','er'); return; }
+  if (loadDate && !(loaded > 0)) { toast('Vol Loaded is required when Loading Date is filled','er'); return; }
+  if (loaded > 0 && !loadDate) { toast('Loading Date is required when Vol Loaded is filled','er'); return; }
+  if ((offDate || offloaded > 0) && !(loadDate && loaded > 0)) { toast('Complete Loading Date and Vol Loaded before entering Offloading details','er'); return; }
+  if (offDate && !(offloaded > 0)) { toast('Vol Offloaded is required when Offloading Date is filled','er'); return; }
+  if (offloaded > 0 && !offDate) { toast('Offloading Date is required when Vol Offloaded is filled','er'); return; }
   var _etExisting = TRIPS.find(function(x){return x.id===_editingTripId;})||{};
   if (loadDate && !window['_letterFileData_et-loaddoc'] && !_etExisting.loadDocUrl) {
     toast('Loading Document is required when Loading Date is filled','er'); return;
@@ -7446,8 +7882,6 @@ async function saveEditTrip() {
     if (newOffDocUrl) t.offDocUrl = newOffDocUrl;
   } catch(e) { toast('Document upload failed: '+e.message,'er'); btn.disabled=false; btn.innerHTML='&#128190; Save Changes'; return; }
 
-  var loaded    = parseFloat(document.getElementById('et-loaded').value)||0;
-  var offloaded = parseFloat(document.getElementById('et-offloaded').value)||0;
   var allow     = loaded * 0.003;
   var actual    = Math.max(0, loaded - offloaded);
   var excess    = Math.max(0, actual - allow);
@@ -7477,6 +7911,10 @@ async function saveEditTrip() {
     // Both filled — auto-set COMPLETED
     t.status = 'COMPLETED';
     document.getElementById('et-status').value = 'COMPLETED';
+  } else if (loaded > 0 && (t.status||'').toUpperCase() !== 'CANCELLED') {
+    // Loaded Qty now on record — no longer waiting to load
+    t.status = 'IN TRANSIT';
+    document.getElementById('et-status').value = 'IN TRANSIT';
   } else if ((t.status||'').toUpperCase() === 'COMPLETED') {
     // User manually set COMPLETED but missing data
     var missing = [];
@@ -7876,7 +8314,7 @@ function renderPermits(){
     else{sb='<span class="sb sGR">✅ Valid</span>';dd='<span style="color:#166534;font-weight:600">'+daysLeft+' days</span>';}
     if(!p.documentUrl)sb+=' <span class="sb sAM" style="font-size:9px">📄 No Doc</span>';
     return '<tr><td><b>'+esc(p.vehicle)+'</b></td><td>'+esc(p.vehicleType)+'</td><td>'+esc(p.permitType)+'</td><td>'+fmtDate(p.paymentDate)+'</td><td>'+fmtDate(p.expiryDate)+'</td><td>'+dd+'</td>'
-      +'<td>'+(p.documentUrl?'<a href="'+p.documentUrl+'" target="_blank" style="color:var(--hi);font-size:11px">📄 View</a>':'<span style="color:var(--t3);font-size:11px">No doc</span>')+'</td>'
+      +'<td>'+(p.documentUrl?'<a href="'+p.documentUrl+'" target="_blank" onclick="return downloadDoc(this.href)" style="color:var(--hi);font-size:11px">📄 View</a>':'<span style="color:var(--t3);font-size:11px">No doc</span>')+'</td>'
       +'<td>'+sb+'</td><td><button class="actbtn e" onclick="toast(\'Edit permit — Phase 2\',\'in\')">Edit</button></td></tr>';
   }).join('');
 }
@@ -8389,7 +8827,7 @@ window.renderPermits = function() {
     } else if (inRenewal) {
       docCell = '<span style="color:var(--t3);font-size:11px">—</span>';
     } else if (p && p.documentUrl) {
-      docCell = '<a href="'+esc(p.documentUrl)+'" target="_blank" style="color:var(--hi);font-size:11px">📄 View</a>';
+      docCell = '<a href="'+esc(p.documentUrl)+'" target="_blank" onclick="return downloadDoc(this.href)" style="color:var(--hi);font-size:11px">📄 View</a>';
     } else if (p) {
       docCell = '<span style="color:#b91c1c;font-size:11px">⚠ Missing</span>';
     } else {
@@ -8721,7 +9159,7 @@ function openPermitHistory(vehicle, type) {
         + '<td style="font-weight:600;color:' + (exp<today_dt?'#b91c1c':exp<=warn_dt?'#92400e':'#166534') + '">' + fmtDate(p.expiryDate) + '</td>'
         + '<td style="font-family:monospace;color:var(--ac)">TZS ' + fmt(p.amountPaid) + '</td>'
         + '<td>' + esc(p.receiptNo||'—') + '</td>'
-        + '<td>' + (p.documentUrl ? '<a href="'+esc(p.documentUrl)+'" target="_blank" style="color:var(--hi);font-weight:600;font-size:12px">📄 Open Doc</a>' : '<button class="actbtn" style="font-size:11px;color:#0071e3;border-color:#0071e3" onclick="openDocUpload(\''+p.id+'\')">⬆ Upload Doc</button>') + '</td>'
+        + '<td>' + (p.documentUrl ? '<a href="'+esc(p.documentUrl)+'" target="_blank" onclick="return downloadDoc(this.href)" style="color:var(--hi);font-weight:600;font-size:12px">📄 Open Doc</a>' : '<button class="actbtn" style="font-size:11px;color:#0071e3;border-color:#0071e3" onclick="openDocUpload(\''+p.id+'\')">⬆ Upload Doc</button>') + '</td>'
         + '<td>' + sb + '</td>'
         + '<td><button class="actbtn e" onclick="editPermitRecord(\'' + p.id + '\')">Edit</button></td>'
         + '</tr>';
@@ -8779,7 +9217,7 @@ function openVehiclePermitOverview(plate) {
         + '<span style="font-weight:700;color:var(--ac)">'+esc(t.tripNo)+'</span>'
         + '<span style="color:var(--t2)">'+esc(t.destination)+'</span>'
         + '<span style="color:var(--t3);font-size:11px">'+fmtDate(t.loadingDate)+'</span>'
-        + tripStatusBadge(t.status)
+        + tripStatusBadge(effectiveTripStatus(t))
         + '</div>';
     });
   }
@@ -10024,33 +10462,31 @@ function printRequestLetter(id) {
     if (r.description) detailRows += '<div style="grid-column:1/-1;background:#f5f5f7;border-radius:8px;padding:10px 14px;font-size:12px"><b>Description:</b> '+esc(r.description)+'</div>';
   }
 
-  var content = '<div class="print-header"><h1>'+esc(company)+'</h1><p>'+esc(address)+'</p></div>'
-    + '<div class="print-title">'+title+'</div>'
-    + '<div class="print-meta">'
-    + '<div><span class="lbl">Request No</span><span class="val">'+esc(r.reqNo||'—')+'</span></div>'
-    + '<div><span class="lbl">Date</span><span class="val">'+fmtDate(r.requestedAt||r.requestDate||today())+'</span></div>'
-    + '<div><span class="lbl">Requested By</span><span class="val">'+esc(r.requestedBy||'—')+'</span></div>'
-    + '<div><span class="lbl">Status</span><span class="val">'+esc(r.status||'PENDING')+'</span></div>'
-    + '</div>'
-    + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:24px">'+detailRows+'</div>'
-    + (r.notes ? '<div style="margin-bottom:20px;font-size:12px;color:#515154"><b>Notes:</b> '+esc(r.notes)+'</div>' : '')
-    + '<div class="print-sigs">'
-    + '<div class="print-sig"><div style="font-weight:700;margin-bottom:24px">Requested By</div><div class="lbl">'+esc(r.requestedBy||'')+'</div><div class="lbl">Signature ___________________</div><div class="lbl">Date ___________________</div></div>'
-    + '<div class="print-sig"><div style="font-weight:700;margin-bottom:24px">Approved By</div><div class="lbl">Manager</div><div class="lbl">Signature ___________________</div><div class="lbl">Date ___________________</div></div>'
-    + '</div>'
-    + '<div class="print-footer">'+esc(company)+' — Trip Management System — Printed: '+printDate+'</div>';
+  var metaGrid = '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:16px">'
+    + metaBlockPrint('Request No', esc(r.reqNo||'—'))
+    + metaBlockPrint('Date', fmtDate(r.requestedAt||r.requestDate||today()))
+    + metaBlockPrint('Requested By', esc(r.requestedBy||'—'))
+    + metaBlockPrint('Status', esc(r.status||'PENDING'))
+    + '</div>';
+  var bodyHtml = metaGrid
+    + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:20px">'+detailRows+'</div>'
+    + (r.notes ? '<div style="margin-bottom:16px;font-size:11px;color:#333"><b>Notes:</b> '+esc(r.notes)+'</div>' : '');
 
-  document.getElementById('print-content').innerHTML = content;
-  document.getElementById('print-area').style.display = 'block';
-  window.print();
-  setTimeout(function(){ document.getElementById('print-area').style.display = 'none'; }, 500);
+  _printFormWindow({
+    title: title,
+    formTitle: title,
+    customBodyHtml: bodyHtml,
+    sigLeftLabel: 'Requested By',
+    sigLeftName: r.requestedBy||'',
+    sigRightLabel: 'Approved By'
+  });
 }
 
 function metaBlockPrint(label, val) {
   if (!label) return '<div></div>';
-  return '<div style="background:#f8f9fc;border:1px solid #e2e2e7;border-radius:8px;padding:10px 14px">'
-    + '<div style="font-size:10px;font-weight:700;color:#515154;text-transform:uppercase;letter-spacing:.06em;margin-bottom:3px">'+label+'</div>'
-    + '<div style="font-size:13px;font-weight:600;color:#1d1d1f">'+val+'</div></div>';
+  return '<div style="border:1px solid #000;border-radius:4px;padding:9px 12px">'
+    + '<div style="font-size:9px;font-weight:700;color:#444;text-transform:uppercase;letter-spacing:.06em;margin-bottom:3px">'+label+'</div>'
+    + '<div style="font-size:12px;font-weight:600;color:#000">'+val+'</div></div>';
 }
 
 
@@ -10511,6 +10947,7 @@ function switchDATab(tab) {
 }
 
 // ── SHARED: Build pending deduction list for a method ─────────────
+var _ddmItems = _ddmItems || []; // computed rows for the current method tab
 function _buildDedMethodList(method) {
   // Collect from SHORTAGE_PMTS
   var shortPmts = SHORTAGE_PMTS.filter(function(p){
@@ -10552,17 +10989,59 @@ function _buildDedMethodList(method) {
 function _renderDedMethodTab(method, emptyMsg) {
   var content = document.getElementById('driveraccts-table-wrap');
   var sub     = document.getElementById('driveraccts-sub');
-  var items   = _buildDedMethodList(method);
+  _ddmItems   = _buildDedMethodList(method);
 
-  if(sub) sub.textContent = items.length + ' pending ' + method + ' deduction'+(items.length!==1?'s':'');
+  var searchDriverEl = document.getElementById('ddm-search-driver');
+  var hadFocusDriver  = document.activeElement === searchDriverEl;
+  var caretDriver      = hadFocusDriver ? searchDriverEl.selectionStart : null;
+  var searchTypeEl   = document.getElementById('ddm-search-type');
+  var hadFocusType    = document.activeElement === searchTypeEl;
+  var caretType         = hadFocusType ? searchTypeEl.selectionStart : null;
+
+  var searchDriver = (searchDriverEl && searchDriverEl.value || '').trim().toLowerCase();
+  var searchType   = (searchTypeEl && searchTypeEl.value || '').trim().toLowerCase();
+  var statusFilter = (document.getElementById('ddm-filter-status')||{}).value || '';
+
+  var items = _ddmItems.filter(function(it){
+    if (searchDriver && (it.driver||'').toLowerCase().indexOf(searchDriver) === -1) return false;
+    if (searchType && (it.type||'').toLowerCase().indexOf(searchType) === -1) return false;
+    if (statusFilter && (it.status||'').toUpperCase() !== statusFilter) return false;
+    return true;
+  });
+
+  if(sub) sub.textContent = items.length + ' pending ' + method + ' deduction'+(items.length!==1?'s':'')+(items.length!==_ddmItems.length?' (of '+_ddmItems.length+')':'');
+
+  var filterBar = '<div style="display:flex;gap:8px;align-items:center;margin-bottom:12px;flex-wrap:nowrap">'
+    + '<input type="text" id="ddm-search-driver" placeholder="🔍 Search driver..." autocomplete="off" oninput="_renderDedMethodTab(\''+method+'\',\''+emptyMsg.replace(/'/g,"\\'")+'\')" value="'+esc(searchDriverEl?searchDriverEl.value:'')+'" style="flex:1;min-width:170px;max-width:260px;border:1.5px solid var(--br);border-radius:8px;padding:8px 12px;font-size:13px;outline:none">'
+    + '<input type="text" id="ddm-search-type" placeholder="🔍 Search type..." autocomplete="off" oninput="_renderDedMethodTab(\''+method+'\',\''+emptyMsg.replace(/'/g,"\\'")+'\')" value="'+esc(searchTypeEl?searchTypeEl.value:'')+'" style="flex:1;min-width:170px;max-width:260px;border:1.5px solid var(--br);border-radius:8px;padding:8px 12px;font-size:13px;outline:none">'
+    + '<select id="ddm-filter-status" onchange="_renderDedMethodTab(\''+method+'\',\''+emptyMsg.replace(/'/g,"\\'")+'\')" style="border:1.5px solid var(--br);border-radius:8px;padding:8px 10px;font-size:12px;font-weight:600;color:var(--ac);outline:none;cursor:pointer">'
+      + '<option value="">All Statuses</option>'
+      + '<option value="PENDING"'+(statusFilter==='PENDING'?' selected':'')+'>🟡 Pending</option>'
+      + '<option value="APPROVED"'+(statusFilter==='APPROVED'?' selected':'')+'>✅ Approved</option>'
+      + '<option value="REJECTED"'+(statusFilter==='REJECTED'?' selected':'')+'>🔴 Rejected</option>'
+    + '</select>'
+    + '<div style="flex:1"></div>'
+    + '<div id="ddm-bulk-btns" style="display:none;align-items:center;gap:8px">'
+      + '<span id="ddm-sel-count" style="font-size:12px;color:var(--t2);font-weight:600"></span>'
+      + '<button class="btn bp" style="background:#0a2d6e;font-size:12px" onclick="ddmExportPDF(\''+method+'\')">📄 Export PDF</button>'
+      + '<button class="btn bp" style="background:#166534;font-size:12px" onclick="ddmExportExcel()">📊 Export Excel</button>'
+    + '</div>'
+    + '</div>';
+
+  function restoreFocus() {
+    if (hadFocusDriver) { var e=document.getElementById('ddm-search-driver'); if(e){ e.focus(); e.setSelectionRange(caretDriver,caretDriver); } }
+    if (hadFocusType)   { var e2=document.getElementById('ddm-search-type'); if(e2){ e2.focus(); e2.setSelectionRange(caretType,caretType); } }
+  }
 
   if(!items.length){
-    if(content) content.innerHTML = '<div class="emptystate"><div style="font-size:48px">&#9989;</div><h3>No Pending '+method+' Deductions</h3><p>'+emptyMsg+'</p></div>';
+    if(content) content.innerHTML = filterBar + '<div class="emptystate"><div style="font-size:48px">&#9989;</div><h3>No Pending '+method+' Deductions</h3><p>'+emptyMsg+'</p></div>';
+    restoreFocus();
     return;
   }
 
   var thS = 'padding:9px 14px;text-align:left;font-size:11px;font-weight:700;color:rgba(255,255,255,.85);text-transform:uppercase;letter-spacing:.06em';
   var html = '<table style="width:100%;border-collapse:collapse"><thead><tr style="background:var(--ac)">'
+    +'<th style="'+thS+';width:36px"><input type="checkbox" id="ddm-cb-all" onchange="toggleAllDdmChecks(this)"></th>'
     +'<th style="'+thS+'">Driver</th>'
     +'<th style="'+thS+'">Type</th>'
     +'<th style="'+thS+'">Description</th>'
@@ -10579,6 +11058,7 @@ function _renderDedMethodTab(method, emptyMsg) {
   html += items.map(function(item){
     var rowBg = driverOrder.indexOf(item.driver)%2===0 ? '' : 'background:#fafbfc;';
     return '<tr style="border-bottom:1px solid #f0f0f4;'+rowBg+'">'
+      +'<td style="padding:10px 14px"><input type="checkbox" class="ddm-cb" value="'+esc(item.id)+'" onchange="updateDdmBulkBtns()"></td>'
       +'<td style="padding:10px 14px;font-weight:700;color:var(--ac)">'+esc(item.driver)+'</td>'
       +'<td style="padding:10px 14px"><span style="font-size:11px;font-weight:700;padding:2px 8px;border-radius:10px;background:#fef2f2;color:#b91c1c">'+esc(item.type)+'</span></td>'
       +'<td style="padding:10px 14px;font-size:12px;color:var(--t2)">'+esc(item.description)+'</td>'
@@ -10591,7 +11071,68 @@ function _renderDedMethodTab(method, emptyMsg) {
 
   html += '</tbody></table>';
 
-  if(content) content.innerHTML = html;
+  if(content) content.innerHTML = filterBar + html;
+  restoreFocus();
+}
+
+function toggleAllDdmChecks(cb) {
+  document.querySelectorAll('.ddm-cb').forEach(function(c){ c.checked = cb.checked; });
+  updateDdmBulkBtns();
+}
+
+function updateDdmBulkBtns() {
+  var checked = document.querySelectorAll('.ddm-cb:checked').length;
+  var bulkDiv = document.getElementById('ddm-bulk-btns');
+  var countEl = document.getElementById('ddm-sel-count');
+  if (bulkDiv) bulkDiv.style.display = checked > 0 ? 'flex' : 'none';
+  if (countEl) countEl.textContent = checked + ' selected';
+}
+
+function _getSelectedDdmItems() {
+  var ids = Array.from(document.querySelectorAll('.ddm-cb:checked')).map(function(c){ return c.value; });
+  return _ddmItems.filter(function(it){ return ids.indexOf(it.id) !== -1; });
+}
+
+function ddmExportExcel() {
+  var selected = _getSelectedDdmItems();
+  if (!selected.length) { toast('Select at least one record','er'); return; }
+  var headers = ['Driver','Type','Description','Date','Amount (TZS)','Status'];
+  var csvRows = [headers.join(',')];
+  selected.forEach(function(it){
+    var cells = [it.driver, it.type, it.description, fmtDate(it.receivedDate), it.amountTZS, it.status];
+    csvRows.push(cells.map(function(c){ return '"'+String(c).replace(/"/g,'""')+'"'; }).join(','));
+  });
+  var csv  = csvRows.join('\n');
+  var blob = new Blob([csv], {type:'text/csv;charset=utf-8;'});
+  var url  = URL.createObjectURL(blob);
+  var a    = document.createElement('a');
+  var filename = 'AK_Driver_Deductions_'+today()+'.csv';
+  a.href=url; a.download=filename; a.click();
+  URL.revokeObjectURL(url);
+  toast(selected.length+' record'+(selected.length!==1?'s':'')+' exported to '+filename+' ✓','ok');
+}
+
+function ddmExportPDF(method) {
+  var selected = _getSelectedDdmItems();
+  if (!selected.length) { toast('Select at least one record','er'); return; }
+  var totalAmt = 0;
+  var rows = selected.map(function(it){
+    totalAmt += parseFloat(it.amountTZS||0);
+    return '<tr><td><b>'+esc(it.driver)+'</b></td>'
+      +'<td>'+esc(it.type)+'</td>'
+      +'<td>'+esc(it.description)+'</td>'
+      +'<td>'+fmtDate(it.receivedDate)+'</td>'
+      +'<td style="text-align:right;font-weight:700">'+fmt(it.amountTZS)+'</td>'
+      +'<td>'+esc(it.status)+'</td></tr>';
+  }).join('');
+  _printFormWindow({
+    title: method+' Deductions',
+    formTitle: method+' Deductions',
+    theadHtml: '<tr><th>Driver</th><th>Type</th><th>Description</th><th>Date</th><th style="text-align:right">Amount (TZS)</th><th>Status</th></tr>',
+    tbodyHtml: rows,
+    tfootHtml: '<tr><td colspan="4" style="text-align:right">TOTAL</td><td style="text-align:right">'+fmt(totalAmt)+'</td><td></td></tr>',
+    noSignatures: true
+  });
 }
 
 function renderSalaryDeductions() {
@@ -10800,7 +11341,7 @@ function _expenseTable(expenses) {
           +'<td style="padding:8px 10px">'+esc(e.expenseType||'—')+'</td>'
           +'<td style="padding:8px 10px;font-family:monospace;color:#b91c1c">TZS '+fmt(e.amountTZS||0)+'</td>'
           +'<td style="padding:8px 10px">'+esc(e.settlementMethod||'—')+'</td>'
-          +'<td style="padding:8px 10px">'+(e.letterUrl?'<a href="'+esc(e.letterUrl)+'" target="_blank" style="color:var(--hi);font-size:11px">📄 View</a>':'<span style="color:var(--t3);font-size:11px">No letter</span>')+'</td>'
+          +'<td style="padding:8px 10px">'+(e.letterUrl?'<a href="'+esc(e.letterUrl)+'" target="_blank" onclick="return downloadDoc(this.href)" style="color:var(--hi);font-size:11px">📄 View</a>':'<span style="color:var(--t3);font-size:11px">No letter</span>')+'</td>'
           +'<td style="padding:8px 10px">'+drvExpStatusBadge(e.status)+'</td>'
           +'<td style="padding:8px 10px;white-space:nowrap">'
           +(e.status!=='SETTLED'?'<button class="actbtn e" onclick="openDriverExpSettlement(\''+e.id+'\')">Settle</button>':'')
@@ -11334,31 +11875,30 @@ function printInvoiceSummary(id) {
       + '</tr>';
   }).join('');
 
-  var content = '<div class="print-header"><h1>' + esc(company) + '</h1><p>' + esc(address) + '</p></div>'
-    + '<div class="print-title">Transport Invoice</div>'
-    + '<div class="print-meta">'
-    + '<div><span class="lbl">Invoice No</span><span class="val">' + esc(inv.invoiceNo) + '</span></div>'
-    + '<div><span class="lbl">Invoice Date</span><span class="val">' + fmtDate(inv.invoiceDate) + '</span></div>'
-    + '<div><span class="lbl">Customer</span><span class="val">' + esc(inv.customer) + '</span></div>'
-    + '<div><span class="lbl">Total Trips</span><span class="val">' + trips.length + '</span></div>'
-    + '</div>'
-    + '<table class="print-table"><thead><tr><th>#</th><th>Trip No</th><th>Truck</th><th>Destination</th><th style="text-align:right">Offloaded (ltrs)</th><th style="text-align:right">Volume (m&#179;)</th><th style="text-align:right">Rate (USD)</th><th style="text-align:right">Amount (USD)</th></tr></thead>'
-    + '<tbody>' + rows + '</tbody></table>'
-    + '<div class="print-total" style="text-align:right">'
+  var metaGrid = '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:16px">'
+    + metaBlockPrint('Invoice No', esc(inv.invoiceNo))
+    + metaBlockPrint('Invoice Date', fmtDate(inv.invoiceDate))
+    + metaBlockPrint('Customer', esc(inv.customer))
+    + metaBlockPrint('Total Trips', trips.length)
+    + '</div>';
+  var totalsHtml = '<div style="text-align:right;font-size:11px;color:#333;margin-bottom:20px">'
     + 'Gross Amount: USD ' + fmtDec(gross) + '<br>'
     + (loss > 0 ? 'Less Loss Deduction: (USD ' + fmtDec(loss) + ')<br>' : '')
-    + '<span style="font-size:16px;font-weight:800">NET PAYABLE: USD ' + fmtDec(net) + '</span>'
-    + '</div>'
-    + '<div class="print-sigs">'
-    + '<div class="print-sig"><div style="font-weight:700;margin-bottom:24px">Prepared By</div><div class="lbl">' + esc(inv.createdBy||'') + '</div><div class="lbl">Signature ___________________</div><div class="lbl">Date ___________________</div></div>'
-    + '<div class="print-sig"><div style="font-weight:700;margin-bottom:24px">Authorised By</div><div class="lbl">Director</div><div class="lbl">Signature ___________________</div><div class="lbl">Date ___________________</div></div>'
-    + '</div>'
-    + '<div class="print-footer">' + esc(company) + ' — Trip Management System — Printed: ' + printDate + '</div>';
+    + '<span style="font-size:15px;font-weight:800;color:#000">NET PAYABLE: USD ' + fmtDec(net) + '</span>'
+    + '</div>';
+  var bodyHtml = metaGrid
+    + '<table class="tbl-main" style="margin-bottom:14px"><thead><tr><th>#</th><th>Trip No</th><th>Truck</th><th>Destination</th><th style="text-align:right">Offloaded (ltrs)</th><th style="text-align:right">Volume (m&#179;)</th><th style="text-align:right">Rate (USD)</th><th style="text-align:right">Amount (USD)</th></tr></thead><tbody>' + rows + '</tbody></table>'
+    + totalsHtml;
 
-  document.getElementById('print-content').innerHTML = content;
-  document.getElementById('print-area').style.display = 'block';
-  window.print();
-  setTimeout(function(){ document.getElementById('print-area').style.display = 'none'; }, 500);
+  _printFormWindow({
+    title: 'Transport Invoice',
+    formTitle: 'Transport Invoice',
+    customBodyHtml: bodyHtml,
+    sigLeftLabel: 'Prepared By',
+    sigLeftName: inv.createdBy||'',
+    sigRightLabel: 'Authorised By',
+    sigRightName: 'Director'
+  });
 }
 
 // ── FLEET INCOME REPORT ───────────────────────────────────────────
@@ -11472,21 +12012,13 @@ function renderFleetReport() {
 }
 
 function printFleetReport() {
-  var company   = SETTINGS.companyName    || 'AK TRANSPORT (T) LIMITED';
-  var address   = SETTINGS.companyAddress || 'Dar es Salaam, Tanzania';
-  var printDate = new Date().toLocaleDateString('en-GB', {day:'2-digit',month:'long',year:'numeric'});
   var tableHtml = document.getElementById('fleet-table') ? document.getElementById('fleet-table').outerHTML : '';
-
-  var content = '<div class="print-header"><h1>' + esc(company) + '</h1><p>' + esc(address) + '</p></div>'
-    + '<div class="print-title">Fleet Income Report</div>'
-    + '<div class="print-meta"><div><span class="lbl">Printed</span><span class="val">' + printDate + '</span></div></div>'
-    + tableHtml
-    + '<div class="print-footer">' + esc(company) + ' — Trip Management System — CONFIDENTIAL — ' + printDate + '</div>';
-
-  document.getElementById('print-content').innerHTML = content;
-  document.getElementById('print-area').style.display = 'block';
-  window.print();
-  setTimeout(function(){ document.getElementById('print-area').style.display = 'none'; }, 500);
+  _printFormWindow({
+    title: 'Fleet Income Report',
+    formTitle: 'Fleet Income Report — CONFIDENTIAL',
+    customBodyHtml: tableHtml,
+    noSignatures: true
+  });
 }
 
 // ── HELPER: decimal formatting ────────────────────────────────────
@@ -12381,7 +12913,7 @@ function openTripDetail(tripId) {
   modal.innerHTML = '<div class="modal" style="max-width:960px">'
     + '<div class="modalhead">'
     + '<div><div class="modaltitle">&#128666; ' + esc(t.tripNo) + '</div>'
-    + '<div style="font-size:11px;color:rgba(255,255,255,.6);margin-top:2px">' + esc(t.horse) + ' · ' + esc(t.driver) + ' · ' + esc(t.destination) + ' · ' + tripStatusBadge(t.status).replace(/style="[^"]*"/g,'') + '</div></div>'
+    + '<div style="font-size:11px;color:rgba(255,255,255,.6);margin-top:2px">' + esc(t.horse) + ' · ' + esc(t.driver) + ' · ' + esc(t.destination) + ' · ' + tripStatusBadge(effectiveTripStatus(t)).replace(/style="[^"]*"/g,'') + '</div></div>'
     + '<button class="modalclose" onclick="closeModal(\'modal-trip-detail\')">&#10005;</button>'
     + '</div>'
     + '<div style="background:#f5f5f7;border-bottom:1px solid #e2e2e7;padding:0 20px">'
@@ -12417,7 +12949,7 @@ function switchTripDetailTab(tab, tripId) {
       + _metaPair('Loading Date', fmtDate(t.loadingDate)) + _metaPair('Offloading Date', fmtDate(t.offloadingDate)||'—')
       + _metaPair('Loaded Qty', fmt(t.loadedQty||0)+' ltrs') + _metaPair('Offloaded Qty', fmt(t.offloadedQty||0)+' ltrs')
       + _metaPair('Excess Loss', fmt(t.excessLoss||0)+' ltrs') + _metaPair('Invoice No', t.invoiceNo||'Not Invoiced')
-      + _metaPair('Status', tripStatusBadge(t.status)) + _metaPair('Trade Ref', t.tradeRef||'—')
+      + _metaPair('Status', tripStatusBadge(effectiveTripStatus(t))) + _metaPair('Trade Ref', t.tradeRef||'—')
       + (t.notes?'<div style="grid-column:1/-1;background:#f8f9fc;border:1px solid #e2e2e7;border-radius:8px;padding:10px 14px"><div style="font-size:10px;font-weight:700;color:var(--t2);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">Notes</div><div style="font-size:13px">'+esc(t.notes)+'</div></div>':'')
       + '</div>';
   }
@@ -12518,10 +13050,6 @@ function _pnlSection(title, rows, accentColor) {
 
 // ── PRINT P&L REPORT ──────────────────────────────────────────────
 function printPnlReport() {
-  var company   = SETTINGS.companyName    || 'AK TRANSPORT (T) LIMITED';
-  var address   = SETTINGS.companyAddress || 'Dar es Salaam, Tanzania';
-  var printDate = new Date().toLocaleDateString('en-GB', {day:'2-digit',month:'long',year:'numeric'});
-
   var activeTab = document.querySelector('#pnl-tabs .stab-btn.active');
   var tabName   = activeTab ? activeTab.textContent.trim() : 'P&L Report';
 
@@ -12531,16 +13059,12 @@ function printPnlReport() {
   if (tripTable)  tableHtml = tripTable.outerHTML;
   else if (relContent) tableHtml = relContent.innerHTML;
 
-  var content = '<div class="print-header"><h1>' + esc(company) + '</h1><p>' + esc(address) + '</p></div>'
-    + '<div class="print-title">' + esc(tabName) + '</div>'
-    + '<div class="print-meta"><div><span class="lbl">Printed</span><span class="val">' + printDate + '</span></div></div>'
-    + tableHtml
-    + '<div class="print-footer">' + esc(company) + ' — CONFIDENTIAL — ' + printDate + '</div>';
-
-  document.getElementById('print-content').innerHTML = content;
-  document.getElementById('print-area').style.display = 'block';
-  window.print();
-  setTimeout(function(){ document.getElementById('print-area').style.display = 'none'; }, 500);
+  _printFormWindow({
+    title: tabName,
+    formTitle: tabName + ' — CONFIDENTIAL',
+    customBodyHtml: tableHtml,
+    noSignatures: true
+  });
 }
 
 console.log('Phase 8 — P&L Summaries loaded ✓');
@@ -12926,25 +13450,18 @@ function _kpiCard(label, val, color) {
 
 // ── PRINT COMBINED REPORT ─────────────────────────────────────────
 function printCombinedReport() {
-  var company   = SETTINGS.companyName    || 'AK TRANSPORT (T) LIMITED';
-  var address   = SETTINGS.companyAddress || 'Dar es Salaam, Tanzania';
-  var printDate = new Date().toLocaleDateString('en-GB', {day:'2-digit',month:'long',year:'numeric'});
   var overview  = document.getElementById('combined-overview-content');
   var trucks    = document.getElementById('combined-truck-cards');
   var activeTab = document.querySelector('#combined-tabs .stab-btn.active');
   var tabName   = activeTab ? activeTab.textContent.trim() : 'Combined P&L';
   var tableHtml = overview && overview.style.display!=='none' ? overview.innerHTML : (trucks ? trucks.innerHTML : '');
 
-  var content = '<div class="print-header"><h1>' + esc(company) + '</h1><p>' + esc(address) + '</p></div>'
-    + '<div class="print-title">Combined P&amp;L — ' + esc(tabName) + '</div>'
-    + '<div class="print-meta"><div><span class="lbl">Printed</span><span class="val">' + printDate + '</span></div></div>'
-    + tableHtml
-    + '<div class="print-footer">' + esc(company) + ' — STRICTLY CONFIDENTIAL — ' + printDate + '</div>';
-
-  document.getElementById('print-content').innerHTML = content;
-  document.getElementById('print-area').style.display = 'block';
-  window.print();
-  setTimeout(function(){ document.getElementById('print-area').style.display = 'none'; }, 500);
+  _printFormWindow({
+    title: 'Combined P&L',
+    formTitle: 'Combined P&L — ' + tabName + ' — STRICTLY CONFIDENTIAL',
+    customBodyHtml: tableHtml,
+    noSignatures: true
+  });
 }
 
 // ── REGISTER combined in switchView ──────────────────────────────
@@ -13328,13 +13845,13 @@ var RF_TABS = {
   fuel: {
     type: 'TRIP',
     label: 'Fuel Requests',
-    cols: ['☐','Req No','Release','Customer','Truck','Driver','License No','Destination','Description','Litres','Amount (TZS)','By','Status','Actions'],
+    cols: ['☐','Req No','Date Requested','Release','Customer','Truck','Driver','License No','Destination','Description','Litres','Amount (TZS)','By','Status','Actions'],
     row: function(r, t) {
       var drv = t ? DRIVERS.find(function(d){ return d.name===t.driver; }) : null;
       var lic = drv ? (drv.licenseNo||'—') : '—';
       var rel = RELEASES.find(function(x){ return x.releaseNo===(r.releaseNo||(t?t.releaseNo:''));});
       return [
-        '', esc(r.reqNo||'—'),
+        '', esc(r.reqNo||'—'), fmtDate(r.requestedAt||''),
         esc(r.releaseNo||(t?t.releaseNo:'')||'—'),
         esc(rel?rel.customer||(t?t.customer:'—'):(t?t.customer||'—':'—')),
         esc(r.horse||(t?t.horse:'')||'—'),
@@ -13349,11 +13866,11 @@ var RF_TABS = {
   mileage: {
     type: 'MILEAGE',
     label: 'Mileage Requests',
-    cols: ['☐','Req No','Release','Customer','Truck','Driver','Destination','Amount (TZS)','Bonus (TZS)','By','Status','Actions'],
+    cols: ['☐','Req No','Date Requested','Release','Customer','Truck','Driver','Destination','Amount (TZS)','Bonus (TZS)','By','Status','Actions'],
     row: function(r, t) {
       var rel = RELEASES.find(function(x){ return x.releaseNo===(r.releaseNo||(t?t.releaseNo:''));});
       return [
-        '', esc(r.reqNo||'—'),
+        '', esc(r.reqNo||'—'), fmtDate(r.requestedAt||''),
         esc(r.releaseNo||(t?t.releaseNo:'')||'—'),
         esc(rel?rel.customer||(t?t.customer:'—'):(t?t.customer||'—':'—')),
         esc(r.horse||(t?t.horse:'')||'—'),
@@ -13367,11 +13884,11 @@ var RF_TABS = {
   toll: {
     type: 'ROAD_TOLL',
     label: 'Road Toll — Tunduma',
-    cols: ['☐','Req No','Release','Customer','Truck','Driver','Destination','Amount (USD)','By','Status','Actions'],
+    cols: ['☐','Req No','Date Requested','Release','Customer','Truck','Driver','Destination','Amount (USD)','By','Status','Actions'],
     row: function(r, t) {
       var rel = RELEASES.find(function(x){ return x.releaseNo===(r.releaseNo||(t?t.releaseNo:''));});
       return [
-        '', esc(r.reqNo||'—'),
+        '', esc(r.reqNo||'—'), fmtDate(r.requestedAt||''),
         esc(r.releaseNo||(t?t.releaseNo:'')||'—'),
         esc(rel?rel.customer||(t?t.customer:'—'):(t?t.customer||'—':'—')),
         esc(r.horse||(t?t.horse:'')||'—'),
@@ -13385,11 +13902,11 @@ var RF_TABS = {
   permit: {
     type: 'PERMIT',
     label: 'Trip Permit Requests',
-    cols: ['☐','Req No','Release','Customer','Truck','Driver','Permit Type','Destination','Amount (TZS)','Expiry','By','Status','Actions'],
+    cols: ['☐','Req No','Date Requested','Release','Customer','Truck','Driver','Permit Type','Destination','Amount (TZS)','Expiry','By','Status','Actions'],
     row: function(r, t) {
       var rel = RELEASES.find(function(x){ return x.releaseNo===(r.releaseNo||(t?t.releaseNo:''));});
       return [
-        '', esc(r.reqNo||'—'),
+        '', esc(r.reqNo||'—'), fmtDate(r.requestedAt||''),
         esc(r.releaseNo||(t?t.releaseNo:'')||'—'),
         esc(rel?rel.customer||(t?t.customer:'—'):(t?t.customer||'—':'—')),
         esc(r.horse||(t?t.horse:'')||'—'),
@@ -13405,7 +13922,7 @@ var RF_TABS = {
   vehpermit: {
     type: 'RENEWAL',
     label: 'Vehicle Permit Requests',
-    cols: ['☐','Req No','Date','Vehicle','Vehicle Type','Permit Type','Customer','Current Expiry','Days Left','Est. Cost (TZS)','Requested By','Status','Actions'],
+    cols: ['☐','Req No','Date Requested','Vehicle','Vehicle Type','Permit Type','Customer','Current Expiry','Days Left','Est. Cost (TZS)','Requested By','Status','Actions'],
     row: function(r) {
       var today_dt = new Date(); today_dt.setHours(0,0,0,0);
       var exp = r.currentExpiry ? new Date(r.currentExpiry) : null;
@@ -13428,7 +13945,7 @@ var RF_TABS = {
   addexp: {
     type: 'ADD_EXPENSE',
     label: 'Additional Expense Requests',
-    cols: ['☐','Req No','Date','Truck','Driver','Trip','Type','Description','Supplier','Qty','Unit','Unit Price','Amount (TZS)','Charge To','By','Status','Actions'],
+    cols: ['☐','Req No','Date Requested','Truck','Driver','Trip','Type','Description','Supplier','Qty','Unit','Unit Price','Amount (TZS)','Charge To','By','Status','Actions'],
     row: function(r) {
       return [
         '', esc(r.reqNo||'—'),
@@ -13686,6 +14203,16 @@ function updateRfBulkBtns() {
   var countEl = document.getElementById('rf-sel-count');
   if (bulkDiv) bulkDiv.style.display = checked > 0 ? 'flex' : 'none';
   if (countEl) countEl.textContent = checked + ' selected';
+
+  // Approve/Reject/Delete depend on the current tab's module permission.
+  // Print/Export stay available to anyone who can already see this data.
+  var mod = _rfModuleForTab(_rfCurrentTab);
+  var appBtn = document.getElementById('rf-bulk-approve-btn');
+  var rejBtn = document.getElementById('rf-bulk-reject-btn');
+  var delBtn = document.getElementById('rf-bulk-delete-btn');
+  if (appBtn) appBtn.style.display = canModule(mod,'approve') ? '' : 'none';
+  if (rejBtn) rejBtn.style.display = canModule(mod,'approve') ? '' : 'none';
+  if (delBtn) delBtn.style.display = canModule(mod,'delete')  ? '' : 'none';
 }
 
 function hideBulkBtns() {
@@ -13801,18 +14328,23 @@ function rfPrintSelected() {
   };
   var colspanMap={fuel:6,mileage:5,toll:5,permit:6};
   var footerAmt = _rfCurrentTab==='toll'
-    ? '<td style="text-align:right;font-weight:800">USD '+fmtDec(totalAmtUSD)+'</td>'
-    : '<td style="text-align:right;font-weight:800">TZS '+fmt(totalAmtTZS)+'</td>'+(totalLtrs>0?'<td></td>':'');
+    ? '<td style="text-align:right">USD '+fmtDec(totalAmtUSD)+'</td>'
+    : '<td style="text-align:right">TZS '+fmt(totalAmtTZS)+'</td>'+(totalLtrs>0?'<td></td>':'');
   if (_rfCurrentTab==='mileage') footerAmt+='<td></td>';
   if (_rfCurrentTab==='permit')  footerAmt+='<td></td>';
-  var extraInfo = _rfCurrentTab==='fuel'?'<p style="font-size:12px;color:#515154;margin-bottom:10px">Fuel Price: TZS '+fmt(fuelPrice)+'/ltr</p>':_rfCurrentTab==='toll'?'<p style="font-size:12px;color:#515154;margin-bottom:10px">Border: Tunduma &nbsp;&nbsp; Rate: USD '+fmtDec(parseFloat(SETTINGS.tollTunduma||330))+' per truck</p>':'';
-  var reqby = recs[0] ? esc(recs[0].requestedBy||'') : '';
-  var printStyles='<style>.pf-page{padding:20px;font-family:Arial,sans-serif}.pf-header{text-align:center;border-bottom:2px solid #0a2d6e;padding-bottom:10px;margin-bottom:6px}.pf-header h1{font-size:18px;font-weight:900;color:#0a2d6e;margin:0}.pf-header p{font-size:12px;color:#515154;margin:4px 0 0}.pf-title{text-align:center;font-size:16px;font-weight:800;color:#0a2d6e;margin:8px 0 4px;text-transform:uppercase;letter-spacing:.05em}.pf-printed{text-align:right;font-size:11px;color:#86868b;margin-bottom:12px}.pf-table{width:100%;border-collapse:collapse;margin-bottom:20px;font-size:11px}.pf-table th{background:#0a2d6e;color:#fff;padding:7px 10px;text-align:left;font-size:10px;font-weight:700;text-transform:uppercase}.pf-table td{padding:7px 10px;border-bottom:1px solid #e2e2e7}.pf-table tfoot td{border-top:2px solid #0a2d6e;background:#f0f4ff;font-weight:700}.pf-sigs{display:grid;grid-template-columns:1fr 1fr;gap:40px;margin-top:28px;padding-top:16px;border-top:1px solid #e2e2e7}.pf-sig{font-size:12px}.pf-line{margin-top:10px;color:#515154}.pf-footer{margin-top:30px;padding-top:10px;border-top:1px solid #e2e2e7;font-size:10px;color:#86868b;text-align:center}</style>';
-  var content = printStyles+'<div class="pf-page"><div class="pf-header"><h1>'+esc(company)+'</h1><p>'+esc(address)+'</p></div><div class="pf-title">'+titleMap[_rfCurrentTab]+'</div><div class="pf-printed">Date Printed: '+printDate+'</div>'+extraInfo+'<table class="pf-table"><thead>'+theadMap[_rfCurrentTab]+'</thead><tbody>'+rows+'</tbody><tfoot><tr><td colspan="'+colspanMap[_rfCurrentTab]+'" style="text-align:right;font-weight:700">TOTAL</td>'+footerAmt+'</tr></tfoot></table><div class="pf-sigs"><div class="pf-sig"><div style="font-weight:700;margin-bottom:20px">Requested By</div><div class="pf-line">'+reqby+'</div><div class="pf-line">Signature ___________________</div><div class="pf-line">Date ___________________</div></div><div class="pf-sig"><div style="font-weight:700;margin-bottom:20px">Approved By</div><div class="pf-line">Manager</div><div class="pf-line">Signature ___________________</div><div class="pf-line">Date ___________________</div></div></div><div class="pf-footer">'+esc(company)+' — Trip Management System — '+printDate+'</div></div>';
-  document.getElementById('print-content').innerHTML = content;
-  document.getElementById('print-area').style.display = 'block';
-  window.print();
-  setTimeout(function(){ document.getElementById('print-area').style.display='none'; }, 500);
+  var extraInfo = _rfCurrentTab==='fuel'?'<p style="font-size:11px;color:#444;margin-bottom:10px">Fuel Price: TZS '+fmt(fuelPrice)+'/ltr</p>':_rfCurrentTab==='toll'?'<p style="font-size:11px;color:#444;margin-bottom:10px">Border: Tunduma &nbsp;&nbsp; Rate: USD '+fmtDec(parseFloat(SETTINGS.tollTunduma||330))+' per truck</p>':'';
+  var reqby = recs[0] ? recs[0].requestedBy||'' : '';
+  _printFormWindow({
+    title: titleMap[_rfCurrentTab],
+    formTitle: titleMap[_rfCurrentTab],
+    extraInfoHtml: extraInfo,
+    theadHtml: theadMap[_rfCurrentTab],
+    tbodyHtml: rows,
+    tfootHtml: '<tr><td colspan="'+colspanMap[_rfCurrentTab]+'" style="text-align:right">TOTAL</td>'+footerAmt+'</tr>',
+    sigLeftLabel: 'Requested By',
+    sigLeftName: reqby,
+    sigRightLabel: 'Approved By'
+  });
 }
 
 // ── VEHICLE PERMITS PRINT ─────────────────────────────────────────
@@ -13836,13 +14368,17 @@ function rfPrintVehiclePermits(recs) {
       +'<td>'+esc(r.requestedBy||'—')+'</td>'
       +'</tr>';
   }).join('');
-  var reqby = recs[0] ? esc(recs[0].requestedBy||'') : '';
-  var printStyles='<style>.pf-page{padding:20px;font-family:Arial,sans-serif}.pf-header{text-align:center;border-bottom:2px solid #0a2d6e;padding-bottom:10px;margin-bottom:6px}.pf-header h1{font-size:18px;font-weight:900;color:#0a2d6e;margin:0}.pf-header p{font-size:12px;color:#515154;margin:4px 0 0}.pf-title{text-align:center;font-size:16px;font-weight:800;color:#0a2d6e;margin:8px 0 4px;text-transform:uppercase;letter-spacing:.05em}.pf-printed{text-align:right;font-size:11px;color:#86868b;margin-bottom:12px}.pf-table{width:100%;border-collapse:collapse;margin-bottom:20px;font-size:11px}.pf-table th{background:#0a2d6e;color:#fff;padding:7px 10px;text-align:left;font-size:10px;font-weight:700;text-transform:uppercase}.pf-table td{padding:7px 10px;border-bottom:1px solid #e2e2e7}.pf-table tfoot td{border-top:2px solid #0a2d6e;background:#f0f4ff;font-weight:700}.pf-sigs{display:grid;grid-template-columns:1fr 1fr;gap:40px;margin-top:28px;padding-top:16px;border-top:1px solid #e2e2e7}.pf-sig{font-size:12px}.pf-line{margin-top:10px;color:#515154}.pf-footer{margin-top:30px;padding-top:10px;border-top:1px solid #e2e2e7;font-size:10px;color:#86868b;text-align:center}</style>';
-  var content = printStyles+'<div class="pf-page"><div class="pf-header"><h1>'+esc(company)+'</h1><p>'+esc(address)+'</p></div><div class="pf-title">VEHICLE PERMITS REQUEST FORM</div><div class="pf-printed">Date Printed: '+printDate+'</div><table class="pf-table"><thead><tr><th>Vehicle</th><th>Type</th><th>Permit Type</th><th>Current Expiry</th><th>Days Left</th><th style="text-align:right">Est. Cost (TZS)</th><th>Requested By</th></tr></thead><tbody>'+rows+'</tbody><tfoot><tr><td colspan="5" style="text-align:right;font-weight:700">TOTAL</td><td style="text-align:right;font-weight:800">TZS '+fmt(totalCost)+'</td><td></td></tr></tfoot></table><div class="pf-sigs"><div class="pf-sig"><div style="font-weight:700;margin-bottom:20px">Requested By</div><div class="pf-line">'+reqby+'</div><div class="pf-line">Signature ___________________</div><div class="pf-line">Date ___________________</div></div><div class="pf-sig"><div style="font-weight:700;margin-bottom:20px">Approved By</div><div class="pf-line">Manager</div><div class="pf-line">Signature ___________________</div><div class="pf-line">Date ___________________</div></div></div><div class="pf-footer">'+esc(company)+' — Trip Management System — '+printDate+'</div></div>';
-  document.getElementById('print-content').innerHTML = content;
-  document.getElementById('print-area').style.display = 'block';
-  window.print();
-  setTimeout(function(){ document.getElementById('print-area').style.display='none'; }, 500);
+  var reqby = recs[0] ? recs[0].requestedBy||'' : '';
+  _printFormWindow({
+    title: 'Vehicle Permits Request Form',
+    formTitle: 'Vehicle Permits Request Form',
+    theadHtml: '<tr><th>Vehicle</th><th>Type</th><th>Permit Type</th><th>Current Expiry</th><th>Days Left</th><th style="text-align:right">Est. Cost (TZS)</th><th>Requested By</th></tr>',
+    tbodyHtml: rows,
+    tfootHtml: '<tr><td colspan="5" style="text-align:right">TOTAL</td><td style="text-align:right">TZS '+fmt(totalCost)+'</td><td></td></tr>',
+    sigLeftLabel: 'Requested By',
+    sigLeftName: reqby,
+    sigRightLabel: 'Approved By'
+  });
 }
 
 function rfExportExcel() {
@@ -13872,9 +14408,17 @@ function rfExportExcel() {
   toast(selected.length+' records exported to '+filename+' ✓','ok');
 }
 
+function _rfModuleForTab(tab) {
+  if (tab === 'permit' || tab === 'vehpermit') return 'permit';
+  if (tab === 'addexp') return 'expense';
+  return 'trip'; // fuel, mileage, toll
+}
+
 async function rfDeleteSelected() {
   var selected = getSelectedRfRequests();
   if (!selected.length) { toast('Select at least one request','er'); return; }
+  var mod = _rfModuleForTab(_rfCurrentTab);
+  if (!canModule(mod, 'delete')) { toast('You do not have permission to delete these requests','er'); return; }
   if (!confirm('Delete '+selected.length+' request'+(selected.length!==1?'s':'')+' permanently?')) return;
   var done=0, errors=0;
   for (var i=0; i<selected.length; i++) {
@@ -13932,17 +14476,17 @@ var TRIP_ROLE_PERMS = {
 // ── PERMISSION CHECK ──────────────────────────────────────────────
 function hasPermission(perm) {
   if (!CURRENT_USER) return false;
-  // Super Admin always has everything
-  if (CURRENT_USER.role === 'admin') return true;
-  var tripRole = (CURRENT_USER.trip_role || CURRENT_USER.tripRole || '').toLowerCase();
+  // Trip Admin (Trip-specific role only — not the shared Workshop role) always has everything
+  if (isTripAdmin()) return true;
+  var tripRole = String(CURRENT_USER.trip_role || CURRENT_USER.tripRole || '').toLowerCase();
   if (!tripRole) tripRole = 'viewer';
   var perms = TRIP_ROLE_PERMS[tripRole];
   if (!perms) return false;
   return !!perms[perm];
 }
 
-function isTripAdmin()   { return CURRENT_USER && (CURRENT_USER.role==='admin' || (CURRENT_USER.trip_role||'').toLowerCase()==='admin'); }
-function isTripManager() { return CURRENT_USER && ['admin','manager'].includes((CURRENT_USER.trip_role||CURRENT_USER.role||'').toLowerCase()); }
+function isTripAdmin()   { return CURRENT_USER && String(CURRENT_USER.trip_role||'').toLowerCase()==='admin'; }
+function isTripManager() { return CURRENT_USER && ['admin','manager'].includes(String(CURRENT_USER.trip_role||'').toLowerCase()); }
 function canCreate()     { return hasPermission('canCreate'); }
 function canApprove()    { return hasPermission('canApprove'); }
 function canViewAdmin()  { return hasPermission('canViewRates') || isTripAdmin(); }
@@ -13958,7 +14502,7 @@ function applyPermissions() {
   var u = CURRENT_USER;
   if (!u) return;
 
-  var tripRole = (u.trip_role || u.tripRole || u.role || '').toLowerCase();
+  var tripRole = String(u.trip_role || u.tripRole || u.role || '').toLowerCase();
   var isAdmin  = isTripAdmin();
   var isMgr    = isTripManager();
 
@@ -14148,7 +14692,7 @@ function renderUserTable() {
       + '</tr></thead><tbody>';
     USERS.forEach(function(u){
       var tripAccess = u.trip_access===true||u.trip_access==='true'||u.trip_access==='TRUE';
-      var tripRole = (u.trip_role||'viewer').toLowerCase();
+      var tripRole = String(u.trip_role||'viewer').toLowerCase();
       var color = roleColors[tripRole]||'#515154';
       var isSelf = CURRENT_USER && u.username === CURRENT_USER.username;
       html += '<tr style="border-bottom:1px solid #f0f0f4">'
@@ -14216,7 +14760,7 @@ function openEditUser(id) {
   document.getElementById('u_password').value = u.password || '';
   document.getElementById('u_status').value = u.status || 'active';
   document.getElementById('u_trip_access').checked = u.trip_access===true||u.trip_access==='true'||u.trip_access==='TRUE';
-  document.getElementById('u_trip_role').value = (u.trip_role||'viewer').toLowerCase();
+  document.getElementById('u_trip_role').value = String(u.trip_role||'viewer').toLowerCase();
   document.getElementById('u_module_perms').innerHTML = buildModulePermsHTML();
   document.getElementById('u_pnl_perms').innerHTML = buildPnlPermsHTML();
   applyUserPermsToForm(u);
@@ -14360,7 +14904,7 @@ window.renderReleases = function() {
       +'<td style="text-align:center;color:#d97706;font-weight:600">'+remaining+'</td>'
       +'<td>'+_assignmentStatusBadge(assigned, total)+'</td>'
       +'<td>'+_deliveryStatusBadge(assignedTrips, assigned, total)+'</td>'
-      +'<td>'+(r.docUrl?'<a href="'+esc(r.docUrl)+'" target="_blank" style="color:var(--hi);font-weight:600;font-size:11px">&#128206; View</a>':'<span style="color:var(--t3);font-size:11px">—</span>')+'</td>'
+      +'<td>'+(r.docUrl?'<a href="'+esc(r.docUrl)+'" target="_blank" onclick="return downloadDoc(this.href)" style="color:var(--hi);font-weight:600;font-size:11px">&#128206; View</a>':'<span style="color:var(--t3);font-size:11px">—</span>')+'</td>'
       +'<td class="td-actions">'+editBtn+' '+delBtn+'</td>'
       +'</tr>';
   }).join('');
@@ -14604,7 +15148,7 @@ function _doBulkEditReleases(ids) {
       +'<input type="file" id="rbe-doc-file-'+idx+'" accept=".pdf,.jpg,.jpeg,.png" style="display:none" onchange="_handleLetterSelect(this,\'rbe-doc-'+idx+'\')">'
       +'<span id="rbe-doc-label-'+idx+'">&#128206; '+(r.docUrl?'Replace attached document':'Click to attach release document')+'</span>'
       +'</div>'
-      +(r.docUrl?'<a href="'+esc(r.docUrl)+'" target="_blank" class="btn bg" style="font-size:12px;padding:8px 14px;text-decoration:none">&#128065; View Current</a>':'')
+      +(r.docUrl?'<a href="'+esc(r.docUrl)+'" target="_blank" onclick="return downloadDoc(this.href)" class="btn bg" style="font-size:12px;padding:8px 14px;text-decoration:none">&#128065; View Current</a>':'')
       +'</div></div>'
       +'</div>';
 
@@ -14960,11 +15504,19 @@ function renderBudget() {
   updateBudgetSelection();
 }
 
+function toggleAllBudgetChecks(cb) {
+  document.querySelectorAll('.budget-trip-check').forEach(function(c){ c.checked = cb.checked; });
+  updateBudgetSelection();
+}
+
 function updateBudgetSelection() {
+  var all = document.querySelectorAll('.budget-trip-check');
   var checked = document.querySelectorAll('.budget-trip-check:checked').length;
   var reqBtn = document.getElementById('budget-request-btn');
   var prtBtn = document.getElementById('budget-print-btn');
   var countEl= document.getElementById('budget-selected-count');
+  var allCb  = document.getElementById('budget-all-check');
+  if(allCb) allCb.checked = all.length > 0 && checked === all.length;
   if(reqBtn) reqBtn.style.display = checked > 0 ? 'inline-flex' : 'none';
   if(prtBtn) prtBtn.style.display = checked > 0 ? 'inline-flex' : 'none';
   if(countEl) countEl.textContent = checked > 0 ? checked + ' trip' + (checked!==1?'s':'') + ' selected' : '';
@@ -15136,17 +15688,23 @@ async function submitBulkRequest(andPrint) {
     for(var r=0;r<requests.length;r++) await callAPI('addFuelRequest',{record:requests[r]});
     for(var r=0;r<renewals.length;r++) await callAPI('addRenewalReq',{record:renewals[r]});
     toast(created+' requests created · '+skipped+' skipped (already exist) ✓','ok');
+    var _submittedTripIds = selectedTrips.map(function(t){ return t.id; });
     updateBadges(); renderBudget();
     closeModal('modal-bulk-req');
-    if(andPrint) setTimeout(function(){openPrintForms();},300);
+    if(andPrint) setTimeout(function(){openPrintForms(_submittedTripIds);},300);
   }catch(e){toast('Error: '+e.message,'er');}
   finally{btn.disabled=false;btn.innerHTML='&#128190; Submit Requests';}
 }
 
 // ── PRINT FORMS ───────────────────────────────────────────────────
-function openPrintForms() {
-  var selectedTrips = getSelectedBudgetTrips();
+var _pfSelectedTrips = [];
+
+function openPrintForms(tripIds) {
+  var selectedTrips = tripIds && tripIds.length
+    ? tripIds.map(function(id){ return TRIPS.find(function(t){ return t.id===id; }); }).filter(Boolean)
+    : getSelectedBudgetTrips();
   if(!selectedTrips.length){toast('Select trips first','er');return;}
+  _pfSelectedTrips = selectedTrips;
 
   var existing = document.getElementById('modal-print-forms');
   if(existing) existing.remove();
@@ -15174,27 +15732,32 @@ function openPrintForms() {
 }
 
 function executePrintForms() {
-  var selectedTrips = getSelectedBudgetTrips();
+  var selectedTrips = _pfSelectedTrips.length ? _pfSelectedTrips : getSelectedBudgetTrips();
   var company  = SETTINGS.companyName    || 'AK TRANSPORT (T) LIMITED';
-  var address  = SETTINGS.companyAddress || 'Dar es Salaam, Tanzania';
   var printDate= new Date().toLocaleDateString('en-GB',{day:'2-digit',month:'long',year:'numeric'});
   var allHtml  = '';
 
-  // Helper: signature block
+  // Helper: signature block (Workshop-style boxed signatures)
   function sigBlock(reqby){
-    return '<div class="pf-sigs">'
-      +'<div class="pf-sig"><div style="font-weight:700;margin-bottom:20px">Requested By</div>'
-      +'<div class="pf-line">'+esc(reqby||'')+'</div><div class="pf-line">Signature ___________________</div><div class="pf-line">Date ___________________</div></div>'
-      +'<div class="pf-sig"><div style="font-weight:700;margin-bottom:20px">Approved By</div>'
-      +'<div class="pf-line">Manager</div><div class="pf-line">Signature ___________________</div><div class="pf-line">Date ___________________</div></div>'
-      +'</div>';
+    return '<div style="display:grid;grid-template-columns:1fr 1fr;gap:24px;margin-top:8px">'
+      + _sigBox('Requested By', reqby||'')
+      + _sigBox('Approved By', '')
+      + '</div>';
   }
   function hdr(title){
-    return '<div class="pf-header"><h1>'+esc(company)+'</h1><p>'+esc(address)+'</p></div>'
-      +'<div class="pf-title">'+title+'</div>'
-      +'<div class="pf-printed">Date Printed: '+printDate+'</div>';
+    return '<table style="margin-bottom:14px"><tr>'
+      +'<td style="vertical-align:middle;padding:4px 0">'
+      +'<div style="font-size:22px;font-weight:900;color:#000;letter-spacing:-.3px">'+esc(company)+'</div>'
+      +'<div style="font-size:10px;color:#444;margin-top:3px;letter-spacing:.06em;text-transform:uppercase">'+esc(title)+'</div>'
+      +'</td>'
+      +'<td style="text-align:right;vertical-align:top;min-width:160px">'
+      +'<div style="display:inline-block;text-align:right">'
+      +'<div style="font-size:9px;color:#555;text-transform:uppercase;letter-spacing:.06em">Date Printed</div>'
+      +'<div style="font-size:12px;font-weight:700;color:#000;margin-bottom:6px">'+printDate+'</div>'
+      +'</div></td></tr></table>'
+      +'<div style="height:3px;background:#0a2d6e;border-radius:2px;margin-bottom:14px"></div>';
   }
-  function tableWrap(content){ return '<table class="pf-table">'+content+'</table>'; }
+  function tableWrap(content){ return '<table class="tbl-main" style="margin-bottom:20px">'+content+'</table>'; }
 
   // ── MILEAGE FORM ──
   if(document.getElementById('pf-mileage-form').checked){
@@ -15212,9 +15775,9 @@ function executePrintForms() {
     allHtml+='<div class="pf-page">'+hdr('MILEAGE REQUEST FORM')
       +tableWrap('<thead><tr><th>Release</th><th>Trip No</th><th>Truck</th><th>Driver</th><th>Destination</th><th>KM</th><th>Amount (TZS)</th><th>Bonus (TZS)</th></tr></thead>'
       +'<tbody>'+rows.map(function(r){
-        return '<tr><td>'+esc(r.t.releaseNo||'—')+'</td><td><b>'+esc(r.t.tripNo)+'</b></td><td>'+esc(r.t.horse)+'</td><td>'+esc(r.t.driver||'—')+'</td><td>'+esc(r.t.destination)+'</td><td>'+fmt(r.dist)+'</td><td>'+fmt(r.amt)+'</td><td>___________</td></tr>';
+        return '<tr><td>'+esc(r.t.releaseNo||'—')+'</td><td><b>'+esc(r.t.tripNo)+'</b></td><td>'+esc(r.t.horse)+'</td><td>'+esc(r.t.driver||'—')+'</td><td>'+esc(r.t.destination)+'</td><td>'+fmt(r.dist)+'</td><td>'+fmt(r.amt)+'</td><td></td></tr>';
       }).join('')+'</tbody>'
-      +'<tfoot><tr><td colspan="6" style="text-align:right;font-weight:700">TOTAL</td><td style="font-weight:700">TZS '+fmt(totalAmt)+'</td><td></td></tr></tfoot>')
+      +'<tfoot><tr><td colspan="6" style="text-align:right">TOTAL</td><td>TZS '+fmt(totalAmt)+'</td><td></td></tr></tfoot>')
     +sigBlock(reqby)+'</div>';
   }
 
@@ -15225,14 +15788,14 @@ function executePrintForms() {
     var tollRows=selectedTrips.filter(function(t){return!(t.border||'').toLowerCase().includes('sakania');});
     var totalToll=tollRows.length*tollRate;
     allHtml+='<div class="pf-page">'+hdr('ROAD TOLL REQUEST FORM — TUNDUMA')
-      +'<p style="font-size:12px;color:#515154;margin-bottom:12px">Border: Tunduma &nbsp;&nbsp; Rate: USD '+fmtDec(tollRate)+' per truck</p>'
+      +'<p style="font-size:11px;color:#444;margin-bottom:12px">Border: Tunduma &nbsp;&nbsp; Rate: USD '+fmtDec(tollRate)+' per truck</p>'
       +tableWrap('<thead><tr><th>Release</th><th>Trip No</th><th>Truck</th><th>Driver</th><th>Destination</th><th>Amount (USD)</th></tr></thead>'
       +'<tbody>'+tollRows.map(function(t){
         var r=FUEL_REQUESTS.filter(function(x){return x.tripId===t.id&&x.requestType==='ROAD_TOLL';})[0];
         if(r&&r.requestedBy) reqby2=r.requestedBy;
         return '<tr><td>'+esc(t.releaseNo||'—')+'</td><td><b>'+esc(t.tripNo)+'</b></td><td>'+esc(t.horse)+'</td><td>'+esc(t.driver||'—')+'</td><td>'+esc(t.destination)+'</td><td>'+fmtDec(tollRate)+'</td></tr>';
       }).join('')+'</tbody>'
-      +'<tfoot><tr><td colspan="5" style="text-align:right;font-weight:700">TOTAL</td><td style="font-weight:700">USD '+fmtDec(totalToll)+'</td></tr></tfoot>')
+      +'<tfoot><tr><td colspan="5" style="text-align:right">TOTAL</td><td>USD '+fmtDec(totalToll)+'</td></tr></tfoot>')
     +sigBlock(reqby2)+'</div>';
   }
 
@@ -15250,7 +15813,6 @@ function executePrintForms() {
       var ltrs=base;if(dest.includes('lusaka'))ltrs=base-reducL;else if(dest.includes('ndola'))ltrs=base-reducN;
       var amt=ltrs*fuelPrice;
       totalLtrs+=ltrs;totalFuelAmt+=amt;
-      // Get driver license
       var drv=DRIVERS.find(function(d){return d.name===t.driver;});
       var lic=drv?(drv.licenseNo||'—'):'—';
       var r=FUEL_REQUESTS.filter(function(x){return x.tripId===t.id&&x.requestType==='TRIP';})[0];
@@ -15258,12 +15820,12 @@ function executePrintForms() {
       return {t:t,ltrs:ltrs,amt:amt,lic:lic};
     });
     allHtml+='<div class="pf-page">'+hdr('FUEL REQUEST FORM')
-      +'<p style="font-size:12px;color:#515154;margin-bottom:12px">Fuel Price: TZS '+fmt(fuelPrice)+'/ltr</p>'
+      +'<p style="font-size:11px;color:#444;margin-bottom:12px">Fuel Price: TZS '+fmt(fuelPrice)+'/ltr</p>'
       +tableWrap('<thead><tr><th>Release</th><th>Trip No</th><th>Truck</th><th>Driver</th><th>License No</th><th>Destination</th><th>Litres</th><th>Amount (TZS)</th></tr></thead>'
       +'<tbody>'+fuelRows.map(function(r){
         return '<tr><td>'+esc(r.t.releaseNo||'—')+'</td><td><b>'+esc(r.t.tripNo)+'</b></td><td>'+esc(r.t.horse)+'</td><td>'+esc(r.t.driver||'—')+'</td><td>'+esc(r.lic)+'</td><td>'+esc(r.t.destination)+'</td><td>'+fmt(r.ltrs)+'</td><td>'+fmt(r.amt)+'</td></tr>';
       }).join('')+'</tbody>'
-      +'<tfoot><tr><td colspan="6" style="text-align:right;font-weight:700">TOTAL</td><td style="font-weight:700">'+fmt(totalLtrs)+' ltrs</td><td style="font-weight:700">TZS '+fmt(totalFuelAmt)+'</td></tr></tfoot>')
+      +'<tfoot><tr><td colspan="6" style="text-align:right">TOTAL</td><td>'+fmt(totalLtrs)+' ltrs</td><td>TZS '+fmt(totalFuelAmt)+'</td></tr></tfoot>')
     +sigBlock(reqby3)+'</div>';
   }
 
@@ -15293,9 +15855,9 @@ function executePrintForms() {
     allHtml+='<div class="pf-page">'+hdr('TRIP PERMITS REQUEST FORM')
       +tableWrap('<thead><tr><th>Release</th><th>Trip No</th><th>Truck</th><th>Driver</th><th>COMESA-H</th><th>COMESA-T</th><th>Trans-H</th><th>Trans-T</th><th>Carbon</th><th>ZABS</th></tr></thead>'
       +'<tbody>'+pRows+'</tbody>'
-      +'<tfoot><tr><td colspan="4" style="text-align:right;font-weight:700">TOTAL</td>'
-      +permitTypes.map(function(p){return '<td style="font-weight:700">'+fmt(totals[p.key])+'</td>';}).join('')+'</tr>'
-      +'<tr><td colspan="4" style="text-align:right;font-weight:700">GRAND TOTAL</td><td colspan="6" style="font-weight:700">TZS '+fmt(grandTotal)+'</td></tr></tfoot>')
+      +'<tfoot><tr><td colspan="4" style="text-align:right">TOTAL</td>'
+      +permitTypes.map(function(p){return '<td>'+fmt(totals[p.key])+'</td>';}).join('')+'</tr>'
+      +'<tr><td colspan="4" style="text-align:right">GRAND TOTAL</td><td colspan="6">TZS '+fmt(grandTotal)+'</td></tr></tfoot>')
     +sigBlock(reqby4)+'</div>';
   }
 
@@ -15306,20 +15868,16 @@ function executePrintForms() {
     var vGrand=0; var reqby5='';
     var vRows=[];
     selectedTrips.forEach(function(t){
-      // Horse row
       vRows.push({vehicle:t.horse,type:'Horse',tripNo:t.tripNo,releaseNo:t.releaseNo,types:['Insurance','LATRA']});
-      // Trailer row
       vRows.push({vehicle:t.trailer,type:'Trailer',tripNo:t.tripNo,releaseNo:t.releaseNo,types:['Insurance','LATRA','C28','Calibration']});
     });
-    // Deduplicate by vehicle+type
     var seen={};
     vRows=vRows.filter(function(r){var k=r.vehicle+'|'+r.type;if(seen[k])return false;seen[k]=true;return true;});
 
     var vRowsHtml=vRows.map(function(r){
       var cells=vPermitTypes.map(function(pt){
         var applies=r.types.indexOf(pt)>=0;
-        if(!applies) return '<td style="color:#d1d5db">—</td>';
-        // Find estimated cost from existing permits or use 0
+        if(!applies) return '<td style="color:#bbb">—</td>';
         var existing=PERMITS.filter(function(p){return(p.vehicle||'').toUpperCase()===(r.vehicle||'').toUpperCase()&&p.permitType===pt;}).sort(function(a,b){return new Date(b.paymentDate||0)-new Date(a.paymentDate||0);})[0];
         var amt=existing?parseFloat(existing.amountPaid||0):0;
         vTotals[pt]+=amt; vGrand+=amt;
@@ -15331,34 +15889,32 @@ function executePrintForms() {
     allHtml+='<div class="pf-page">'+hdr('VEHICLE PERMITS REQUEST FORM')
       +tableWrap('<thead><tr><th>Release</th><th>Vehicle</th><th>Type</th><th>Insurance</th><th>LATRA</th><th>C28</th><th>Calibration</th></tr></thead>'
       +'<tbody>'+vRowsHtml+'</tbody>'
-      +'<tfoot><tr><td colspan="3" style="text-align:right;font-weight:700">TOTAL</td>'
-      +vPermitTypes.map(function(pt){return '<td style="font-weight:700">'+fmt(vTotals[pt])+'</td>';}).join('')+'</tr>'
-      +'<tr><td colspan="3" style="text-align:right;font-weight:700">GRAND TOTAL</td><td colspan="4" style="font-weight:700">TZS '+fmt(vGrand)+'</td></tr></tfoot>')
+      +'<tfoot><tr><td colspan="3" style="text-align:right">TOTAL</td>'
+      +vPermitTypes.map(function(pt){return '<td>'+fmt(vTotals[pt])+'</td>';}).join('')+'</tr>'
+      +'<tr><td colspan="3" style="text-align:right">GRAND TOTAL</td><td colspan="4">TZS '+fmt(vGrand)+'</td></tr></tfoot>')
     +sigBlock(reqby5)+'</div>';
   }
 
-  // Inject print styles + content
+  // Assemble as a Workshop-style multi-page document — one form per
+  // page (page-break-after between them), solid-bordered tables, new
+  // window, auto-print + auto-close.
   var printStyles='<style>'
-    +'.pf-page{page-break-after:always;padding:20px;font-family:Arial,sans-serif;max-width:900px}'
-    +'.pf-header{text-align:center;border-bottom:2px solid #0a2d6e;padding-bottom:10px;margin-bottom:6px}'
-    +'.pf-header h1{font-size:18px;font-weight:900;color:#0a2d6e;margin:0}'
-    +'.pf-header p{font-size:12px;color:#515154;margin:4px 0 0}'
-    +'.pf-title{text-align:center;font-size:16px;font-weight:800;color:#0a2d6e;margin:8px 0 4px;text-transform:uppercase;letter-spacing:.05em}'
-    +'.pf-printed{text-align:right;font-size:11px;color:#86868b;margin-bottom:14px}'
-    +'.pf-table{width:100%;border-collapse:collapse;margin-bottom:20px;font-size:11px}'
-    +'.pf-table th{background:#0a2d6e;color:#fff;padding:7px 10px;text-align:left;font-size:10px;font-weight:700;text-transform:uppercase}'
-    +'.pf-table td{padding:7px 10px;border-bottom:1px solid #e2e2e7}'
-    +'.pf-table tfoot td{border-top:2px solid #0a2d6e;background:#f0f4ff;font-weight:700}'
-    +'.pf-sigs{display:grid;grid-template-columns:1fr 1fr;gap:40px;margin-top:30px;padding-top:20px;border-top:1px solid #e2e2e7}'
-    +'.pf-sig{font-size:12px}'
-    +'.pf-line{margin-top:10px;color:#515154}'
+    +'*{box-sizing:border-box;margin:0;padding:0}'
+    +'body{font-family:Arial,Helvetica,sans-serif;font-size:11px;color:#000;background:#fff}'
+    +'@media print{@page{margin:12mm;size:A4}body{padding:0}}'
+    +'.pf-page{page-break-after:always;padding:20px;max-width:900px}'
+    +'.pf-page:last-child{page-break-after:auto}'
+    +'table{width:100%;border-collapse:collapse}'
+    +'.tbl-main thead th{background:#fff;color:#000;padding:7px 6px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;border:1.5px solid #000}'
+    +'.tbl-main tbody td{padding:6px;border:1px solid #000;font-size:10px;vertical-align:middle;color:#000}'
+    +'.tbl-main tbody tr:nth-child(even) td{background:#f9f9f9}'
+    +'.tbl-main tfoot td{padding:7px 6px;border:1.5px solid #000;font-weight:700;background:#efefef;color:#000}'
+    +'.sig-box{border:1px solid #000;border-radius:4px;padding:14px 18px}'
     +'</style>';
-
-  document.getElementById('print-content').innerHTML = printStyles + allHtml;
-  document.getElementById('print-area').style.display = 'block';
   closeModal('modal-print-forms');
-  window.print();
-  setTimeout(function(){document.getElementById('print-area').style.display='none';},500);
+  var win = window.open('','_blank','width=1000,height=700');
+  if (win) { win.document.write('<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Print Forms</title>'+printStyles+'</head><body>'+allHtml+'<scr'+'ipt>window.onload=function(){window.print();window.onafterprint=function(){window.close();};};</'+'script></body></html>'); win.document.close(); }
+  else { toast('Pop-up blocked — please allow pop-ups for this site','er'); }
 }
 
 // ── REGISTER budget in switchView ────────────────────────────────
@@ -15780,12 +16336,16 @@ async function submitAllTrips() {
     var d = (document.getElementById('atl-driver-'  + n)||{}).value;
     var l = (document.getElementById('atl-loaddate-'+ n)||{}).value;
     var o = (document.getElementById('atl-offdate-' + n)||{}).value;
-    if (!h || !t || !d) { blockedMsg = 'Line ' + n + ': Truck, Trailer and Driver are required'; return; }
-    if (o && !l) { blockedMsg = 'Line ' + n + ': Add Loading Date before Offloading Date'; return; }
-    if (l && !window['_letterFileData_atl-loaddoc-'+n]) { blockedMsg = 'Line ' + n + ': Loading Document is required when Loading Date is filled'; return; }
-    if (o && !window['_letterFileData_atl-offdoc-'+n]) { blockedMsg = 'Line ' + n + ': Offloading Document is required when Offloading Date is filled'; return; }
     var loaded    = parseFloat((document.getElementById('atl-loaded-'    + n)||{}).value||0);
     var offloaded = parseFloat((document.getElementById('atl-offloaded-' + n)||{}).value||0);
+    if (!h || !t || !d) { blockedMsg = 'Line ' + n + ': Truck, Trailer and Driver are required'; return; }
+    if (l && !(loaded > 0)) { blockedMsg = 'Line ' + n + ': Vol Loaded is required when Loading Date is filled'; return; }
+    if (loaded > 0 && !l) { blockedMsg = 'Line ' + n + ': Loading Date is required when Vol Loaded is filled'; return; }
+    if ((o || offloaded > 0) && !(l && loaded > 0)) { blockedMsg = 'Line ' + n + ': Complete Loading Date and Vol Loaded before entering Offloading details'; return; }
+    if (o && !(offloaded > 0)) { blockedMsg = 'Line ' + n + ': Vol Offloaded is required when Offloading Date is filled'; return; }
+    if (offloaded > 0 && !o) { blockedMsg = 'Line ' + n + ': Offloading Date is required when Vol Offloaded is filled'; return; }
+    if (l && !window['_letterFileData_atl-loaddoc-'+n]) { blockedMsg = 'Line ' + n + ': Loading Document is required when Loading Date is filled'; return; }
+    if (o && !window['_letterFileData_atl-offdoc-'+n]) { blockedMsg = 'Line ' + n + ': Offloading Document is required when Offloading Date is filled'; return; }
     var allow     = loaded * 0.003;
     var actual    = Math.max(0, loaded - offloaded);
     var excess    = Math.max(0, actual - allow);
@@ -15803,7 +16363,7 @@ async function submitAllTrips() {
       product: _atRelease.product, tradeRef: _atRelease.tradeRef||'',
       loadedQty: loaded, offloadedQty: offloaded,
       allowableLoss: allow.toFixed(2), actualLoss: actual.toFixed(2), excessLoss: excess.toFixed(2),
-      status: 'IN TRANSIT'
+      status: loaded > 0 ? 'IN TRANSIT' : 'WAITING TO LOAD'
     });
   });
 
@@ -15891,9 +16451,9 @@ var TRIP_MODULE_ROLE_PRESETS = {
 var PNL_ROLE_PRESETS = {viewer:false, staff:false, manager:true, admin:true};
 
 
-function _p15Role() {
-  return ((CURRENT_USER && (CURRENT_USER.trip_role || CURRENT_USER.role)) || 'viewer').toLowerCase();
-}
+// (role-based fallback removed — see canModule/canPnlTab: permissions
+// are now only ever granted by an explicitly-checked box, never inherited
+// silently from the Trip Role preset)
 
 // ── PERMISSION CHECKERS ────────────────────────────────────────────
 function canModule(mod, action) {
@@ -15905,9 +16465,12 @@ function canModule(mod, action) {
   var val = CURRENT_USER[key];
   if (val===true||String(val).toLowerCase()==='true') return true;
   if (val===false||String(val).toLowerCase()==='false') return false;
-  // Legacy fallback for users saved before granular perms existed
-  var preset = TRIP_MODULE_ROLE_PRESETS[_p15Role()] || TRIP_MODULE_ROLE_PRESETS.viewer;
-  return !!preset[action||'access'];
+  // Field was never explicitly set — default to false for every action
+  // except bare module access, which defaults true so a legacy account
+  // (saved before this granular system existed) isn't locked out of a
+  // module entirely. No silent inheritance from the Trip Role preset —
+  // only explicitly-checked boxes ever grant a permission.
+  return !action;
 }
 
 function canPnlTab(tab) {
@@ -15919,7 +16482,7 @@ function canPnlTab(tab) {
   var val = CURRENT_USER[key];
   if (val===true||String(val).toLowerCase()==='true') return true;
   if (val===false||String(val).toLowerCase()==='false') return false;
-  return !!PNL_ROLE_PRESETS[_p15Role()];
+  return false; // view-only report tabs default to off unless explicitly granted
 }
 
 function anyPnlAccess() {
@@ -15975,17 +16538,18 @@ function _p15SetChk(id, val, fallback) {
 }
 
 function applyUserPermsToForm(u) {
-  var role = (u.trip_role||'viewer').toLowerCase();
-  var preset = TRIP_MODULE_ROLE_PRESETS[role] || TRIP_MODULE_ROLE_PRESETS.viewer;
+  // Show exactly what's explicitly saved for this user — no silent
+  // pre-checking based on their Trip Role. Unset fields default to
+  // false (except bare module access, which defaults true so an old
+  // account isn't shown as locked out of everything it used to see).
   TRIP_MODULES_META.forEach(function(m){
-    _p15SetChk('p_'+m.key, u['p_'+m.key], preset.access);
+    _p15SetChk('p_'+m.key, u['p_'+m.key], true);
     m.perms.forEach(function(p){
-      _p15SetChk('p_'+m.key+'_'+p, u['p_'+m.key+'_'+p], preset[p]);
+      _p15SetChk('p_'+m.key+'_'+p, u['p_'+m.key+'_'+p], false);
     });
   });
-  var pnlDefault = !!PNL_ROLE_PRESETS[role];
   PNL_TABS_META.forEach(function(t){
-    _p15SetChk('p_pnl_'+t.key, u['p_pnl_'+t.key], pnlDefault);
+    _p15SetChk('p_pnl_'+t.key, u['p_pnl_'+t.key], false);
   });
 }
 
@@ -16014,7 +16578,7 @@ function collectModulePermsFromForm(data, tripAccess) {
 // ── ACCESS: gate view switching ────────────────────────────────────
 var VIEW_MODULE_MAP = {
   releases:'release', budget:'release', addreleases:'release',
-  alltrips:'trip', intransit:'trip', completed:'trip', addtrips:'trip', edittrip:'trip',
+  alltrips:'trip', waitingload:'trip', intransit:'trip', completed:'trip', addtrips:'trip', edittrip:'trip',
   shortage:'shortage',
   deductions:'deduction',
   permits:'permit'
@@ -16079,7 +16643,7 @@ function applyModuleNavPermissions() {
   if (!CURRENT_USER) return;
   var navMap = {
     'nav-releases':'release', 'nav-budget':'release',
-    'nav-alltrips':'trip', 'nav-intransit':'trip', 'nav-completed':'trip',
+    'nav-alltrips':'trip', 'nav-waitingload':'trip', 'nav-intransit':'trip', 'nav-completed':'trip',
     'nav-shortage':'shortage',
     'nav-deductions':'deduction',
     'nav-permits':'permit'
@@ -16098,6 +16662,12 @@ function applyModuleNavPermissions() {
   // Settings — always admin-only, never assignable
   var settingsNav = document.getElementById('nav-settings');
   if (settingsNav) settingsNav.style.display = isTripAdmin() ? '' : 'none';
+
+  // User Management link in the topbar dropdown — same rule, re-checked
+  // every time this runs (login AND every subsequent Refresh), not just
+  // once at login like before.
+  var umLink = document.getElementById('usermgmt_link');
+  if (umLink) umLink.style.display = isTripAdmin() ? 'flex' : 'none';
 
   applyPnlTabVisibility();
   hideEmptyNavSections();
@@ -16145,6 +16715,7 @@ function _p15GateEdit(mod, fnName) {
 _p15GateEdit('release',  'bulkEditReleases');
 _p15GateEdit('release',  'editReleaseClick');
 _p15GateEdit('trip',     'bulkEditTrips');
+_p15GateEdit('trip',     'tripEditClick');
 _p15GateEdit('deduction','editDeduction');
 _p15GateEdit('permit',   'editPermitRecord');
 
@@ -16179,6 +16750,7 @@ function _p15GateDelete(mod, fnName) {
 _p15GateDelete('release', 'releaseDeleteClick');
 _p15GateDelete('release', 'bulkDeleteReleases');
 _p15GateDelete('trip',    'tripDeleteClick');
+_p15GateDelete('trip',    'bulkDeleteTrips');
 _p15GateDelete('deduction','deleteDeduction');
 
 console.log('Phase 15 — Granular Module Permissions loaded ✓');
@@ -16191,33 +16763,44 @@ function applyModuleButtonVisibility() {
   function toggle(selector, allowed) {
     document.querySelectorAll(selector).forEach(function(el){ el.style.display = allowed ? '' : 'none'; });
   }
+  // NOTE: all selectors below use *= (contains) rather than ^= (starts
+  // with). Several of these buttons have compound onclick handlers
+  // like onclick="closeModal('...');openXyz(...)" — e.g. the "+ Record
+  // Payment" button inside the Shortage/Deduction History modal, or
+  // "+ Renew" inside the per-slot Vehicle Permits modal. A starts-with
+  // selector never matches those, silently leaving the button visible
+  // to users without the relevant permission.
   // Release
-  toggle('[onclick="openAddReleasesView();closeAllNDrops()"]', canModule('release','create'));
-  toggle('[onclick^="releaseDeleteClick("]',  canModule('release','delete'));
-  toggle('[onclick="bulkEditReleases()"]',    canModule('release','edit'));
-  toggle('[onclick^="editReleaseClick("]',    canModule('release','edit'));
-  toggle('[onclick="bulkDeleteReleases()"]',  canModule('release','delete'));
+  toggle('[onclick*="openAddReleasesView()"]', canModule('release','create'));
+  toggle('[onclick*="releaseDeleteClick("]',  canModule('release','delete'));
+  toggle('[onclick*="bulkEditReleases()"]',    canModule('release','edit'));
+  toggle('[onclick*="editReleaseClick("]',    canModule('release','edit'));
+  toggle('[onclick*="bulkDeleteReleases()"]',  canModule('release','delete'));
   // Trip
-  toggle('[onclick="openAddTrip();closeAllNDrops()"]', canModule('trip','create'));
-  toggle('[onclick^="tripDeleteClick("]', canModule('trip','delete'));
-  toggle('[onclick="bulkEditTrips()"]',   canModule('trip','edit'));
+  toggle('[onclick*="openAddTrip()"]', canModule('trip','create'));
+  toggle('[onclick*="tripDeleteClick("]', canModule('trip','delete'));
+  toggle('[onclick*="bulkEditTrips()"]',   canModule('trip','edit'));
+  toggle('[onclick*="bulkDeleteTrips()"]', canModule('trip','delete'));
+  toggle('[onclick*="tripEditClick("]',    canModule('trip','edit'));
   // Deduction
-  toggle('[onclick="openAddDeduction();closeAllNDrops()"]', canModule('deduction','create'));
-  toggle('[onclick^="editDeduction("]',   canModule('deduction','edit'));
-  toggle('[onclick^="deleteDeduction("]', canModule('deduction','delete'));
-  toggle('[onclick^="openDedPayment("]',    canModule('deduction','payment'));
-  toggle('[onclick^="approveDedPayment("]', canModule('deduction','approve'));
-  toggle('[onclick^="rejectDedPayment("]',  canModule('deduction','approve'));
+  toggle('[onclick*="openAddDeduction()"]', canModule('deduction','create'));
+  toggle('[onclick*="editDeduction("]',   canModule('deduction','edit'));
+  toggle('[onclick*="deleteDeduction("]', canModule('deduction','delete'));
+  toggle('[onclick*="openDedPayment("]',    canModule('deduction','payment'));
+  toggle('[onclick*="approveDedPayment("]', canModule('deduction','approve'));
+  toggle('[onclick*="rejectDedPayment("]',  canModule('deduction','approve'));
   // Permit
-  toggle('[onclick="openAddPermit()"]',        canModule('permit','create'));
-  toggle('[onclick^="editPermitRecord("]',     canModule('permit','edit'));
-  toggle('[onclick^="quickRenewPermit("]',     canModule('permit','create'));
+  toggle('[onclick*="openAddPermit()"]',        canModule('permit','create'));
+  toggle('[onclick*="editPermitRecord("]',     canModule('permit','edit'));
+  toggle('[onclick*="quickRenewPermit("]',     canModule('permit','create'));
+  toggle('[onclick*="openAddPermitForSlot("]', canModule('permit','create'));
+  toggle('[onclick*="openAddPermitForVehicle("]', canModule('permit','create'));
   // Expense
-  toggle('[onclick="openAddExpenseReq();closeAllNDrops()"]', canModule('expense','create'));
+  toggle('[onclick*="openAddExpenseReq()"]', canModule('expense','create'));
   // Shortage (no create/delete surface exists — only the payment/approve = edit action)
-  toggle('[onclick^="openShortagePayment("]',    canModule('shortage','payment'));
-  toggle('[onclick^="approveShortagePayment("]', canModule('shortage','approve'));
-  toggle('[onclick^="rejectShortagePayment("]',  canModule('shortage','approve'));
+  toggle('[onclick*="openShortagePayment("]',    canModule('shortage','payment'));
+  toggle('[onclick*="approveShortagePayment("]', canModule('shortage','approve'));
+  toggle('[onclick*="rejectShortagePayment("]',  canModule('shortage','approve'));
 
   // Bulk Request (Release Budget) — creates trip requests, so gate under trip-create.
   // Its visibility is also driven by checkbox selection (updateBudgetSelection), so
@@ -16247,7 +16830,9 @@ function _p16Wrap(fnName) {
 ['renderReleases','renderTrips','renderInTransit','renderCompleted',
  'renderDeductions','renderPermits','renderShortage',
  'renderBudget','updateBudgetSelection',
- 'openShortageDetail','openDedDetail'].forEach(_p16Wrap);
+ 'openShortageDetail','openDedDetail',
+ 'openTripDetail','renderDriverAccounts',
+ 'openPermitHistory','openVehiclePermitOverview'].forEach(_p16Wrap);
 
 // Also sweep once after login (covers the toolbar/dropdown buttons that
 // are static markup and don't go through a render* call)
