@@ -1041,6 +1041,17 @@ body.no-delete .actbtn.d:not(.ws-action):not(.jc-action):not(.fleet-action):not(
       </div>
     </div>
 
+    <!-- Dedicated single-box search for Drivers / Vehicles — fully
+         isolated from the shared 3-box filter mechanism above -->
+    <div id="singlesearchrow" style="display:none;padding:0 20px 8px;flex-shrink:0">
+      <div style="display:flex;gap:8px">
+        <input type="text" id="SINGLESEARCH" placeholder="Search..." autocomplete="off" spellcheck="false"
+          style="flex:1;background:var(--s1);border:1.5px solid var(--br);border-radius:8px;padding:8px 12px;color:var(--tx);font-family:'Inter',sans-serif;font-size:13px;outline:none"
+          oninput="onSingleSearchInput()">
+        <button class="btn bg" onclick="clearSingleSearch()" style="padding:8px 14px;font-size:12px;white-space:nowrap">✕ Clear</button>
+      </div>
+    </div>
+
     <!-- Job Cards dedicated 4-filter row -->
     <div id="jcfilterrow" style="display:none;padding:0 20px 8px;flex-shrink:0">
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
@@ -1928,7 +1939,16 @@ function switchView(v){
 
   // -- Show/hide filter rows --
   if (searchRow) searchRow.style.display = isTable ? 'grid' : 'none';
-  if (filterRow) filterRow.style.display = genericViews.includes(v) ? 'block' : 'none';
+  if (filterRow) filterRow.style.display = ['suppliers','spareparts'].includes(v) ? 'block' : 'none';
+  // Drivers/Vehicles get their own dedicated single search box, fully
+  // separate from the shared 3-box filter mechanism used elsewhere.
+  var singleSearchRow = document.getElementById('singlesearchrow');
+  var singleSearchBox = document.getElementById('SINGLESEARCH');
+  if (singleSearchRow) singleSearchRow.style.display = ['drivers','vehicles'].includes(v) ? 'block' : 'none';
+  if (singleSearchBox) {
+    singleSearchBox.value = '';
+    singleSearchBox.placeholder = v === 'drivers' ? 'Search by driver name...' : v === 'vehicles' ? 'Search by vehicle number...' : 'Search...';
+  }
   if (jcRow)     jcRow.style.display     = v === 'jobcards'  ? 'block' : 'none';
   if (jcsRow)    jcsRow.style.display    = v === 'jcsummary' ? 'block' : 'none';
   if (srfRow)    srfRow.style.display    = sreqViews.includes(v) ? 'block' : 'none';
@@ -15632,7 +15652,7 @@ async function doChangePwd() {
   try { sessionStorage.setItem('ak_user', JSON.stringify(CURRENT_USER)); } catch(e) {}
 
   try {
-    await callAPI('updateUser', { record: { ...CURRENT_USER, password: newPwd } });
+    await callAPI('updateUser', { record: { id: CURRENT_USER.id, username: CURRENT_USER.username, password: newPwd } });
     toast('Password changed successfully ✓', 'ok');
     closeModal('changepwdmodal');
   } catch(e) {
@@ -15704,6 +15724,7 @@ function openAddUser() {
   document.getElementById('u_role').value = 'staff';
   document.getElementById('u_status').value = 'active';
   setRolePreset('staff');
+  resetTripPermsForm();
   document.getElementById('u_role').onchange = function() { setRolePreset(this.value); };
   document.getElementById('addusermodal').classList.remove('hidden');
   setTimeout(() => document.getElementById('u_name').focus(), 80);
@@ -15736,6 +15757,7 @@ function openEditUser(id) {
     return u[k] === true || u[k] === 'true';
   });
   if (!hasNewFlags) setRolePreset(u.role || 'viewer');
+  applyTripPermsToForm(u);
   document.getElementById('u_role').onchange = function() { setRolePreset(this.value); };
   document.getElementById('addusermodal').classList.remove('hidden');
 }
@@ -15745,6 +15767,99 @@ function setRolePreset(role) {
   Object.entries(preset).forEach(([key, val]) => {
     const el = document.getElementById(key);
     if (el) el.checked = val;
+  });
+}
+
+// ── TRIP SYSTEM PERMISSIONS (managed here, in Workshop, as the single
+// source of truth — Trips' own User Management is read-only) ────────
+var TRIP_MODULES_META = [
+  {key:'release',  perms:['create','edit','delete']},
+  {key:'trip',      perms:['create','edit','delete','approve']},
+  {key:'shortage',  perms:['payment','approve']},
+  {key:'deduction', perms:['create','edit','delete','payment','approve']},
+  {key:'permit',    perms:['create','edit','delete','approve']},
+  {key:'expense',   perms:['create','edit','delete','approve']}
+];
+var PNL_TABS_META = ['trips','tplsummary','horseperf','trailerperf'];
+var TRIP_MODULE_ROLE_PRESETS = {
+  viewer:  {access:true, create:false, edit:false, delete:false, approve:false, payment:false},
+  staff:   {access:true, create:true,  edit:false, delete:false, approve:false, payment:false},
+  manager: {access:true, create:true,  edit:true,  delete:false, approve:true,  payment:true},
+  admin:   {access:true, create:true,  edit:true,  delete:true,  approve:true,  payment:true}
+};
+var PNL_ROLE_PRESETS = {viewer:false, staff:false, manager:true, admin:true};
+
+function onTripAccessToggle() {
+  var on = document.getElementById('u_trip_access').checked;
+  document.getElementById('u_trip_role_wrap').style.display = on ? '' : 'none';
+  document.getElementById('u_trip_perms_section').style.display = on ? '' : 'none';
+}
+
+function onTripRoleChange() {
+  setTripModulePermPreset(document.getElementById('u_trip_role').value);
+}
+
+function setTripModulePermPreset(role) {
+  var preset = TRIP_MODULE_ROLE_PRESETS[role] || TRIP_MODULE_ROLE_PRESETS.viewer;
+  TRIP_MODULES_META.forEach(function(m){
+    var a = document.getElementById('p_'+m.key);
+    if (a) a.checked = preset.access;
+    m.perms.forEach(function(p){
+      var el = document.getElementById('p_'+m.key+'_'+p);
+      if (el) el.checked = !!preset[p];
+    });
+  });
+  var pnlVal = !!PNL_ROLE_PRESETS[role];
+  PNL_TABS_META.forEach(function(t){
+    var el = document.getElementById('p_pnl_'+t); if (el) el.checked = pnlVal;
+  });
+}
+
+function _setChkExplicit(id, val) {
+  var el = document.getElementById(id); if (!el) return;
+  el.checked = (val===true||val==='true'||val==='TRUE');
+}
+
+function applyTripPermsToForm(u) {
+  // Same principle as Trips' own form: show exactly what's explicitly
+  // saved, no silent inheritance from the Trip Role preset — an unset
+  // field just means "not granted", not "whatever the role implies".
+  _setChkExplicit('u_trip_access', u.trip_access);
+  document.getElementById('u_trip_role').value = (u.trip_role || 'viewer').toString().toLowerCase();
+  TRIP_MODULES_META.forEach(function(m){
+    _setChkExplicit('p_'+m.key, u['p_'+m.key]);
+    m.perms.forEach(function(p){ _setChkExplicit('p_'+m.key+'_'+p, u['p_'+m.key+'_'+p]); });
+  });
+  PNL_TABS_META.forEach(function(t){ _setChkExplicit('p_pnl_'+t, u['p_pnl_'+t]); });
+  onTripAccessToggle();
+}
+
+function resetTripPermsForm() {
+  document.getElementById('u_trip_access').checked = false;
+  document.getElementById('u_trip_role').value = 'staff';
+  TRIP_MODULES_META.forEach(function(m){
+    var a = document.getElementById('p_'+m.key); if (a) a.checked = false;
+    m.perms.forEach(function(p){ var el = document.getElementById('p_'+m.key+'_'+p); if (el) el.checked = false; });
+  });
+  PNL_TABS_META.forEach(function(t){ var el = document.getElementById('p_pnl_'+t); if (el) el.checked = false; });
+  onTripAccessToggle();
+}
+
+function collectTripPermsFromForm(data) {
+  var tripAccess = document.getElementById('u_trip_access').checked;
+  data.trip_access = tripAccess;
+  data.trip_role   = document.getElementById('u_trip_role').value;
+  TRIP_MODULES_META.forEach(function(m){
+    var a = document.getElementById('p_'+m.key);
+    data['p_'+m.key] = tripAccess && a ? a.checked : false;
+    m.perms.forEach(function(p){
+      var el = document.getElementById('p_'+m.key+'_'+p);
+      data['p_'+m.key+'_'+p] = tripAccess && el ? el.checked : false;
+    });
+  });
+  PNL_TABS_META.forEach(function(t){
+    var el = document.getElementById('p_pnl_'+t);
+    data['p_pnl_'+t] = tripAccess && el ? el.checked : false;
   });
 }
 
@@ -15798,6 +15913,7 @@ async function saveUser() {
     p_battery_approve: document.getElementById('p_battery_approve').checked,
     p_battery_edit: document.getElementById('p_battery_edit').checked,
   };
+  collectTripPermsFromForm(data);
 
   if (editingUser) {
     data.id = editingUser;
@@ -15826,14 +15942,10 @@ async function deleteUser(id) {
 // -- GENERIC FILTER CONFIG --
 var FILTER_CONFIGS = {
   drivers: [
-    {ph:'Search name, phone, license...', fields:['name','phone','licenseNo','nationalId','passportNo']},
-    {ph:'Filter by nationality...', fields:['nationality']},
-    {ph:'Filter by status...', fields:['status']}
+    {ph:'Search name, phone, license, nationality, status...', fields:['name','phone','licenseNo','nationalId','passportNo','nationality','status']}
   ],
   vehicles: [
-    {ph:'Search plate, make, model...', fields:['plate','make','model','chassisNo','engineNo']},
-    {ph:'Filter by vehicle type...', fields:['vehicleType']},
-    {ph:'Filter by status...', fields:['status']}
+    {ph:'Search plate, make, model, type, status...', fields:['plate','make','model','chassisNo','engineNo','vehicleType','status']}
   ],
   jobcards: [
     {ph:'Search vehicle, driver...', fields:['vehicle','driverName','code','jobCardNo']},
@@ -15889,6 +16001,28 @@ function clearGenericFilter() {
   ['FR1','FR2','FR3'].forEach(function(id){ var el=document.getElementById(id); if(el) el.value=''; });
   if (typeof updateFilterPlaceholders === 'function') updateFilterPlaceholders();
   applyGenericFilter();
+}
+
+// ── DEDICATED SINGLE SEARCH — Drivers (name only) / Vehicles (plate
+// only). Deliberately isolated from the shared FR1/FR2/FR3 mechanism
+// above so there's nothing else that can interfere with it.
+function onSingleSearchInput() {
+  var q = (document.getElementById('SINGLESEARCH').value || '').trim().toLowerCase();
+  if (currentView === 'drivers') {
+    var filtered = !q ? DRIVERS.slice() : DRIVERS.filter(function(d){ return (d.name||'').toLowerCase().includes(q); });
+    document.getElementById('viewsub').textContent = filtered.length + ' driver' + (filtered.length!==1?'s':'');
+    renderFilteredDrivers(filtered);
+  } else if (currentView === 'vehicles') {
+    var filteredV = !q ? VEHICLES.slice() : VEHICLES.filter(function(v){ return (v.plate||'').toLowerCase().includes(q); });
+    document.getElementById('viewsub').textContent = filteredV.length + ' vehicle' + (filteredV.length!==1?'s':'');
+    renderFilteredVehicles(filteredV);
+  }
+}
+
+function clearSingleSearch() {
+  var el = document.getElementById('SINGLESEARCH');
+  if (el) el.value = '';
+  onSingleSearchInput();
 }
 
 function getActiveJCDateField() {
@@ -16679,6 +16813,87 @@ history.pushState(null, '', window.location.href);
           <label class="perm-item"><input type="checkbox" id="p_battery_approve"><span>Approve / Reject Battery Requests</span></label>
           <label class="perm-item"><input type="checkbox" id="p_battery_edit"><span>Edit &amp; Delete Battery Records</span></label>
         </div>
+      </div>
+
+      <div class="formgroup full" style="margin-top:6px;padding-top:14px;border-top:2px solid var(--ac)">
+        <label style="display:flex;align-items:center;gap:8px;cursor:pointer;margin-bottom:0">
+          <input type="checkbox" id="u_trip_access" onchange="onTripAccessToggle()" style="width:16px;height:16px">
+          <span style="font-weight:700;color:#0a2d6e;text-transform:none;letter-spacing:0;font-size:13px">&#128666; Trip System Access</span>
+        </label>
+        <div style="font-size:11px;color:var(--t3);margin-top:4px">Grants access to the Trips app (separate system, same login). Permissions below only apply if this is checked.</div>
+      </div>
+      <div class="formgroup" id="u_trip_role_wrap">
+        <label>Trip Role (Quick Preset)</label>
+        <select id="u_trip_role" onchange="onTripRoleChange()">
+          <option value="viewer">Viewer — Read-only</option>
+          <option value="staff">Staff — Create requests &amp; expenses</option>
+          <option value="manager">Manager — Approve, invoice, create/edit</option>
+          <option value="admin">Admin — Full access incl. P&amp;L &amp; rates</option>
+        </select>
+      </div>
+      <div class="formgroup full" id="u_trip_perms_section">
+        <label>Trip Module Permissions <span style="font-weight:400;color:var(--t3);text-transform:none;letter-spacing:0">— selecting a preset above fills these in; override any box as needed</span></label>
+
+        <div style="margin-top:6px;font-size:11px;font-weight:700;color:var(--t2);text-transform:uppercase;letter-spacing:.08em;padding-bottom:4px;border-bottom:1px solid var(--br)">&#128230; Releases</div>
+        <div class="perm-grid" style="margin-top:6px;grid-template-columns:repeat(4,1fr)">
+          <label class="perm-item"><input type="checkbox" id="p_release"><span>Access</span></label>
+          <label class="perm-item"><input type="checkbox" id="p_release_create"><span>Create</span></label>
+          <label class="perm-item"><input type="checkbox" id="p_release_edit"><span>Edit</span></label>
+          <label class="perm-item"><input type="checkbox" id="p_release_delete"><span>Delete</span></label>
+        </div>
+
+        <div style="margin-top:10px;font-size:11px;font-weight:700;color:var(--t2);text-transform:uppercase;letter-spacing:.08em;padding-bottom:4px;border-bottom:1px solid var(--br)">&#128666; Trips</div>
+        <div class="perm-grid" style="margin-top:6px;grid-template-columns:repeat(5,1fr)">
+          <label class="perm-item"><input type="checkbox" id="p_trip"><span>Access</span></label>
+          <label class="perm-item"><input type="checkbox" id="p_trip_create"><span>Create</span></label>
+          <label class="perm-item"><input type="checkbox" id="p_trip_edit"><span>Edit</span></label>
+          <label class="perm-item"><input type="checkbox" id="p_trip_delete"><span>Delete</span></label>
+          <label class="perm-item"><input type="checkbox" id="p_trip_approve"><span>Approve</span></label>
+        </div>
+
+        <div style="margin-top:10px;font-size:11px;font-weight:700;color:var(--t2);text-transform:uppercase;letter-spacing:.08em;padding-bottom:4px;border-bottom:1px solid var(--br)">&#9888;&#65039; Shortage Register</div>
+        <div class="perm-grid" style="margin-top:6px;grid-template-columns:repeat(3,1fr)">
+          <label class="perm-item"><input type="checkbox" id="p_shortage"><span>Access</span></label>
+          <label class="perm-item"><input type="checkbox" id="p_shortage_payment"><span>Payment</span></label>
+          <label class="perm-item"><input type="checkbox" id="p_shortage_approve"><span>Approve</span></label>
+        </div>
+
+        <div style="margin-top:10px;font-size:11px;font-weight:700;color:var(--t2);text-transform:uppercase;letter-spacing:.08em;padding-bottom:4px;border-bottom:1px solid var(--br)">&#128203; Deduction Register</div>
+        <div class="perm-grid" style="margin-top:6px;grid-template-columns:repeat(3,1fr)">
+          <label class="perm-item"><input type="checkbox" id="p_deduction"><span>Access</span></label>
+          <label class="perm-item"><input type="checkbox" id="p_deduction_create"><span>Create</span></label>
+          <label class="perm-item"><input type="checkbox" id="p_deduction_edit"><span>Edit</span></label>
+          <label class="perm-item"><input type="checkbox" id="p_deduction_delete"><span>Delete</span></label>
+          <label class="perm-item"><input type="checkbox" id="p_deduction_payment"><span>Payment</span></label>
+          <label class="perm-item"><input type="checkbox" id="p_deduction_approve"><span>Approve</span></label>
+        </div>
+
+        <div style="margin-top:10px;font-size:11px;font-weight:700;color:var(--t2);text-transform:uppercase;letter-spacing:.08em;padding-bottom:4px;border-bottom:1px solid var(--br)">&#128737;&#65039; Permits</div>
+        <div class="perm-grid" style="margin-top:6px;grid-template-columns:repeat(5,1fr)">
+          <label class="perm-item"><input type="checkbox" id="p_permit"><span>Access</span></label>
+          <label class="perm-item"><input type="checkbox" id="p_permit_create"><span>Create</span></label>
+          <label class="perm-item"><input type="checkbox" id="p_permit_edit"><span>Edit</span></label>
+          <label class="perm-item"><input type="checkbox" id="p_permit_delete"><span>Delete</span></label>
+          <label class="perm-item"><input type="checkbox" id="p_permit_approve"><span>Approve</span></label>
+        </div>
+
+        <div style="margin-top:10px;font-size:11px;font-weight:700;color:var(--t2);text-transform:uppercase;letter-spacing:.08em;padding-bottom:4px;border-bottom:1px solid var(--br)">&#128221; Additional Expenses</div>
+        <div class="perm-grid" style="margin-top:6px;grid-template-columns:repeat(5,1fr)">
+          <label class="perm-item"><input type="checkbox" id="p_expense"><span>Access</span></label>
+          <label class="perm-item"><input type="checkbox" id="p_expense_create"><span>Create</span></label>
+          <label class="perm-item"><input type="checkbox" id="p_expense_edit"><span>Edit</span></label>
+          <label class="perm-item"><input type="checkbox" id="p_expense_delete"><span>Delete</span></label>
+          <label class="perm-item"><input type="checkbox" id="p_expense_approve"><span>Approve</span></label>
+        </div>
+
+        <div style="margin-top:10px;font-size:11px;font-weight:700;color:var(--t2);text-transform:uppercase;letter-spacing:.08em;padding-bottom:4px;border-bottom:1px solid var(--br)">&#128202; P&amp;L Summaries (view only)</div>
+        <div class="perm-grid" style="margin-top:6px;grid-template-columns:repeat(2,1fr)">
+          <label class="perm-item"><input type="checkbox" id="p_pnl_trips"><span>Trip Summary</span></label>
+          <label class="perm-item"><input type="checkbox" id="p_pnl_tplsummary"><span>Trip P&amp;L Summary</span></label>
+          <label class="perm-item"><input type="checkbox" id="p_pnl_horseperf"><span>Horse Performance</span></label>
+          <label class="perm-item"><input type="checkbox" id="p_pnl_trailerperf"><span>Trailer Performance</span></label>
+        </div>
+        <div style="font-size:11px;color:var(--t3);margin-top:6px">Release Settings tab is always Trip-Admin-only and not assignable here.</div>
       </div>
       <div class="formgroup"><label>Status</label><select id="u_status"><option value="active">Active</option><option value="inactive">Inactive</option></select></div>
     </div></div>
