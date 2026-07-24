@@ -1685,7 +1685,7 @@ window.onerror = function(msg, src, line, col, err) {
   return false;
 };
 
-const API = 'https://script.google.com/macros/s/AKfycbxY9gBOJatR7dab-YQf0naezfHzMMPZaPKnnfJbv6qK7pNVwVVTVSPf6nyl1YnZCF6hHQ/exec';
+const API = 'https://script.google.com/macros/s/AKfycbxcbtQrAuHvD4QAv5TQrbimBKjQ77B94wh6iPxGacdK8CVzVGhDMGd2Y-rYBWEpGYtQ8Q/exec';
 const APP_VERSION = '1780059676';
 
 // Version check removed for local file compatibility
@@ -13944,7 +13944,17 @@ function saveJobCard() {
     data.id = Date.now().toString(36) + Math.random().toString(36).slice(2);
     JOBCARDS.unshift(data);
     closeModal('jcmodal'); updateBadges(); renderJobCards(); toast('Saving...', 'in');
-    callAPI('addJobCard', { record: data }).then(function(){ toast('Job Card added ✓', 'ok'); }).catch(function(){ toast('Sync failed', 'er'); JOBCARDS = JOBCARDS.filter(j => j.id !== data.id); updateBadges(); renderJobCards(); });
+    callAPI('addJobCard', { record: data }).then(function(res){
+      // The server assigns the real, authoritative code — if it differs
+      // from what was shown locally (which can happen if another job
+      // card was created moments earlier), correct it here so the
+      // displayed code always matches what's actually saved.
+      if (res && res.code && res.code !== data.code) {
+        var i = JOBCARDS.findIndex(function(j){ return j.id === data.id; });
+        if (i !== -1) { JOBCARDS[i].code = res.code; JOBCARDS[i].jobCardNo = res.code; renderJobCards(); }
+      }
+      toast('Job Card added ✓ (' + (res && res.code ? res.code : data.code) + ')', 'ok');
+    }).catch(function(){ toast('Sync failed', 'er'); JOBCARDS = JOBCARDS.filter(j => j.id !== data.id); updateBadges(); renderJobCards(); });
   }
   btn.disabled = false; btn.textContent = 'Save Job Card';
 }
