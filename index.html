@@ -4015,9 +4015,59 @@ function doEdit(r){
     lockCategoryBreakdown('f_category');
   }
 
+  // PAID NOT RECEIVED: lock everything except Status, Date Received,
+  // Date Issued and Remarks. These records are already paid — only
+  // receipt tracking fields should be editable.
+  var _pnrFields = ['f_date','f_req','f_truck','f_vtype','f_driver',
+    'f_priority','f_jobcard','f_supplier','f_lpo','f_desc_select',
+    'f_desc','f_qty','f_unit_price','f_cost','f_payment',
+    'f_category','f_reqby'];
+  var _pnrLocked = (r.status||'').toUpperCase() === 'PAID NOT RECEIVED';
+
+  _pnrFields.forEach(function(fid) {
+    var el = document.getElementById(fid);
+    if (!el) return;
+    if (_pnrLocked) {
+      el.disabled = true;
+      el.style.opacity = '0.5';
+      el.style.pointerEvents = 'none';
+      if (el.tomselect) el.tomselect.lock();
+    } else {
+      el.disabled = false;
+      el.style.opacity = '';
+      el.style.pointerEvents = '';
+      if (el.tomselect) el.tomselect.unlock();
+    }
+  });
+
+  // Show a clear notice when fields are locked
+  var _pnrNotice = document.getElementById('pnr-lock-notice');
+  if (!_pnrNotice) {
+    _pnrNotice = document.createElement('div');
+    _pnrNotice.id = 'pnr-lock-notice';
+    _pnrNotice.style.cssText = 'background:#1e40af;color:#fff;font-size:12px;padding:8px 12px;border-radius:8px;margin-bottom:10px;display:none';
+    _pnrNotice.textContent = '🔒 PAID NOT RECEIVED — only Status, Date Received, Date Issued and Remarks can be changed.';
+    var modalBody = document.querySelector('#recmodal .modal-body') || document.getElementById('recmodal');
+    if (modalBody) modalBody.insertBefore(_pnrNotice, modalBody.firstChild);
+  }
+  _pnrNotice.style.display = _pnrLocked ? 'block' : 'none';
+
   document.getElementById('recmodal').classList.remove('hidden');
 }
 function clearForm(){
+  // Reset PNR lock if it was applied
+  var _pnrFields = ['f_date','f_req','f_truck','f_vtype','f_driver',
+    'f_priority','f_jobcard','f_supplier','f_lpo','f_desc_select',
+    'f_desc','f_qty','f_unit_price','f_cost','f_payment',
+    'f_category','f_reqby'];
+  _pnrFields.forEach(function(fid) {
+    var el = document.getElementById(fid);
+    if (!el) return;
+    el.disabled = false; el.style.opacity = ''; el.style.pointerEvents = '';
+    if (el.tomselect) { try { el.tomselect.unlock(); } catch(e){} }
+  });
+  var _pnrNotice = document.getElementById('pnr-lock-notice');
+  if (_pnrNotice) _pnrNotice.style.display = 'none';
   // Reset category field lock in case it was locked by motorcycle/workshop
   var catReset = document.getElementById('f_category');
   if (catReset) { catReset.style.pointerEvents = ''; catReset.style.opacity = ''; catReset.value = ''; }
@@ -4099,7 +4149,9 @@ async function saveRecord(){
         if (chkPNR('driverName', driver)) pnrChanged.push('Driver Name');
         if (chkPNR('jobCardNo', jobcard)) pnrChanged.push('Job Card No');
         if (chkPNR('category', document.getElementById('f_category')?document.getElementById('f_category').value:'')) pnrChanged.push('Category');
-        if (chkPNR('dateRequested', document.getElementById('f_date')?document.getElementById('f_date').value:'')) pnrChanged.push('Date Requested');
+        // dateRequested deliberately excluded — field is disabled in UI,
+        // date format differences between stored value and input cause
+        // false positives even when the user changed nothing
         if (chkPNR('priority', priority)) pnrChanged.push('Priority');
         if (chkPNR('description', desc)) pnrChanged.push('Description');
         if (chkPNR('qty', qty)) pnrChanged.push('Qty');
@@ -4132,7 +4184,8 @@ async function saveRecord(){
         if (chkRNI('driverName', driver)) rniChanged.push('Driver Name');
         if (chkRNI('jobCardNo', jobcard)) rniChanged.push('Job Card No');
         if (chkRNI('category', document.getElementById('f_category')?document.getElementById('f_category').value:'')) rniChanged.push('Category');
-        if (chkRNI('dateRequested', document.getElementById('f_date')?document.getElementById('f_date').value:'')) rniChanged.push('Date Requested');
+        // dateRequested deliberately excluded — field is disabled for RNI records,
+        // date format differences cause false positives
         if (chkRNI('priority', priority)) rniChanged.push('Priority');
         if (chkRNI('description', desc)) rniChanged.push('Description');
         if (chkRNI('qty', qty)) rniChanged.push('Qty');
@@ -4140,7 +4193,7 @@ async function saveRecord(){
         if (chkRNI('cost', cost)) rniChanged.push('Total Amount');
         if (chkRNI('supplier', (function(){var c=document.getElementById('f_supplier_custom');if(c&&c.style.display!=='none')return c.value;var s=document.getElementById('f_supplier');return s?s.value:'';})())) rniChanged.push('Supplier');
         if (chkRNI('lpoNo', document.getElementById('f_lpo')?document.getElementById('f_lpo').value:'')) rniChanged.push('LPO No');
-        if (chkRNI('dateReceived', document.getElementById('f_datercvd') ? document.getElementById('f_datercvd').value : '')) rniChanged.push('Date Received');
+        // dateReceived is intentionally excluded from RNI guard — it IS allowed to change
         if (chkRNI('paymentMode', payment)) rniChanged.push('Payment Mode');
         if (chkRNI('requestedBy', reqby)) rniChanged.push('Requested By');
         if (rniChanged.length > 0) {
@@ -4222,6 +4275,16 @@ async function saveRecord(){
   try{
     if(editingId){
       data.id=editingId;
+      // For PAID NOT RECEIVED: restore original values for all locked fields
+      // so disabled fields with format differences don't overwrite correct data
+      var _editOrig = ALL.find(function(r){ return r.id === editingId; });
+      if (_editOrig && (_editOrig.status||'').toUpperCase() === 'PAID NOT RECEIVED') {
+        ['dateRequested','truck','vehicleType','driverName','jobCardNo',
+         'category','priority','description','qty','unitPrice','cost',
+         'supplier','lpoNo','paymentMode','requestedBy'].forEach(function(f) {
+          if (_editOrig[f] !== undefined) data[f] = _editOrig[f];
+        });
+      }
       const i=ALL.findIndex(r=>r.id===editingId);
       if(i!==-1)ALL[i]={...ALL[i],...data};
       closeModal('recmodal');
@@ -10959,7 +11022,16 @@ async function saveBulkEdit() {
       if (pay.toUpperCase().trim() !== origPay) pnrChanged.push('Payment Mode');
       if (reqby.toUpperCase().trim() !== origReqby) pnrChanged.push('Requested By');
       var beDate = (document.getElementById('be_date_'+n)||{}).value||'';
-      if (beDate && beDate !== (orig.dateRequested||'')) pnrChanged.push('Date Requested');
+      // Normalize stored date to YYYY-MM-DD for comparison
+      // Stored format may be DD/MM/YYYY or YYYY-MM-DD
+      var _normDate = function(d) {
+        if (!d) return '';
+        d = d.trim();
+        var dmy = d.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+        if (dmy) return dmy[3]+'-'+dmy[2].padStart(2,'0')+'-'+dmy[1].padStart(2,'0');
+        return d;
+      };
+      if (beDate && beDate !== _normDate(orig.dateRequested)) pnrChanged.push('Date Requested');
       if (pnrChanged.length > 0) {
         toast('Record '+(n+1)+' ('+orig.reqNo+'): Only Status, Date Received, Date Issued and Remarks can be changed for PAID NOT RECEIVED. Cannot change: '+pnrChanged.join(', '),'er'); return;
       }
@@ -10977,9 +11049,9 @@ async function saveBulkEdit() {
       if (pay.toUpperCase().trim() !== (orig.paymentMode||'').toUpperCase().trim()) rniChanged.push('Payment Mode');
       if (reqby.toUpperCase().trim() !== (orig.requestedBy||'').toUpperCase().trim()) rniChanged.push('Requested By');
       var beDate2 = (document.getElementById('be_date_'+n)||{}).value||'';
-      if (beDate2 && beDate2 !== (orig.dateRequested||'')) rniChanged.push('Date Requested');
+      if (beDate2 && beDate2 !== _normDate(orig.dateRequested)) rniChanged.push('Date Requested');
       var beDateRcvd = (document.getElementById('be_datercvd_'+n)||{}).value||'';
-      if (beDateRcvd !== (orig.dateReceived||'')) rniChanged.push('Date Received');
+      if (beDateRcvd && beDateRcvd !== _normDate(orig.dateReceived||'')) rniChanged.push('Date Received');
       if (rniChanged.length > 0) {
         toast('Record '+(n+1)+' ('+orig.reqNo+'): Only Status, Date Issued and Remarks can be changed for RECEIVED NOT ISSUED. Cannot change: '+rniChanged.join(', '),'er'); return;
       }
