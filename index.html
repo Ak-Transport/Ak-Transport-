@@ -16567,29 +16567,64 @@ async function loadAppData(){
     toast('Connected - '+ALL.length+' records loaded','ok');
     var _wasOffline = false;
 
-    // Replace 30-second polling with Firebase real-time listeners.
-    // Data updates instantly when anyone makes a change - no polling lag.
+    // ── OPTION 2: Single timestamp listener + targeted fetches ──────
+    // Listen ONLY to /_meta/lastSyncedAt (~100 bytes).
+    // On change, fetch ONLY what the current view needs.
+    // ~95% reduction in Firebase download vs full-collection listeners.
     if (_wsFbDb) {
-      var _wsListenPaths = [
-        ['/ak_workshop', '/requisitions', function(v){ if(v){ALL=Object.values(v);} }],
-        ['/ak_workshop', '/jobCards',     function(v){ if(v){JOBCARDS=Object.values(v);} }],
-        ['/ak_workshop', '/tyres',        function(v){ if(v){TYRES=Object.values(v);} }],
-        ['/ak_workshop', '/batteries',    function(v){ if(v){BATTERIES=Object.values(v);} }],
-        ['/ak_workshop', '/tyreFitments', function(v){ if(v){TYRE_FITS=Object.values(v);} }],
-        ['/ak_workshop', '/batteryFitments',function(v){ if(v){BAT_FITS=Object.values(v);} }],
-        ['/ak_workshop', '/storeInventory',function(v){ if(v){STORE_INVENTORY=Object.values(v);} }],
-        ['/ak_workshop', '/spareMoves',   function(v){ if(v){SPARE_MOVES=Object.values(v);} }],
-        ['/ak_trips',    '/drivers',      function(v){ if(v){DRIVERS=Object.values(v);} }],
-        ['/ak_trips',    '/vehicles',     function(v){ if(v){VEHICLES=Object.values(v);} }]
-      ];
-      _wsListenPaths.forEach(function(pair) {
-        _wsFbDb.ref(pair[0] + pair[1]).on('value', function(snap) {
+      var _wsViewCollections = {
+        main:         [['/ak_workshop','/requisitions', function(v){if(v){ALL=Object.values(v);}}]],
+        suppliers:    [['/ak_workshop','/suppliers',    function(v){if(v){SUPPLIERS=Object.values(v);}}]],
+        spareparts:   [['/ak_workshop','/spareParts',   function(v){if(v){SPAREPARTS=Object.values(v);}}]],
+        jobcards:     [['/ak_workshop','/jobCards',     function(v){if(v){JOBCARDS=Object.values(v);}}]],
+        jcsummary:    [['/ak_workshop','/jobCards',     function(v){if(v){JOBCARDS=Object.values(v);}}]],
+        drivers:      [['/ak_trips',   '/drivers',      function(v){if(v){DRIVERS=Object.values(v);}}]],
+        vehicles:     [['/ak_trips',   '/vehicles',     function(v){if(v){VEHICLES=Object.values(v);}}]],
+        tyre_inventory:    [['/ak_workshop','/tyres',        function(v){if(v){TYRES=Object.values(v);}}]],
+        tyre_fit_requests: [['/ak_workshop','/tyreFitments', function(v){if(v){TYRE_FITS=Object.values(v);}}],
+                            ['/ak_workshop','/tyres',        function(v){if(v){TYRES=Object.values(v);}}]],
+        tyre_rem_hold:     [['/ak_workshop','/tyreFitments', function(v){if(v){TYRE_FITS=Object.values(v);}}],
+                            ['/ak_workshop','/tyres',        function(v){if(v){TYRES=Object.values(v);}}]],
+        tyre_scrap:        [['/ak_workshop','/tyreScrapSales',function(v){if(v){TYRE_SCRAPS=Object.values(v);}}]],
+        bat_inventory:     [['/ak_workshop','/batteries',    function(v){if(v){BATTERIES=Object.values(v);}}]],
+        bat_fit_requests:  [['/ak_workshop','/batteryFitments',function(v){if(v){BAT_FITS=Object.values(v);}}],
+                            ['/ak_workshop','/batteries',    function(v){if(v){BATTERIES=Object.values(v);}}]],
+        bat_rem_hold:      [['/ak_workshop','/batteryFitments',function(v){if(v){BAT_FITS=Object.values(v);}}]],
+        bat_sales:         [['/ak_workshop','/batterySales', function(v){if(v){BAT_SALES=Object.values(v);}}]],
+        store_inventory:   [['/ak_workshop','/storeInventory',function(v){if(v){STORE_INVENTORY=Object.values(v);}}]],
+        store_receipts:    [['/ak_workshop','/storeReceipts',function(v){if(v){STORE_RECEIPTS=Object.values(v);}}]],
+        store_issuances:   [['/ak_workshop','/storeIssuances',function(v){if(v){STORE_ISSUANCES=Object.values(v);}}]],
+        store_reqs:        [['/ak_workshop','/storeReqs',    function(v){if(v){STORE_REQS=Object.values(v);}}]],
+        pending_issuances: [['/ak_workshop','/pendingIssuances',function(v){if(v){ISS_PENDING=Object.values(v);}}]],
+        spm_requests:      [['/ak_workshop','/spareMoves',   function(v){if(v){SPARE_MOVES=Object.values(v);}}]],
+        spm_hold:          [['/ak_workshop','/spareMoves',   function(v){if(v){SPARE_MOVES=Object.values(v);}}]],
+        dashboard:         [['/ak_workshop','/jobCards',     function(v){if(v){JOBCARDS=Object.values(v);}}],
+                            ['/ak_workshop','/requisitions', function(v){if(v){ALL=Object.values(v);}}]],
+      };
+
+      var _wsLastSyncedAt = null;
+
+      _wsFbDb.ref('/ak_workshop/_meta/lastSyncedAt').on('value', function(snap) {
+        var ts = snap.val();
+        if (_wsLastSyncedAt === null) { _wsLastSyncedAt = ts; setSyncStatus('on'); return; }
+        if (ts === _wsLastSyncedAt) return;
+        _wsLastSyncedAt = ts;
+
+        setSyncStatus('on');
+        _wasOffline = false;
+        updateBadges();
+
+        var collections = _wsViewCollections[currentView];
+        if (!collections || !collections.length) return;
+        if (document.querySelector('.overlay:not(.hidden)')) return;
+
+        Promise.all(collections.map(function(triple) {
+          return _wsFbDb.ref(triple[0] + triple[1]).once('value').then(function(s) {
+            triple[2](s.val());
+          });
+        })).then(function() {
+          var _scrollY = window.scrollY;
           try {
-            pair[2](snap.val());
-            updateBadges();
-            setSyncStatus('on');
-            _wasOffline = false;
-            // Re-render current view in place (no spinner, no navigation)
             if (currentView==='suppliers') renderSuppliers();
             else if (currentView==='spareparts') renderSpareParts();
             else if (currentView==='jobcards') { var jcHasFilter=['JCF1','JCF2','JCF3','JCF4'].some(function(id){var el=document.getElementById(id);return el&&el.value.trim();}); if(jcHasFilter)applyJCFilter();else renderJobCards(); }
@@ -16598,15 +16633,18 @@ async function loadAppData(){
             else if (currentView==='vehicles') renderVehicles();
             else if (currentView==='dashboard') renderDashboard();
             else applyFilters();
-          } catch(e) {
-            _wasOffline = true;
-            setSyncStatus('er');
-          }
-        }, function(err) {
+          } catch(e){}
+          window.scrollTo(0, _scrollY);
+        }).catch(function() {
           _wasOffline = true;
           setSyncStatus('er');
         });
+
+      }, function(err) {
+        _wasOffline = true;
+        setSyncStatus('er');
       });
+
     } else {
       // Fallback: keep 30-second polling if Firebase unavailable
       setInterval(async function(){
