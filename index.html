@@ -16647,6 +16647,7 @@ async function loadAppData(){
     var _wsActiveListeners = {};
     var _wsDebounceTimers  = {};
     var _wsFetchingNow     = {};  // in-flight guard per collection set
+    var _wsPendingFetch    = {};  // pending flag per collection set
 
     var _wsViewSyncConfig = {
       main:              { collections: ['requisitions'],  fetch: function(){ return wsFbRead('/requisitions'); }, apply: function(r){ ALL=r.records; } },
@@ -16688,22 +16689,78 @@ async function loadAppData(){
       var config = _wsViewSyncConfig[view];
       if (!config) return;
       if (document.querySelector('.overlay:not(.hidden)')) return;
-      // In-flight guard: skip if a fetch for this collection set is already running
       var key = config.collections.join(',');
-      if (_wsFetchingNow[key]) return;
+
+      if (_wsFetchingNow[key]) {
+        _wsPendingFetch[key] = true;
+        return;
+      }
+
       _wsFetchingNow[key] = true;
+      _wsPendingFetch[key] = false;
       var _scrollY = window.scrollY;
-      config.fetch().then(function(r) {
-        // Deduplicate by id - prevents flash duplicate when optimistic
-        // local insert coexists with incoming Firebase records
-        if (!config.multi && r.records) {
-          var seen = {};
-          r.records = r.records.filter(function(rec) {
-            if (!rec.id || seen[rec.id]) return false;
-            seen[rec.id] = true; return true;
+
+      var _wsArrayMap = {
+        requisitions: ALL, jobCards: JOBCARDS, suppliers: SUPPLIERS,
+        spareParts: SPAREPARTS, storeInventory: STORE_INVENTORY,
+        storeReqs: STORE_REQS, storeIssuances: STORE_ISSUANCES,
+        pendingIssuances: ISS_PENDING, tyres: TYRES,
+        tyreFitments: TYRE_FITS, tyreScrapSales: TYRE_SCRAPS,
+        batteries: BATTERIES, batteryFitments: BAT_FITS,
+        batterySales: BAT_SALES, spareMoves: SPARE_MOVES,
+        drivers: DRIVERS, vehicles: VEHICLES
+      };
+      var _wsRootMap = { drivers: '/ak_trips', vehicles: '/ak_trips' };
+
+      _wsFbDb.ref('/ak_workshop/_meta').once('value').then(function(metaSnap) {
+        var meta = metaSnap.val() || {};
+        var collections = config.collections;
+
+        var canPatch = collections.every(function(col) {
+          var op = meta[col + '_lastOp'];
+          var id = meta[col + '_lastId'];
+          return id && (op === 'add' || op === 'update' || op === 'delete');
+        });
+
+        if (canPatch) {
+          return Promise.all(collections.map(function(col) {
+            var op = meta[col + '_lastOp'];
+            var id = meta[col + '_lastId'];
+            var root = _wsRootMap[col] || '/ak_workshop';
+
+            if (op === 'delete') {
+              var localArr = _wsArrayMap[col];
+              if (localArr) {
+                var idx = localArr.findIndex(function(x){ return x.id === id; });
+                if (idx >= 0) localArr.splice(idx, 1);
+              }
+              return Promise.resolve(null);
+            }
+
+            return _wsFbDb.ref(root + '/' + col + '/' + id).once('value').then(function(snap) {
+              var rec = snap.val();
+              if (!rec) return;
+              var localArr = _wsArrayMap[col];
+              if (localArr) {
+                var idx = localArr.findIndex(function(x){ return x.id === rec.id; });
+                if (idx >= 0) localArr[idx] = rec;
+                else localArr.push(rec);
+              }
+            });
+          }));
+        } else {
+          return config.fetch().then(function(r) {
+            if (!config.multi && r.records) {
+              var seen = {};
+              r.records = r.records.filter(function(rec) {
+                if (!rec.id || seen[rec.id]) return false;
+                seen[rec.id] = true; return true;
+              });
+            }
+            config.apply(r);
           });
         }
-        config.apply(r);
+      }).then(function() {
         try {
           if (view==='suppliers') renderSuppliers();
           else if (view==='spareparts') renderSpareParts();
@@ -16718,9 +16775,25 @@ async function loadAppData(){
         updateBadges();
         setSyncStatus('on');
         _wasOffline = false;
-      }).catch(function(){ _wasOffline=true; setSyncStatus('er'); })
-        .then(function(){ _wsFetchingNow[key] = false; });
+      }).catch(function(){
+        _wasOffline = true;
+        setSyncStatus('er');
+      }).then(function() {
+        _wsFetchingNow[key] = false;
+        // Catch-up fetch if a change arrived during this fetch
+        if (_wsPendingFetch[key]) {
+          _wsPendingFetch[key] = false;
+          _wsDoViewRefresh(view);
+        }
+      });
     }
+
+    // Re-check current view when tab regains focus
+    document.addEventListener('visibilitychange', function() {
+      if (document.visibilityState === 'visible' && currentView && _wsViewSyncConfig[currentView]) {
+        _wsDoViewRefresh(currentView);
+      }
+    });
 
     function _wsAttachCollectionListener(collectionName, root) {
       if (!_wsFbDb) return;
