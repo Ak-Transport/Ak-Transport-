@@ -1949,6 +1949,8 @@ function buildHeader(){
 function switchView(v){
   openNavSection(v);
   currentView = v;
+  // Update per-collection listeners for new view
+  if (typeof window._wsSyncListenersForView === 'function') window._wsSyncListenersForView(v);
   // Hide all floating selection bars on view change
   var _bars = ['tyreFitReqFilterRow','storeinvfilterrow','sreq_selbar','iss_req_selbar','iph_selbar','bat_remhold_selbar','tyre_remhold_selbar','tyre_scrap_selbar','tinv_selbar','batinv_selbar','batsales_selbar','selectionbar','tpo_selbar','fitreq_selbar','batfitreq_selbar','bpo_selbar','spm_selbar'];
   _bars.forEach(function(bid){ var b=document.getElementById(bid); if(b) b.style.display='none'; });
@@ -16567,97 +16569,133 @@ async function loadAppData(){
     toast('Connected - '+ALL.length+' records loaded','ok');
     var _wasOffline = false;
 
-    // ── OPTION 2: Single timestamp listener + targeted fetches ──────
-    // Listen ONLY to /_meta/lastSyncedAt (~100 bytes).
-    // On change, fetch ONLY what the current view needs.
-    // ~95% reduction in Firebase download vs full-collection listeners.
-    if (_wsFbDb) {
-      var _wsViewCollections = {
-        main:         [['/ak_workshop','/requisitions', function(v){if(v){ALL=Object.values(v);}}]],
-        suppliers:    [['/ak_workshop','/suppliers',    function(v){if(v){SUPPLIERS=Object.values(v);}}]],
-        spareparts:   [['/ak_workshop','/spareParts',   function(v){if(v){SPAREPARTS=Object.values(v);}}]],
-        jobcards:     [['/ak_workshop','/jobCards',     function(v){if(v){JOBCARDS=Object.values(v);}}]],
-        jcsummary:    [['/ak_workshop','/jobCards',     function(v){if(v){JOBCARDS=Object.values(v);}}]],
-        drivers:      [['/ak_trips',   '/drivers',      function(v){if(v){DRIVERS=Object.values(v);}}]],
-        vehicles:     [['/ak_trips',   '/vehicles',     function(v){if(v){VEHICLES=Object.values(v);}}]],
-        tyre_inventory:    [['/ak_workshop','/tyres',        function(v){if(v){TYRES=Object.values(v);}}]],
-        tyre_fit_requests: [['/ak_workshop','/tyreFitments', function(v){if(v){TYRE_FITS=Object.values(v);}}],
-                            ['/ak_workshop','/tyres',        function(v){if(v){TYRES=Object.values(v);}}]],
-        tyre_rem_hold:     [['/ak_workshop','/tyreFitments', function(v){if(v){TYRE_FITS=Object.values(v);}}],
-                            ['/ak_workshop','/tyres',        function(v){if(v){TYRES=Object.values(v);}}]],
-        tyre_scrap:        [['/ak_workshop','/tyreScrapSales',function(v){if(v){TYRE_SCRAPS=Object.values(v);}}]],
-        bat_inventory:     [['/ak_workshop','/batteries',    function(v){if(v){BATTERIES=Object.values(v);}}]],
-        bat_fit_requests:  [['/ak_workshop','/batteryFitments',function(v){if(v){BAT_FITS=Object.values(v);}}],
-                            ['/ak_workshop','/batteries',    function(v){if(v){BATTERIES=Object.values(v);}}]],
-        bat_rem_hold:      [['/ak_workshop','/batteryFitments',function(v){if(v){BAT_FITS=Object.values(v);}}]],
-        bat_sales:         [['/ak_workshop','/batterySales', function(v){if(v){BAT_SALES=Object.values(v);}}]],
-        store_inventory:   [['/ak_workshop','/storeInventory',function(v){if(v){STORE_INVENTORY=Object.values(v);}}]],
-        store_receipts:    [['/ak_workshop','/storeReceipts',function(v){if(v){STORE_RECEIPTS=Object.values(v);}}]],
-        store_issuances:   [['/ak_workshop','/storeIssuances',function(v){if(v){STORE_ISSUANCES=Object.values(v);}}]],
-        store_reqs:        [['/ak_workshop','/storeReqs',    function(v){if(v){STORE_REQS=Object.values(v);}}]],
-        pending_issuances: [['/ak_workshop','/pendingIssuances',function(v){if(v){ISS_PENDING=Object.values(v);}}]],
-        spm_requests:      [['/ak_workshop','/spareMoves',   function(v){if(v){SPARE_MOVES=Object.values(v);}}]],
-        spm_hold:          [['/ak_workshop','/spareMoves',   function(v){if(v){SPARE_MOVES=Object.values(v);}}]],
-        dashboard:         [['/ak_workshop','/jobCards',     function(v){if(v){JOBCARDS=Object.values(v);}}],
-                            ['/ak_workshop','/requisitions', function(v){if(v){ALL=Object.values(v);}}]],
-      };
+    // ── PER-COLLECTION TIMESTAMP LISTENERS ───────────────────────
+    // Each collection has its own _updatedAt timestamp in /_meta.
+    // Listeners attach/detach per view. Debounced. No duplicates.
+    var _wsActiveListeners = {};
+    var _wsDebounceTimers  = {};
+    var _wsFetchingNow     = {};  // in-flight guard per collection set
 
-      var _wsLastSyncedAt = null;
+    var _wsViewSyncConfig = {
+      main:              { collections: ['requisitions'],  fetch: function(){ return wsFbRead('/requisitions'); }, apply: function(r){ ALL=r.records; } },
+      workshop:          { collections: ['requisitions'],  fetch: function(){ return wsFbRead('/requisitions'); }, apply: function(r){ ALL=r.records; } },
+      today:             { collections: ['requisitions'],  fetch: function(){ return wsFbRead('/requisitions'); }, apply: function(r){ ALL=r.records; } },
+      suppliers:         { collections: ['suppliers'],     fetch: function(){ return wsFbRead('/suppliers');    }, apply: function(r){ SUPPLIERS=r.records; } },
+      spareparts:        { collections: ['spareParts'],    fetch: function(){ return wsFbRead('/spareParts');   }, apply: function(r){ SPAREPARTS=r.records; } },
+      jobcards:          { collections: ['jobCards'],      fetch: function(){ return wsFbRead('/jobCards');     }, apply: function(r){ JOBCARDS=r.records; } },
+      jcsummary:         { collections: ['jobCards'],      fetch: function(){ return wsFbRead('/jobCards');     }, apply: function(r){ JOBCARDS=r.records; } },
+      drivers:           { collections: ['drivers'],       fetch: function(){ return wsFbRead('/drivers','/ak_trips'); }, apply: function(r){ DRIVERS=r.records; } },
+      vehicles:          { collections: ['vehicles'],      fetch: function(){ return wsFbRead('/vehicles','/ak_trips'); }, apply: function(r){ VEHICLES=r.records; } },
+      tyre_inventory:    { collections: ['tyres'],         fetch: function(){ return wsFbRead('/tyres');        }, apply: function(r){ TYRES=r.records; } },
+      tyre_fit_requests: { collections: ['tyreFitments','tyres'],
+                           fetch: function(){ return Promise.all([wsFbRead('/tyreFitments'),wsFbRead('/tyres')]); },
+                           apply: function(r){ TYRE_FITS=r[0].records; TYRES=r[1].records; }, multi:true },
+      tyre_rem_hold:     { collections: ['tyreFitments','tyres'],
+                           fetch: function(){ return Promise.all([wsFbRead('/tyreFitments'),wsFbRead('/tyres')]); },
+                           apply: function(r){ TYRE_FITS=r[0].records; TYRES=r[1].records; }, multi:true },
+      tyre_scrap:        { collections: ['tyreScrapSales'],fetch: function(){ return wsFbRead('/tyreScrapSales'); }, apply: function(r){ TYRE_SCRAPS=r.records; } },
+      bat_inventory:     { collections: ['batteries'],     fetch: function(){ return wsFbRead('/batteries');    }, apply: function(r){ BATTERIES=r.records; } },
+      bat_fit_requests:  { collections: ['batteryFitments','batteries'],
+                           fetch: function(){ return Promise.all([wsFbRead('/batteryFitments'),wsFbRead('/batteries')]); },
+                           apply: function(r){ BAT_FITS=r[0].records; BATTERIES=r[1].records; }, multi:true },
+      bat_rem_hold:      { collections: ['batteryFitments'],fetch: function(){ return wsFbRead('/batteryFitments'); }, apply: function(r){ BAT_FITS=r.records; } },
+      bat_sales:         { collections: ['batterySales'],  fetch: function(){ return wsFbRead('/batterySales'); }, apply: function(r){ BAT_SALES=r.records; } },
+      store_inventory:   { collections: ['storeInventory'],fetch: function(){ return wsFbRead('/storeInventory'); }, apply: function(r){ STORE_INVENTORY=r.records; } },
+      store_receipts:    { collections: ['storeReceipts'], fetch: function(){ return wsFbRead('/storeReceipts'); }, apply: function(r){ STORE_RECEIPTS=r.records; } },
+      store_issuances:   { collections: ['storeIssuances'],fetch: function(){ return wsFbRead('/storeIssuances'); }, apply: function(r){ STORE_ISSUANCES=r.records; } },
+      store_reqs:        { collections: ['storeReqs'],     fetch: function(){ return wsFbRead('/storeReqs');    }, apply: function(r){ STORE_REQS=r.records; } },
+      pending_issuances: { collections: ['pendingIssuances'],fetch: function(){ return wsFbRead('/pendingIssuances'); }, apply: function(r){ ISS_PENDING=r.records; } },
+      spm_requests:      { collections: ['spareMoves'],    fetch: function(){ return wsFbRead('/spareMoves');   }, apply: function(r){ SPARE_MOVES=r.records; } },
+      spm_hold:          { collections: ['spareMoves'],    fetch: function(){ return wsFbRead('/spareMoves');   }, apply: function(r){ SPARE_MOVES=r.records; } },
+      dashboard:         { collections: ['jobCards','requisitions'],
+                           fetch: function(){ return Promise.all([wsFbRead('/jobCards'),wsFbRead('/requisitions')]); },
+                           apply: function(r){ JOBCARDS=r[0].records; ALL=r[1].records; }, multi:true },
+    };
 
-      _wsFbDb.ref('/ak_workshop/_meta/lastSyncedAt').on('value', function(snap) {
-        var ts = snap.val();
-        if (_wsLastSyncedAt === null) { _wsLastSyncedAt = ts; setSyncStatus('on'); return; }
-        if (ts === _wsLastSyncedAt) return;
-        _wsLastSyncedAt = ts;
-
+    function _wsDoViewRefresh(view) {
+      var config = _wsViewSyncConfig[view];
+      if (!config) return;
+      if (document.querySelector('.overlay:not(.hidden)')) return;
+      // In-flight guard: skip if a fetch for this collection set is already running
+      var key = config.collections.join(',');
+      if (_wsFetchingNow[key]) return;
+      _wsFetchingNow[key] = true;
+      var _scrollY = window.scrollY;
+      config.fetch().then(function(r) {
+        // Deduplicate by id - prevents flash duplicate when optimistic
+        // local insert coexists with incoming Firebase records
+        if (!config.multi && r.records) {
+          var seen = {};
+          r.records = r.records.filter(function(rec) {
+            if (!rec.id || seen[rec.id]) return false;
+            seen[rec.id] = true; return true;
+          });
+        }
+        config.apply(r);
+        try {
+          if (view==='suppliers') renderSuppliers();
+          else if (view==='spareparts') renderSpareParts();
+          else if (view==='jobcards'){ var jcF=['JCF1','JCF2','JCF3','JCF4'].some(function(id){var el=document.getElementById(id);return el&&el.value.trim();}); if(jcF)applyJCFilter();else renderJobCards(); }
+          else if (view==='jcsummary'){ var jcsF=['JF1','JF2','JF3','JF4'].some(function(id){var el=document.getElementById(id);return el&&el.value.trim();}); if(jcsF)applyJCSFilter();else renderJCSummary(); }
+          else if (view==='drivers') renderDrivers();
+          else if (view==='vehicles') renderVehicles();
+          else if (view==='dashboard') renderDashboard();
+          else applyFilters();
+        } catch(e){}
+        window.scrollTo(0, _scrollY);
+        updateBadges();
         setSyncStatus('on');
         _wasOffline = false;
-        updateBadges();
-
-        var collections = _wsViewCollections[currentView];
-        if (!collections || !collections.length) return;
-        if (document.querySelector('.overlay:not(.hidden)')) return;
-
-        Promise.all(collections.map(function(triple) {
-          return _wsFbDb.ref(triple[0] + triple[1]).once('value').then(function(s) {
-            triple[2](s.val());
-          });
-        })).then(function() {
-          var _scrollY = window.scrollY;
-          try {
-            if (currentView==='suppliers') renderSuppliers();
-            else if (currentView==='spareparts') renderSpareParts();
-            else if (currentView==='jobcards') { var jcHasFilter=['JCF1','JCF2','JCF3','JCF4'].some(function(id){var el=document.getElementById(id);return el&&el.value.trim();}); if(jcHasFilter)applyJCFilter();else renderJobCards(); }
-            else if (currentView==='jcsummary') { var jcsHasFilter=['JF1','JF2','JF3','JF4'].some(function(id){var el=document.getElementById(id);return el&&el.value.trim();}); if(jcsHasFilter)applyJCSFilter();else renderJCSummary(); }
-            else if (currentView==='drivers') renderDrivers();
-            else if (currentView==='vehicles') renderVehicles();
-            else if (currentView==='dashboard') renderDashboard();
-            else applyFilters();
-          } catch(e){}
-          window.scrollTo(0, _scrollY);
-        }).catch(function() {
-          _wasOffline = true;
-          setSyncStatus('er');
-        });
-
-      }, function(err) {
-        _wasOffline = true;
-        setSyncStatus('er');
-      });
-
-    } else {
-      // Fallback: keep 30-second polling if Firebase unavailable
-      setInterval(async function(){
-        var ok = await loadRecords(true);
-        if (ok) {
-          try { var jcr = await wsFbRead('/jobCards'); JOBCARDS = jcr.records||[]; } catch(e){}
-          if (_wasOffline) { _wasOffline = false; toast('Back online ✓', 'ok'); }
-          updateBadges(); applyFilters();
-        } else {
-          if (!_wasOffline) { _wasOffline = true; toast('Connection lost - retrying...', 'er'); }
-        }
-      },30000);
+      }).catch(function(){ _wasOffline=true; setSyncStatus('er'); })
+        .then(function(){ _wsFetchingNow[key] = false; });
     }
+
+    function _wsAttachCollectionListener(collectionName, root) {
+      if (!_wsFbDb) return;
+      root = root || '/ak_workshop';
+      var path = root + '/_meta/' + collectionName + '_updatedAt';
+      if (_wsActiveListeners[path]) return; // already attached
+      var _init = true;
+      var ref = _wsFbDb.ref(path);
+      ref.on('value', function(snap) {
+        if (_init) { _init=false; return; }
+        clearTimeout(_wsDebounceTimers[collectionName]);
+        _wsDebounceTimers[collectionName] = setTimeout(function() {
+          if (currentView && _wsViewSyncConfig[currentView] &&
+              _wsViewSyncConfig[currentView].collections.indexOf(collectionName) !== -1) {
+            _wsDoViewRefresh(currentView);
+          }
+        }, 400);
+      }, function(){ _wasOffline=true; setSyncStatus('er'); });
+      _wsActiveListeners[path] = ref;
+    }
+
+    function _wsDetachUnusedListeners(neededCollections) {
+      Object.keys(_wsActiveListeners).forEach(function(path) {
+        var colName = path.split('/').pop().replace('_updatedAt','');
+        if (neededCollections.indexOf(colName) === -1) {
+          _wsActiveListeners[path].off('value');
+          delete _wsActiveListeners[path];
+        }
+      });
+    }
+
+    // Called on every view navigation
+    window._wsSyncListenersForView = function(view) {
+      if (!_wsFbDb) return;
+      var config = _wsViewSyncConfig[view];
+      var needed = config ? config.collections : [];
+      _wsDetachUnusedListeners(needed);
+      // drivers/vehicles live in /ak_trips
+      needed.forEach(function(col) {
+        var root = (col==='drivers'||col==='vehicles') ? '/ak_trips' : '/ak_workshop';
+        _wsAttachCollectionListener(col, root);
+      });
+    };
+
+    // Attach listeners for initial view
+    if (typeof currentView !== 'undefined') window._wsSyncListenersForView(currentView);
+
   }else{
     document.getElementById('emptystate').style.display='block';
     document.getElementById('emptystate').innerHTML='<div style="font-size:40px;margin-bottom:10px">⚠️</div><div style="font-size:15px;font-weight:600;color:var(--t2);margin-bottom:5px">Cannot connect to database</div><div style="font-size:13px;margin-bottom:14px">Check your internet connection</div><button class="btn bp" onclick="loadAppData()">Try Again</button>';
