@@ -15,6 +15,80 @@
 <link href="https://cdnjs.cloudflare.com/ajax/libs/tom-select/2.3.1/css/tom-select.min.css" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/tom-select/2.3.1/js/tom-select.complete.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<!-- Firebase SDK -->
+<script src="https://cdn.jsdelivr.net/npm/firebase@10.12.0/firebase-app-compat.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/firebase@10.12.0/firebase-database-compat.min.js"></script>
+<script>
+  var _wsFbDb = null;
+  var _wsFbReadyPromise = null;
+
+  function _wsFbInit() {
+    if (_wsFbReadyPromise) return _wsFbReadyPromise;
+    _wsFbReadyPromise = new Promise(function(resolve) {
+      function tryInit() {
+        if (typeof firebase !== 'undefined') {
+          try {
+            if (!firebase.apps.length) {
+              firebase.initializeApp({
+                apiKey: "AIzaSyDOaiVxGrbsR7FTIUciEdB1YNmRRnZZpDo",
+                authDomain: "ak-trip-system.firebaseapp.com",
+                databaseURL: "https://ak-trip-system-default-rtdb.europe-west1.firebasedatabase.app",
+                projectId: "ak-trip-system",
+                storageBucket: "ak-trip-system.firebasestorage.app",
+                messagingSenderId: "226821851271",
+                appId: "1:226821851271:web:8e1e58e0ffa71234a29022"
+              });
+            }
+            _wsFbDb = firebase.database();
+            resolve(true);
+          } catch(e) {
+            console.warn('Workshop Firebase init failed:', e.message);
+            resolve(false);
+          }
+        } else {
+          if (!tryInit._attempts) tryInit._attempts = 0;
+          tryInit._attempts++;
+          if (tryInit._attempts < 100) { // 10 seconds total
+            setTimeout(tryInit, 100);
+          } else {
+            console.warn('Firebase SDK failed to load after 10s');
+            resolve(false);
+          }
+        }
+      }
+      tryInit();
+    });
+    return _wsFbReadyPromise;
+  }
+  // Try immediately and also on window load
+  _wsFbInit();
+  window.addEventListener('load', function() { _wsFbInit(); });
+
+  // Read a Workshop Firebase collection
+  function wsFbRead(path, root) {
+    root = root || '/ak_workshop';
+    return _wsFbInit().then(function() {
+      if (!_wsFbDb) return { records: [] };
+      return _wsFbDb.ref(root + path).once('value').then(function(snap) {
+        var val = snap.val();
+        if (!val) return { records: [] };
+        return { records: Object.values(val) };
+      });
+    });
+  }
+
+  // Real-time listener for a Workshop collection
+  function wsFbListen(path, callback, root) {
+    root = root || '/ak_workshop';
+    _wsFbInit().then(function() {
+      if (!_wsFbDb) return;
+      _wsFbDb.ref(root + path).on('value', function(snap) {
+        var val = snap.val();
+        callback(val ? Object.values(val) : []);
+      });
+    });
+  }
+</script>
 <style>
 /* AK TRANSPORT WORKSHOP SYSTEM — Apple-inspired + AK Navy */
 :root{
@@ -2029,7 +2103,7 @@ function switchView(v){
   if(v==='tyre_rem_hold')   { if(!can('tyre_approve')){toast('No permission to access Tyre On Hold','er');return;} renderTyreRemHold();    return; }
   if(v==='tyre_scrap')      { renderTyreScrap();      return; }
   // Battery views
-  if(v==='bat_inventory')   { renderBatInventory(); if(!(BATTERIES||[]).length){callAPI('getBatteries').then(function(r){BATTERIES=r.records||[];renderBatInventory();});} return; }
+  if(v==='bat_inventory')   { renderBatInventory(); if(!(BATTERIES||[]).length){wsFbRead('/batteries').then(function(r){BATTERIES=r.records||[];renderBatInventory();});} return; }
   if(v==='bat_pos')         { renderBatPOs('all');     return; }
   if(v==='bat_pos_rcv')     { renderBatPOs('FULLY RECEIVED');     return; }
   if(v==='bat_pos_prcv')    { renderBatPOs('PARTIALLY RECEIVED'); return; }
@@ -2040,7 +2114,7 @@ function switchView(v){
   if(v==='bat_fit_requests'){
     renderBatFitRequests();
     // Always reload fresh data in background to ensure history is complete
-    callAPI('getBatteryFitments').then(function(r2){
+    wsFbRead('/batteryFitments').then(function(r2){
       if(r2&&r2.records&&r2.records.length>=BAT_FITS.length){BAT_FITS=r2.records;if(currentView==='bat_fit_requests')renderBatFitRequests();}
     }).catch(function(){});
     return;
@@ -2048,7 +2122,7 @@ function switchView(v){
   if(v==='bat_rem_hold'){
     if(!can('battery_approve')){toast('No permission to access Battery On Hold','er');return;}
     renderBatRemHold();
-    callAPI('getBatteryFitments').then(function(r2){
+    wsFbRead('/batteryFitments').then(function(r2){
       if(r2&&r2.records&&r2.records.length>=BAT_FITS.length){BAT_FITS=r2.records;if(currentView==='bat_rem_hold')renderBatRemHold();}
     }).catch(function(){});
     return;
@@ -2057,7 +2131,7 @@ function switchView(v){
   // Spare Movement views
   if(v==='spm_requests'){
     renderSpareMovements('all');
-    callAPI('getSpareMovements').then(function(r2){
+    wsFbRead('/spareMoves').then(function(r2){
       if(r2&&r2.records){SPARE_MOVES=r2.records;if(currentView==='spm_requests')renderSpareMovements('all');}
       else if(r2&&r2.error){toast('Failed to refresh Spare Movements: '+r2.error,'er');}
     }).catch(function(){toast('Failed to refresh Spare Movements - showing cached data','er');});
@@ -2066,7 +2140,7 @@ function switchView(v){
   if(v==='spm_hold'){
     if(!can('sparemove_approve')){toast('No permission to access Spare Movement On Hold','er');return;}
     renderSpareMovements('PENDING');
-    callAPI('getSpareMovements').then(function(r2){
+    wsFbRead('/spareMoves').then(function(r2){
       if(r2&&r2.records){SPARE_MOVES=r2.records;if(currentView==='spm_hold')renderSpareMovements('PENDING');}
       else if(r2&&r2.error){toast('Failed to refresh Spare Movements: '+r2.error,'er');}
     }).catch(function(){toast('Failed to refresh Spare Movements - showing cached data','er');});
@@ -3510,23 +3584,24 @@ async function callAPI(action, data={}) {
   }
 }
 async function loadRecords(silent){
-  for (var attempt=1; attempt<=3; attempt++) {
-    try {
-      var res = await callAPI('getAll');
-      ALL = res.records||[];
+  try {
+    await _wsFbInit();
+    if (_wsFbDb) {
+      var snap = await _wsFbDb.ref('/ak_workshop/requisitions').once('value');
+      var val = snap.val();
+      ALL = val ? Object.values(val) : [];
       setSyncStatus('on');
       return true;
-    } catch(e) {
-      if (attempt < 3) {
-        setSyncStatus('sy');
-        if (!silent) toast('Connection slow - retrying (' + attempt + '/3)...', 'in');
-        await new Promise(function(r){ setTimeout(r, attempt * 3000); });
-      } else {
-        setSyncStatus('er');
-        if (!silent) toast('Failed to load data - check connection', 'er');
-        return false;
-      }
     }
+    // Fallback to Apps Script if Firebase unavailable
+    var res = await callAPI('getAll');
+    ALL = res.records||[];
+    setSyncStatus('on');
+    return true;
+  } catch(e) {
+    setSyncStatus('er');
+    if (!silent) toast('Failed to load data - check connection', 'er');
+    return false;
   }
 }
 async function refreshAll(){
@@ -4299,7 +4374,16 @@ function renderSpareParts(){
 
 
 // -- POPULATE FORM DROPDOWNS --
-function populateFormDropdowns() {
+async function populateFormDropdowns() {
+  // Ensure all data needed for this form is loaded before building dropdowns.
+  // If Firebase failed (SDK not loaded), fall back to Apps Script for each missing dataset.
+  var loads = [];
+  if (!SUPPLIERS.length)  loads.push(wsFbRead('/suppliers').then(function(r){ if(r.records.length) SUPPLIERS=r.records; else return callAPI('getSuppliers').then(function(r2){if(r2&&r2.records)SUPPLIERS=r2.records;}); }).catch(function(){}));
+  if (!SPAREPARTS.length) loads.push(wsFbRead('/spareParts').then(function(r){ if(r.records.length) SPAREPARTS=r.records; else return callAPI('getSpareParts').then(function(r2){if(r2&&r2.records)SPAREPARTS=r2.records;}); }).catch(function(){}));
+  if (!DRIVERS.length)    loads.push(wsFbRead('/drivers','/ak_trips').then(function(r){ if(r.records.length) DRIVERS=r.records; else return callAPI('getDrivers').then(function(r2){if(r2&&r2.records)DRIVERS=r2.records;}); }).catch(function(){}));
+  if (!VEHICLES.length)   loads.push(wsFbRead('/vehicles','/ak_trips').then(function(r){ if(r.records.length) VEHICLES=r.records; else return callAPI('getVehicles').then(function(r2){if(r2&&r2.records)VEHICLES=r2.records;}); }).catch(function(){}));
+  if (!JOBCARDS.length)   loads.push(wsFbRead('/jobCards').then(function(r){ if(r.records.length) JOBCARDS=r.records; else return callAPI('getJobCards').then(function(r2){if(r2&&r2.records)JOBCARDS=r2.records;}); }).catch(function(){}));
+  if (loads.length) await Promise.all(loads);
 
   // 1. SUPPLIER dropdown
   const supSel = document.getElementById('f_supplier');
@@ -4332,7 +4416,7 @@ function populateFormDropdowns() {
     if (curDesc) descSel.value = curDesc;
   }
 
-  // 3. DRIVER dropdown in requisition form
+  // 3. DRIVER dropdown
   const drvSel = document.getElementById('f_driver');
   if (drvSel) {
     const cur = drvSel.tomselect ? drvSel.tomselect.getValue() : drvSel.value;
@@ -4346,7 +4430,7 @@ function populateFormDropdowns() {
     if (cur) drvSel.value = cur;
   }
 
-  // 4. TRUCK/VEHICLE dropdown - populate from VEHICLES
+  // 4. TRUCK/VEHICLE dropdown
   const truckSel = document.getElementById('f_truck');
   if (truckSel) {
     const cur = truckSel.tomselect ? truckSel.tomselect.getValue() : truckSel.value;
@@ -4370,7 +4454,7 @@ function populateFormDropdowns() {
   if (jcSel) {
     const cur = jcSel.value;
     jcSel.innerHTML = '<option value="">Select job card...</option>';
-    JOBCARDS.filter(j => j.workStatus !== 'COMPLETED').forEach(j => {
+    (JOBCARDS||[]).filter(j => j.workStatus !== 'COMPLETED').forEach(j => {
       const o = document.createElement('option');
       o.value = j.code;
       o.textContent = j.code + (j.vehicle ? ' - ' + j.vehicle : '');
@@ -4381,13 +4465,6 @@ function populateFormDropdowns() {
     jcSel.appendChild(oc);
     if (cur) jcSel.value = cur;
   }
-
-  // Initialize Tom Select on all requisition dropdowns
-  initTomSelect('f_truck');
-  initTomSelect('f_driver');
-  initTomSelect('f_jobcard');
-  initTomSelect('f_supplier');
-  initTomSelect('f_desc_select');
 }
 
 // Initialize or reinitialize Tom Select on a dropdown
@@ -4504,7 +4581,11 @@ function muteReqFields(mute) {
   });
 }
 
-function populateJobCardDropdown(plate) {
+async function populateJobCardDropdown(plate) {
+  var _loads=[];
+  if(!JOBCARDS.length) _loads.push(wsFbRead('/jobCards').then(function(r){if(r.records.length)JOBCARDS=r.records;else return callAPI('getJobCards').then(function(r2){if(r2&&r2.records)JOBCARDS=r2.records;});}).catch(function(){}));
+  if(_loads.length) await Promise.all(_loads);
+
   const jcSel = document.getElementById('f_jobcard');
   if (!jcSel) return;
   const cur = jcSel.value;
@@ -5735,7 +5816,7 @@ async function approveFitment(fitId, serial) {
       updateBadges(); renderTyreRemHold();
       toast('Fitment approved \u2014 tyre '+serial+' is now FITTED \u2713','ok');
       // Background refresh
-      Promise.all([callAPI('getTyres'),callAPI('getTyreFitments')]).then(function(r){TYRES=r[0].records||[];if(r[1]&&r[1].records)TYRE_FITS=r[1].records;updateBadges();if(currentView==='tyre_rem_hold')renderTyreRemHold();else if(currentView==='tyre_fit_requests')renderTyreFitRequests();});
+      Promise.all([wsFbRead('/tyres'),wsFbRead('/tyreFitments')]).then(function(r){TYRES=r[0].records||[];if(r[1]&&r[1].records)TYRE_FITS=r[1].records;updateBadges();if(currentView==='tyre_rem_hold')renderTyreRemHold();else if(currentView==='tyre_fit_requests')renderTyreFitRequests();});
     } else { toast(res.error||'Failed to approve','er'); }
   } catch(e){ toast('Error approving fitment','er'); }
 }
@@ -5757,7 +5838,7 @@ async function approveRemoval(fitId, serial) {
       updateBadges(); renderTyreRemHold();
       toast('Removal approved \u2014 tyre '+serial+' back in store \u2713','ok');
       // Background refresh
-      Promise.all([callAPI('getTyres'),callAPI('getTyreFitments')]).then(function(r){TYRES=r[0].records||[];if(r[1]&&r[1].records)TYRE_FITS=r[1].records;updateBadges();if(currentView==='tyre_rem_hold')renderTyreRemHold();else if(currentView==='tyre_fit_requests')renderTyreFitRequests();});
+      Promise.all([wsFbRead('/tyres'),wsFbRead('/tyreFitments')]).then(function(r){TYRES=r[0].records||[];if(r[1]&&r[1].records)TYRE_FITS=r[1].records;updateBadges();if(currentView==='tyre_rem_hold')renderTyreRemHold();else if(currentView==='tyre_fit_requests')renderTyreFitRequests();});
     } else { toast(res.error||'Failed to approve','er'); }
   } catch(e){ toast('Error approving removal','er'); }
 }
@@ -6023,7 +6104,7 @@ async function approveScrapSale(id){
     if(scrap){var tidx=(TYRES||[]).findIndex(function(t){return t.serialNo===scrap.tyreSerial;});if(tidx>=0)TYRES[tidx].status='SOLD';}
     updateBadges();renderTyreScrap();
     toast('Scrap sale approved \u2713','ok');
-    Promise.all([callAPI('getTyreScrapSales'),callAPI('getTyres')]).then(function(r){TYRE_SCRAPS=r[0].records||[];TYRES=r[1].records||[];updateBadges();if(currentView==='tyre_scrap')renderTyreScrap();});
+    Promise.all([wsFbRead('/tyreScrapSales'),wsFbRead('/tyres')]).then(function(r){TYRE_SCRAPS=r[0].records||[];TYRES=r[1].records||[];updateBadges();if(currentView==='tyre_scrap')renderTyreScrap();});
   } else {
     toast(res&&res.error?res.error:'Approval failed','er');
     if(btn){btn.disabled=false;btn.textContent='\u2713 Approve';}
@@ -6987,7 +7068,7 @@ async function bulkApproveBatFitReq(){
   ['BQFSTATUS','BHFSTATUS'].forEach(function(id){var e=document.getElementById(id);if(e)e.value='';});
   updateBadges();
   if(currentView==='bat_rem_hold')renderBatRemHold();else renderBatFitRequests();
-  Promise.all([callAPI('getBatteries'),callAPI('getBatteryFitments')]).then(function(r){
+  Promise.all([wsFbRead('/batteries'),wsFbRead('/batteryFitments')]).then(function(r){
     if(r[0]&&r[0].records)BATTERIES=r[0].records;if(r[1]&&r[1].records)BAT_FITS=r[1].records;
     updateBadges();
     if(_batRemHoldSelected.size===0&&_batFitReqSelected.size===0){
@@ -7127,7 +7208,7 @@ async function bulkApproveTyreFitReq(){
   updateBadges();
   if(currentView==='tyre_rem_hold') renderTyreRemHold();
   else renderTyreFitRequests();
-  Promise.all([callAPI('getTyres'),callAPI('getTyreFitments')]).then(function(r){
+  Promise.all([wsFbRead('/tyres'),wsFbRead('/tyreFitments')]).then(function(r){
     if(r[0]&&r[0].records)TYRES=r[0].records;
     if(r[1]&&r[1].records)TYRE_FITS=r[1].records;
     updateBadges();
@@ -7390,7 +7471,7 @@ function confirmBatApproval(fitId,isIss){
       ['BQFSTATUS','BHFSTATUS'].forEach(function(id){var e=document.getElementById(id);if(e)e.value='';});
       updateBadges();renderBatRemHold();
       // Background refresh
-      Promise.all([callAPI('getBatteries'),callAPI('getBatteryFitments')]).then(function(r){if(r[0]&&r[0].records)BATTERIES=r[0].records;if(r[1]&&r[1].records)BAT_FITS=r[1].records;updateBadges();renderBatRemHold();});
+      Promise.all([wsFbRead('/batteries'),wsFbRead('/batteryFitments')]).then(function(r){if(r[0]&&r[0].records)BATTERIES=r[0].records;if(r[1]&&r[1].records)BAT_FITS=r[1].records;updateBadges();renderBatRemHold();});
     }else toast('Error: '+(res&&res.error?res.error:'Failed'),'er');
   });
 }
@@ -7564,7 +7645,7 @@ async function approveBatterySale(id){
     if(sale){var bidx=(BATTERIES||[]).findIndex(function(b){return b.batteryRef===sale.batteryRef;});if(bidx>=0)BATTERIES[bidx].status='SOLD';}
     updateBadges();renderBatSales();
     toast('Battery sale approved \u2713','ok');
-    Promise.all([callAPI('getBatterySales'),callAPI('getBatteries')]).then(function(r){BAT_SALES=r[0].records||[];BATTERIES=r[1].records||[];updateBadges();renderBatSales();});
+    Promise.all([wsFbRead('/batterySales'),wsFbRead('/batteries')]).then(function(r){BAT_SALES=r[0].records||[];BATTERIES=r[1].records||[];updateBadges();renderBatSales();});
   } else {
     toast(res&&res.error?res.error:'Approval failed','er');
     if(btn){btn.disabled=false;btn.textContent='\u2713 Approve';}
@@ -7982,12 +8063,6 @@ async function saveSpareMove() {
       notes: notes.toUpperCase(), requestedBy: reqBy.toUpperCase(), dateRequested: date
     });
     if (res && res.success) {
-      SPARE_MOVES.push({
-        id: res.id, reqNo: res.reqNo, dateRequested: date, truck: truck.toUpperCase(),
-        partCode: partCode, partName: part.toUpperCase(), supplier: '',
-        currentWorth: worth, reason: reason.toUpperCase(), notes: notes.toUpperCase(),
-        requestedBy: reqBy.toUpperCase(), status: 'PENDING'
-      });
       closeModal('spareMoveModal');
       toast('\u2705 Spare movement request '+res.reqNo+' submitted - awaiting approval','ok');
       updateBadges();
@@ -8039,8 +8114,8 @@ async function approveSpareMove(id) {
       if (ix!==-1) { SPARE_MOVES[ix].status='APPROVED'; SPARE_MOVES[ix].approvedBy=approvedBy.toUpperCase(); SPARE_MOVES[ix].dateApproved=todayStr(); }
       if (res.inventoryWarning) toast('\u26a0\ufe0f '+res.inventoryWarning,'er');
       else toast('\u2705 Approved - added to Store Inventory','ok');
-      callAPI('getStoreInventory').then(function(r){if(r&&r.records)STORE_INVENTORY=r.records;}).catch(function(){});
-      callAPI('getSpareMovements').then(function(r3){if(r3&&r3.records)SPARE_MOVES=r3.records;updateBadges();if(currentView==='spm_requests'||currentView==='spm_hold')renderSpareMovements(_spmCurrentFilter);}).catch(function(){});
+      wsFbRead('/storeInventory').then(function(r){if(r&&r.records)STORE_INVENTORY=r.records;}).catch(function(){});
+      wsFbRead('/spareMoves').then(function(r3){if(r3&&r3.records)SPARE_MOVES=r3.records;updateBadges();if(currentView==='spm_requests'||currentView==='spm_hold')renderSpareMovements(_spmCurrentFilter);}).catch(function(){});
       updateBadges();
       if (currentView==='spm_requests'||currentView==='spm_hold') renderSpareMovements(_spmCurrentFilter);
     } else {
@@ -8060,7 +8135,7 @@ async function rejectSpareMove(id) {
       var ix = SPARE_MOVES.findIndex(function(r){return r.id===id;});
       if (ix!==-1) { SPARE_MOVES[ix].status='REJECTED'; SPARE_MOVES[ix].rejectedBy=rejectedBy.toUpperCase(); SPARE_MOVES[ix].dateRejected=todayStr(); }
       toast('Request rejected','ok');
-      callAPI('getSpareMovements').then(function(r3){if(r3&&r3.records)SPARE_MOVES=r3.records;updateBadges();if(currentView==='spm_requests'||currentView==='spm_hold')renderSpareMovements(_spmCurrentFilter);}).catch(function(){});
+      wsFbRead('/spareMoves').then(function(r3){if(r3&&r3.records)SPARE_MOVES=r3.records;updateBadges();if(currentView==='spm_requests'||currentView==='spm_hold')renderSpareMovements(_spmCurrentFilter);}).catch(function(){});
       updateBadges();
       if (currentView==='spm_requests'||currentView==='spm_hold') renderSpareMovements(_spmCurrentFilter);
     } else {
@@ -8454,7 +8529,7 @@ async function saveBatGRN() {
           p.status=newOut<=0?'FULLY RECEIVED':'PARTIALLY RECEIVED';
         }
       });
-      var [gr,br,pr] = await Promise.all([callAPI('getBatteryGRNs'),callAPI('getBatteries'),callAPI('getBatteryPOs')]);
+      var [gr,br,pr] = await Promise.all([wsFbRead('/batteryGRNs'),wsFbRead('/batteries'),wsFbRead('/batteryPOs')]);
       BAT_GRNS=gr.records||[]; BATTERIES=br.records||[]; BAT_POS=pr.records||[];
       closeModal('batGRNmodal');updateBadges();renderBatGRNs();
       toast(grnLines.length+' battery/batteries received ✓','ok');
@@ -8680,7 +8755,7 @@ async function saveFitBattery(){
     ['BQFF1','BQFV1','BQFF2','BQFV2','BQFSTATUS'].forEach(function(id){var e=document.getElementById(id);if(e)e.value='';});
     toast(saved+' fitment request'+(saved>1?'s':'')+' submitted ✓','ok');
     switchView('bat_fit_requests');
-    callAPI('getBatteryFitments').then(function(r2){if(r2&&r2.records){BAT_FITS=r2.records;}updateBadges();if(currentView==='bat_fit_requests')renderBatFitRequests();}).catch(function(){if(currentView==='bat_fit_requests')renderBatFitRequests();});
+    wsFbRead('/batteryFitments').then(function(r2){if(r2&&r2.records){BAT_FITS=r2.records;}updateBadges();if(currentView==='bat_fit_requests')renderBatFitRequests();}).catch(function(){if(currentView==='bat_fit_requests')renderBatFitRequests();});
   }
   if(failed>0)toast(failed+' failed','er');
 }
@@ -8736,7 +8811,7 @@ async function saveRemoveBattery(){
   if(saved>0){
     // Clear any active filters so full history is visible
     ['BHFF1','BHFV1','BHFF2','BHFV2','BHFSTATUS'].forEach(function(id){var e=document.getElementById(id);if(e)e.value='';});
-    callAPI('getBatteryFitments').then(function(r2){if(r2&&r2.records){BAT_FITS=r2.records;}renderBatRemHold();}).catch(function(){renderBatRemHold();});
+    wsFbRead('/batteryFitments').then(function(r2){if(r2&&r2.records){BAT_FITS=r2.records;}renderBatRemHold();}).catch(function(){renderBatRemHold();});
     toast(saved+' removal request'+(saved>1?'s':'')+' submitted ✓','ok');
   }
   if(failed>0)toast(failed+' failed','er');
@@ -8793,8 +8868,8 @@ async function saveBatSale(){
   closeModal('batSalemodal');updateBadges();
   if(saved>0){
     toast(saved+' sale'+(saved>1?'s':'')+' recorded ✓','ok');
-    callAPI('getBatterySales').then(function(r2){if(r2&&r2.records){BAT_SALES=r2.records;}renderBatSales();});
-    callAPI('getBatteries').then(function(r3){if(r3&&r3.records)BATTERIES=r3.records;});
+    wsFbRead('/batterySales').then(function(r2){if(r2&&r2.records){BAT_SALES=r2.records;}renderBatSales();});
+    wsFbRead('/batteries').then(function(r3){if(r3&&r3.records)BATTERIES=r3.records;});
   }
   if(failed>0)toast(failed+' failed','er');
 }
@@ -10099,7 +10174,11 @@ function exportSelectedPDF() {
 // -- MULTI-LINE REQUISITION --
 var _mrLineCount = 0;
 
-function openMultiReq() {
+async function openMultiReq() {
+  var _loads=[];
+  if(!VEHICLES.length) _loads.push(wsFbRead('/vehicles','/ak_trips').then(function(r){if(r.records.length)VEHICLES=r.records;else return callAPI('getVehicles').then(function(r2){if(r2&&r2.records)VEHICLES=r2.records;});}).catch(function(){}));
+  if(_loads.length) await Promise.all(_loads);
+
   if (!can('workshop_create')) { toast('No permission to create requisitions', 'er'); return; }
   if (!can('req')) { toast('No permission','er'); return; }
   _mrLineCount = 0;
@@ -10389,7 +10468,6 @@ async function saveMultiReq(){
         var newRec = Object.assign({}, records[fb]);
         newRec.id = r2.id || (Date.now()+'_'+fb);
         if (newRec.jobCardNo) { var jci=getJCInfo(newRec.jobCardNo); newRec.orderStatus=jci.orderStatus; newRec.clientName=jci.clientName; }
-        ALL.push(newRec);
         saved++;
       } else {
         console.error('Line '+(fb+1)+' failed:', r2);
@@ -10416,7 +10494,13 @@ async function saveMultiReq(){
 // -- SINGLE-SUPPLIER REQUISITION --
 var _ssrLineCount = 0;
 
-function openSupplierReq() {
+async function openSupplierReq() {
+  var _loads=[];
+  if(!SUPPLIERS.length) _loads.push(wsFbRead('/suppliers').then(function(r){if(r.records.length)SUPPLIERS=r.records;else return callAPI('getSuppliers').then(function(r2){if(r2&&r2.records)SUPPLIERS=r2.records;});}).catch(function(){}));
+  if(!SPAREPARTS.length) _loads.push(wsFbRead('/spareParts').then(function(r){if(r.records.length)SPAREPARTS=r.records;else return callAPI('getSpareParts').then(function(r2){if(r2&&r2.records)SPAREPARTS=r2.records;});}).catch(function(){}));
+  if(!VEHICLES.length) _loads.push(wsFbRead('/vehicles','/ak_trips').then(function(r){if(r.records.length)VEHICLES=r.records;else return callAPI('getVehicles').then(function(r2){if(r2&&r2.records)VEHICLES=r2.records;});}).catch(function(){}));
+  if(_loads.length) await Promise.all(_loads);
+
   if (!can('workshop_create')) { toast('No permission to create requisitions', 'er'); return; }
   if (!can('req')) { toast('No permission','er'); return; }
   _ssrLineCount = 0;
@@ -10683,7 +10767,7 @@ async function saveSSReq(){
       if(res&&res.success!==false){
         var rec=Object.assign({id:res.id||(Date.now()+'_'+li)},data);
         if(rec.jobCardNo){var jci=getJCInfo(rec.jobCardNo);rec.orderStatus=jci.orderStatus;rec.clientName=jci.clientName;}
-        ALL.push(rec); saved++;
+        saved++;
       } else failed++;
     } catch(e){ console.error(e); failed++; }
   }
@@ -10955,7 +11039,13 @@ async function saveBulkEdit() {
 // -- FREE MULTI REQUISITION --
 var _freeLineCount = 0;
 
-function openFreeReq() {
+async function openFreeReq() {
+  var _loads=[];
+  if(!SUPPLIERS.length) _loads.push(wsFbRead('/suppliers').then(function(r){if(r.records.length)SUPPLIERS=r.records;else return callAPI('getSuppliers').then(function(r2){if(r2&&r2.records)SUPPLIERS=r2.records;});}).catch(function(){}));
+  if(!SPAREPARTS.length) _loads.push(wsFbRead('/spareParts').then(function(r){if(r.records.length)SPAREPARTS=r.records;else return callAPI('getSpareParts').then(function(r2){if(r2&&r2.records)SPAREPARTS=r2.records;});}).catch(function(){}));
+  if(!VEHICLES.length) _loads.push(wsFbRead('/vehicles','/ak_trips').then(function(r){if(r.records.length)VEHICLES=r.records;else return callAPI('getVehicles').then(function(r2){if(r2&&r2.records)VEHICLES=r2.records;});}).catch(function(){}));
+  if(_loads.length) await Promise.all(_loads);
+
   if (!can('workshop_create')) { toast('No permission to create requisitions', 'er'); return; }
   if (!can('req')) { toast('No permission','er'); return; }
   _freeLineCount = 0;
@@ -11169,7 +11259,7 @@ async function saveFreeReq(){
       if(li>0) await new Promise(function(r){setTimeout(r,800);});
       if(btn) btn.textContent='Saving '+(li+1)+' of '+lines.length+'...';
       var res=await callAPI('add',{record:upperRecord(data)});
-      if(res&&res.success!==false){ ALL.push(Object.assign({id:res.id||(Date.now()+'_'+li)},upperRecord(data))); saved++; } else failed++;
+      if(res&&res.success!==false){ saved++; } else failed++;
     } catch(e){ console.error(e); failed++; }
   }
   if(btn){btn.disabled=false;btn.textContent='💾 Save All Lines';}
@@ -11888,7 +11978,7 @@ async function approveIssuance(id) {
       // Background refresh in parallel - don't await, UI updates instantly
       Promise.all([
         callAPI('getStoreInventory').then(function(r){STORE_INVENTORY=r.records||[];}).catch(function(){}),
-        callAPI('getAll').then(function(r){if(r&&r.records)ALL=r.records;}).catch(function(){}),
+        wsFbRead('/requisitions').then(function(r){if(r&&r.records)ALL=r.records;}).catch(function(){}),
         callAPI('getStoreIssuances').then(function(r){STORE_ISSUANCES=r.records||[];}).catch(function(){})
       ]).then(function(){updateBadges();})
       updateBadges();
@@ -12899,7 +12989,7 @@ async function saveStoreRequisition(){
   closeModal('sreqmodal');
   renderStoreRequisition(_sreqCurrentFilter||'all');
   // Refresh inventory from backend so the just-synced row appears immediately
-  callAPI('getStoreInventory').then(function(r){if(r&&r.records)STORE_INVENTORY=r.records;}).catch(function(){});
+  wsFbRead('/storeInventory').then(function(r){if(r&&r.records)STORE_INVENTORY=r.records;}).catch(function(){});
   if(saved>0)toast(editId ? 'Updated ✓' : 'Saved '+saved+' store requisition'+(saved>1?'s':'')+' ✓','ok');
   if(failed>0)toast(failed+' line(s) failed','er');
 }
@@ -13476,7 +13566,7 @@ async function saveSReqBulkEdit() {
     }).catch(function(){return {ok:false};});
   }));
   bulkRes.forEach(function(r){if(r.ok)saved++;else failed++;});
-  callAPI('getStoreInventory').then(function(r){if(r&&r.records)STORE_INVENTORY=r.records;}).catch(function(){});
+  wsFbRead('/storeInventory').then(function(r){if(r&&r.records)STORE_INVENTORY=r.records;}).catch(function(){});
   if(btn){btn.disabled=false;btn.textContent='💾 Save All Changes';}
   document.getElementById('sreqbulkmodal').classList.add('hidden');
   sreqClearSelection();
@@ -13732,7 +13822,11 @@ function nextJCCode() {
 }
 
 
-function openAddJobCard() {
+async function openAddJobCard() {
+  var _loads=[];
+  if(!JOBCARDS.length) _loads.push(wsFbRead('/jobCards').then(function(r){if(r.records.length)JOBCARDS=r.records;else return callAPI('getJobCards').then(function(r2){if(r2&&r2.records)JOBCARDS=r2.records;});}).catch(function(){}));
+  if(_loads.length) await Promise.all(_loads);
+
   if (!can('jobcard_create')) { toast('No permission to create job cards', 'er'); return; }
   if (!can('jc')) { toast('You do not have permission to create job cards', 'er'); return; }
   editingJC = null;
@@ -14366,7 +14460,12 @@ function renderVehicles() {
 }
 
 
-function populateJCFormDropdowns() {
+async function populateJCFormDropdowns() {
+  var _loads=[];
+  if(!DRIVERS.length) _loads.push(wsFbRead('/drivers','/ak_trips').then(function(r){if(r.records.length)DRIVERS=r.records;else return callAPI('getDrivers').then(function(r2){if(r2&&r2.records)DRIVERS=r2.records;});}).catch(function(){}));
+  if(!VEHICLES.length) _loads.push(wsFbRead('/vehicles','/ak_trips').then(function(r){if(r.records.length)VEHICLES=r.records;else return callAPI('getVehicles').then(function(r2){if(r2&&r2.records)VEHICLES=r2.records;});}).catch(function(){}));
+  if(_loads.length) await Promise.all(_loads);
+
   // Driver dropdown in JC form
   const dSel = document.getElementById('jc_driver');
   if (dSel && dSel.tagName === 'SELECT') {
@@ -16350,15 +16449,22 @@ function wireGenericTable() {
     if (funcs[fn]) funcs[fn](id);
   };
 }
-// -- INIT - loads users only (fast), rest loads after login --
+// -- INIT - loads users from Firebase (instant), rest loads after login --
 async function init(){
-  var loadSafe = async function(action){
-    try{var r=await callAPI(action);return r.records||[];}catch(e){return[];}
-  };
-  // Load ONLY users - fast, needed for login
+  // Load users from Firebase /ak_trips/users (shared single source)
+  // No Apps Script call needed - instant, no cold start
   try {
-    var r = await callAPI('getUsers');
-    if(r && r.records && r.records.length > 0) USERS = r.records;
+    await _wsFbInit();
+    if (_wsFbDb) {
+      var snap = await _wsFbDb.ref('/ak_trips/users').once('value');
+      var val = snap.val();
+      if (val) USERS = Object.values(val);
+    }
+    // Fallback to Apps Script if Firebase unavailable
+    if (!USERS.length) {
+      var r = await callAPI('getUsers');
+      if(r && r.records && r.records.length > 0) USERS = r.records;
+    }
   } catch(e) {}
   // Update login status
   var loginStatus = document.getElementById('aklgstatus');
@@ -16376,54 +16482,54 @@ async function init(){
 // Load ALL data after login
 async function loadAppData(){
   showLoad('Loading your workspace...');
-  var loadSafe = async function(action){
-    try{var r=await callAPI(action);return r.records||[];}catch(e){return[];}
-  };
+  await _wsFbInit();
+
   var ok = await loadRecords();
   if(ok){
-    // Fire ALL secondary loads in ONE parallel batch - eliminates sequential wait
+    // Load ALL secondary data from Firebase in one parallel batch
+    // No Apps Script involved - instant reads from Firebase
     var all = await Promise.all([
-      loadSafe('getSuppliers'),
-      loadSafe('getSpareParts'),
-      loadSafe('getJobCards'),
-      loadSafe('getDrivers'),
-      loadSafe('getVehicles'),
-      loadSafe('getStoreInventory'),
-      loadSafe('getStoreReqs'),
-      loadSafe('getStoreIssuances'),
-      loadSafe('getPendingIssuances'),
-      loadSafe('getTyres'),
-      loadSafe('getTyrePOs'),
-      loadSafe('getTyreGRNs'),
-      loadSafe('getTyreFitments'),
-      loadSafe('getTyreScrapSales'),
-      loadSafe('getBatteryPOs'),
-      loadSafe('getBatteryGRNs'),
-      loadSafe('getBatteries'),
-      loadSafe('getBatteryFitments'),
-      loadSafe('getBatterySales'),
-      loadSafe('getSpareMovements')
+      wsFbRead('/suppliers'),
+      wsFbRead('/spareParts'),
+      wsFbRead('/jobCards'),
+      wsFbRead('/drivers',   '/ak_trips'),
+      wsFbRead('/vehicles',  '/ak_trips'),
+      wsFbRead('/storeInventory'),
+      wsFbRead('/storeReqs'),
+      wsFbRead('/storeIssuances'),
+      wsFbRead('/pendingIssuances'),
+      wsFbRead('/tyres'),
+      wsFbRead('/tyrePOs'),
+      wsFbRead('/tyreGRNs'),
+      wsFbRead('/tyreFitments'),
+      wsFbRead('/tyreScrapSales'),
+      wsFbRead('/batteryPOs'),
+      wsFbRead('/batteryGRNs'),
+      wsFbRead('/batteries'),
+      wsFbRead('/batteryFitments'),
+      wsFbRead('/batterySales'),
+      wsFbRead('/spareMoves')
     ]);
-    SUPPLIERS       = all[0];
-    SPAREPARTS      = all[1];
-    JOBCARDS        = all[2];
-    DRIVERS         = all[3];
-    VEHICLES        = all[4];
-    STORE_INVENTORY = all[5];
-    STORE_REQS      = all[6];
-    STORE_ISSUANCES = all[7];
-    ISS_PENDING     = all[8];
-    TYRES           = all[9];
-    TYRE_POS        = all[10];
-    TYRE_GRNS       = all[11];
-    TYRE_FITS       = all[12];
-    TYRE_SCRAPS     = all[13];
-    BAT_POS         = all[14];
-    BAT_GRNS        = all[15];
-    BATTERIES       = all[16];
-    BAT_FITS        = all[17];
-    BAT_SALES       = all[18];
-    SPARE_MOVES     = all[19];
+    SUPPLIERS       = all[0].records;
+    SPAREPARTS      = all[1].records;
+    JOBCARDS        = all[2].records;
+    DRIVERS         = all[3].records;
+    VEHICLES        = all[4].records;
+    STORE_INVENTORY = all[5].records;
+    STORE_REQS      = all[6].records;
+    STORE_ISSUANCES = all[7].records;
+    ISS_PENDING     = all[8].records;
+    TYRES           = all[9].records;
+    TYRE_POS        = all[10].records;
+    TYRE_GRNS       = all[11].records;
+    TYRE_FITS       = all[12].records;
+    TYRE_SCRAPS     = all[13].records;
+    BAT_POS         = all[14].records;
+    BAT_GRNS        = all[15].records;
+    BATTERIES       = all[16].records;
+    BAT_FITS        = all[17].records;
+    BAT_SALES       = all[18].records;
+    SPARE_MOVES     = all[19].records;
   }
   hideLoad();
   if(ok){
@@ -16460,39 +16566,60 @@ async function loadAppData(){
     else if (currentView === 'bat_rem_hold' && typeof renderBatRemHold === 'function') renderBatRemHold();
     toast('Connected - '+ALL.length+' records loaded','ok');
     var _wasOffline = false;
-    setInterval(async function(){
-      var ok = await loadRecords(true);
-      if (ok) {
-        // Also refresh job cards silently
-        try { var jcr = await callAPI('getJobCards'); JOBCARDS = jcr.records||[]; } catch(e){}
-        if (_wasOffline) { _wasOffline = false; toast('Back online ✓', 'ok'); }
-        updateBadges();
-        if(currentView==='suppliers')renderSuppliers();
-        else if(currentView==='spareparts')renderSpareParts();
-        else if(currentView==='jobcards'){
-          // Re-apply JC filters if active, else full render
-          var jcHasFilter = ['JCF1','JCF2','JCF3','JCF4'].some(function(id){
-            var el=document.getElementById(id); return el && el.value.trim();
-          }) || (document.getElementById('JC_DATE_FROM') && document.getElementById('JC_DATE_FROM').value)
-            || (document.getElementById('JC_DATE_TO') && document.getElementById('JC_DATE_TO').value);
-          if(jcHasFilter) applyJCFilter(); else renderJobCards();
+
+    // Replace 30-second polling with Firebase real-time listeners.
+    // Data updates instantly when anyone makes a change - no polling lag.
+    if (_wsFbDb) {
+      var _wsListenPaths = [
+        ['/ak_workshop', '/requisitions', function(v){ if(v){ALL=Object.values(v);} }],
+        ['/ak_workshop', '/jobCards',     function(v){ if(v){JOBCARDS=Object.values(v);} }],
+        ['/ak_workshop', '/tyres',        function(v){ if(v){TYRES=Object.values(v);} }],
+        ['/ak_workshop', '/batteries',    function(v){ if(v){BATTERIES=Object.values(v);} }],
+        ['/ak_workshop', '/tyreFitments', function(v){ if(v){TYRE_FITS=Object.values(v);} }],
+        ['/ak_workshop', '/batteryFitments',function(v){ if(v){BAT_FITS=Object.values(v);} }],
+        ['/ak_workshop', '/storeInventory',function(v){ if(v){STORE_INVENTORY=Object.values(v);} }],
+        ['/ak_workshop', '/spareMoves',   function(v){ if(v){SPARE_MOVES=Object.values(v);} }],
+        ['/ak_trips',    '/drivers',      function(v){ if(v){DRIVERS=Object.values(v);} }],
+        ['/ak_trips',    '/vehicles',     function(v){ if(v){VEHICLES=Object.values(v);} }]
+      ];
+      _wsListenPaths.forEach(function(pair) {
+        _wsFbDb.ref(pair[0] + pair[1]).on('value', function(snap) {
+          try {
+            pair[2](snap.val());
+            updateBadges();
+            setSyncStatus('on');
+            _wasOffline = false;
+            // Re-render current view in place (no spinner, no navigation)
+            if (currentView==='suppliers') renderSuppliers();
+            else if (currentView==='spareparts') renderSpareParts();
+            else if (currentView==='jobcards') { var jcHasFilter=['JCF1','JCF2','JCF3','JCF4'].some(function(id){var el=document.getElementById(id);return el&&el.value.trim();}); if(jcHasFilter)applyJCFilter();else renderJobCards(); }
+            else if (currentView==='jcsummary') { var jcsHasFilter=['JF1','JF2','JF3','JF4'].some(function(id){var el=document.getElementById(id);return el&&el.value.trim();}); if(jcsHasFilter)applyJCSFilter();else renderJCSummary(); }
+            else if (currentView==='drivers') renderDrivers();
+            else if (currentView==='vehicles') renderVehicles();
+            else if (currentView==='dashboard') renderDashboard();
+            else applyFilters();
+          } catch(e) {
+            _wasOffline = true;
+            setSyncStatus('er');
+          }
+        }, function(err) {
+          _wasOffline = true;
+          setSyncStatus('er');
+        });
+      });
+    } else {
+      // Fallback: keep 30-second polling if Firebase unavailable
+      setInterval(async function(){
+        var ok = await loadRecords(true);
+        if (ok) {
+          try { var jcr = await wsFbRead('/jobCards'); JOBCARDS = jcr.records||[]; } catch(e){}
+          if (_wasOffline) { _wasOffline = false; toast('Back online ✓', 'ok'); }
+          updateBadges(); applyFilters();
+        } else {
+          if (!_wasOffline) { _wasOffline = true; toast('Connection lost - retrying...', 'er'); }
         }
-        else if(currentView==='jcsummary'){
-          // Re-apply JCS filters if active, else full render
-          var jcsHasFilter = ['JF1','JF2','JF3','JF4'].some(function(id){
-            var el=document.getElementById(id); return el && el.value.trim();
-          }) || (document.getElementById('JCS_DATE_FROM') && document.getElementById('JCS_DATE_FROM').value)
-            || (document.getElementById('JCS_DATE_TO') && document.getElementById('JCS_DATE_TO').value);
-          if(jcsHasFilter) applyJCSFilter(); else renderJCSummary();
-        }
-        else if(currentView==='drivers')renderDrivers();
-        else if(currentView==='vehicles')renderVehicles();
-        else if(currentView==='dashboard')renderDashboard();
-        else applyFilters();
-      } else {
-        if (!_wasOffline) { _wasOffline = true; toast('Connection lost - retrying...', 'er'); }
-      }
-    },30000);
+      },30000);
+    }
   }else{
     document.getElementById('emptystate').style.display='block';
     document.getElementById('emptystate').innerHTML='<div style="font-size:40px;margin-bottom:10px">⚠️</div><div style="font-size:15px;font-weight:600;color:var(--t2);margin-bottom:5px">Cannot connect to database</div><div style="font-size:13px;margin-bottom:14px">Check your internet connection</div><button class="btn bp" onclick="loadAppData()">Try Again</button>';
@@ -17776,19 +17903,6 @@ function doSignIn() {
   errEl.textContent = '';
   if (!u || !p) { errEl.textContent = 'Enter username and password'; return; }
 
-  var userList = (typeof USERS !== 'undefined' && USERS) ? USERS : [];
-  if (userList.length === 0) {
-    errEl.textContent = '⚠️ System still loading. Please wait a moment and try again.';
-    return;
-  }
-  var found = null;
-  for (var i = 0; i < userList.length; i++) {
-    if ((userList[i].username || '').toLowerCase() === u.toLowerCase()) { found = userList[i]; break; }
-  }
-  if (!found) { errEl.textContent = 'Username not found'; return; }
-  if ((found.status || 'active') === 'inactive') { errEl.textContent = 'Account inactive. Contact admin.'; return; }
-  if ((found.password || '') !== p) { errEl.textContent = 'Incorrect password'; return; }
-  // Show logging in state INSIDE login box before hiding it
   var btn = document.getElementById('aklgbtn');
   var loginBox = document.getElementById('aklgb');
   if (btn) { btn.disabled = true; btn.textContent = ''; }
@@ -17800,30 +17914,82 @@ function doSignIn() {
       + '</div>';
   }
 
-  // Short delay so user sees the animation, then proceed
-  setTimeout(function() {
-    document.getElementById('aklg').style.display = 'none';
-    window.CURRENT_USER = found;
-    if (typeof CURRENT_USER !== 'undefined') CURRENT_USER = found;
+  // Firebase-first auth - hash comparison in browser, no Apps Script call
+  _wsFbInit().then(function() {
+    return _wsFbDb ? _wsFbDb.ref('/ak_trips/users').once('value') : Promise.resolve(null);
+  }).then(async function(snap) {
+    var found = null;
+    var usedFirebase = false;
 
-    try { sessionStorage.setItem('ak_user', JSON.stringify(found)); } catch(e) {}
-
-    var uw = document.getElementById('usermenu_wrap'); if (uw) uw.style.display = 'inline-block';
-    var nw = document.getElementById('newwrap'); if (nw) nw.style.display = 'flex';
-    var un = document.getElementById('topbar_username'); if (un) un.textContent = found.name || found.username;
-    var ul = document.getElementById('usermgmt_link'); if (ul && found.role === 'admin') ul.style.display = 'flex';
-    var navUm = document.getElementById('nav-usermgmt');
-    var divUm = document.getElementById('div-usermgmt');
-    var slblUm = document.getElementById('slbl-usermgmt');
-    if (found.role === 'admin') {
-      if (navUm) navUm.style.display = '';
-      if (divUm) divUm.style.display = '';
-      if (slblUm) slblUm.style.display = '';
+    if (snap) {
+      var val = snap.val() || {};
+      var fbUsers = Object.values(val);
+      var fbUser = fbUsers.find(function(usr) {
+        return (usr.username||'').toLowerCase() === u.toLowerCase();
+      });
+      if (fbUser && fbUser.passwordHash) {
+        var enc = new TextEncoder();
+        var hashBuf = await crypto.subtle.digest('SHA-256', enc.encode(p));
+        var hashHex = Array.from(new Uint8Array(hashBuf))
+          .map(function(b){ return ('0'+b.toString(16)).slice(-2); }).join('');
+        if (hashHex === fbUser.passwordHash) {
+          found = fbUser;
+          usedFirebase = true;
+        } else {
+          // Wrong password - fail immediately
+          errEl.textContent = 'Incorrect password';
+          if (btn) { btn.disabled = false; btn.textContent = 'Sign In'; }
+          // Restore login form
+          location.reload();
+          return;
+        }
+      }
     }
-    if (typeof applyPermissions === 'function') applyPermissions();
-    if (typeof toast === 'function') toast('Welcome, ' + (found.name || found.username) + '!', 'ok');
-    if (typeof loadAppData === 'function') loadAppData();
-  }, 1200);
+
+    // Fallback: client-side check against USERS array (pre-Firebase path)
+    if (!found) {
+      var userList = (typeof USERS !== 'undefined' && USERS) ? USERS : [];
+      for (var i = 0; i < userList.length; i++) {
+        if ((userList[i].username||'').toLowerCase() === u.toLowerCase()) {
+          found = userList[i]; break;
+        }
+      }
+      if (!found) { errEl.textContent = 'Username not found'; if(btn){btn.disabled=false;btn.textContent='Sign In';} location.reload(); return; }
+      if ((found.status||'active') === 'inactive') { errEl.textContent = 'Account inactive. Contact admin.'; if(btn){btn.disabled=false;btn.textContent='Sign In';} location.reload(); return; }
+      if ((found.password||'') !== p) { errEl.textContent = 'Incorrect password'; if(btn){btn.disabled=false;btn.textContent='Sign In';} location.reload(); return; }
+    }
+
+    if ((found.status||'active') === 'inactive') {
+      errEl.textContent = 'Account inactive. Contact admin.';
+      if(btn){btn.disabled=false;btn.textContent='Sign In';}
+      location.reload(); return;
+    }
+
+    setTimeout(function() {
+      document.getElementById('aklg').style.display = 'none';
+      window.CURRENT_USER = found;
+      if (typeof CURRENT_USER !== 'undefined') CURRENT_USER = found;
+      try { sessionStorage.setItem('ak_user', JSON.stringify(found)); } catch(e) {}
+      var uw = document.getElementById('usermenu_wrap'); if (uw) uw.style.display = 'inline-block';
+      var nw = document.getElementById('newwrap'); if (nw) nw.style.display = 'flex';
+      var un = document.getElementById('topbar_username'); if (un) un.textContent = found.name || found.username;
+      var ul = document.getElementById('usermgmt_link'); if (ul && found.role === 'admin') ul.style.display = 'flex';
+      var navUm = document.getElementById('nav-usermgmt');
+      var divUm = document.getElementById('div-usermgmt');
+      var slblUm = document.getElementById('slbl-usermgmt');
+      if (found.role === 'admin') {
+        if (navUm) navUm.style.display = '';
+        if (divUm) divUm.style.display = '';
+        if (slblUm) slblUm.style.display = '';
+      }
+      if (typeof applyPermissions === 'function') applyPermissions();
+      if (typeof toast === 'function') toast('Welcome, ' + (found.name || found.username) + '!', 'ok');
+      if (typeof loadAppData === 'function') loadAppData();
+    }, 1200);
+  }).catch(function(e) {
+    errEl.textContent = 'Login error: ' + e.message;
+    if (btn) { btn.disabled = false; btn.textContent = 'Sign In'; }
+  });
 }
 
 // Restore session on page refresh — refreshes permissions from backend on every restore
