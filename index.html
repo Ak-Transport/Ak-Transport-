@@ -10940,9 +10940,9 @@ function openBulkEdit() {
       + fg('Status', statusSel(r.status||'NOT PAID', 'be_status_'+n), true)
       + fg('Payment Mode', paySel(r.paymentMode||'', 'be_pay_'+n), true)
       + fg('Requested By', reqbySel(r.requestedBy||'', 'be_reqby_'+n), true)
-      + fg('Date Requested', '<input type="date" id="be_date_'+n+'" value="'+(r.dateRequested||'')+'" class="date-fld">', false)
-      + fg('Date Received', '<input type="date" id="be_datercvd_'+n+'" value="'+(r.dateReceived||'')+'" class="date-fld">', false)
-      + fg('Date Issued', '<input type="date" id="be_dateissued_'+n+'" value="'+(r.dateIssued||'')+'" class="date-fld">', false)
+      + fg('Date Requested', '<input type="date" id="be_date_'+n+'" value="'+(toDateInput(r.dateRequested)||'')+'" class="date-fld">', false)
+      + fg('Date Received', '<input type="date" id="be_datercvd_'+n+'" value="'+(toDateInput(r.dateReceived)||'')+'" class="date-fld">', false)
+      + fg('Date Issued', '<input type="date" id="be_dateissued_'+n+'" value="'+(toDateInput(r.dateIssued)||'')+'" class="date-fld">', false)
       + '<div style="display:flex;flex-direction:column;gap:5px"><label style="font-size:10px;font-weight:700;color:#515154;text-transform:uppercase;letter-spacing:.06em">Remarks</label>'
       + '<textarea id="be_remarks_'+n+'" style="'+fsTa+'">'+(r.remarks||'')+'</textarea></div>'
       + '</div>';
@@ -11603,19 +11603,47 @@ function renderStoreIssuances() {
 
   // From STORE_ISSUANCES not already in ISS_PENDING
   var pendingIssuanceNos = new Set((ISS_PENDING||[]).map(function(r){return r.issuanceNo||r.id;}));
+
+  // Build a lookup of ISS_PENDING records by issuanceNo for field joining.
+  // STORE_ISSUANCES only stores: issuanceNo, dateIssued, truck, vehicleType,
+  // driverName, jobCardNo, category, issuedBy, remarks.
+  // description, lpoNo, qty, partName come from the matching ISS_PENDING record.
+  var pendingByIssuanceNo = {};
+  (ISS_PENDING||[]).forEach(function(r) {
+    var key = r.issuanceNo||r.id;
+    if (!pendingByIssuanceNo[key]) pendingByIssuanceNo[key] = [];
+    pendingByIssuanceNo[key].push(r);
+  });
+
   var grouped = {};
   applyIssFilters((STORE_ISSUANCES||[])).forEach(function(r){
     var key = r.issuanceNo||r.id;
     if (pendingIssuanceNos.has(key)) return;
     if (!grouped[key]) grouped[key] = {r:r, lines:[]};
-    grouped[key].lines.push({
-      partName: r.description||r.itemName||'',
-      qty: r.qty||'',
-      lpoNo: r.lpoNo||'',
-      jobCardNo: r.jobCardNo||'',
-      truck: r.truck||'',
-      driverName: r.driverName||r.driver||''
-    });
+    // Try to get part details from matching ISS_PENDING records
+    var pendingLines = pendingByIssuanceNo[key] || [];
+    if (pendingLines.length) {
+      pendingLines.forEach(function(p) {
+        grouped[key].lines.push({
+          partName:   p.description||p.itemName||p.partName||'',
+          qty:        p.qty||r.qty||'',
+          lpoNo:      p.lpoNo||r.lpoNo||'',
+          jobCardNo:  p.jobCardNo||r.jobCardNo||'',
+          truck:      p.truck||r.truck||'',
+          driverName: p.driverName||p.driver||r.driverName||''
+        });
+      });
+    } else {
+      // No matching ISS_PENDING — use whatever fields STORE_ISSUANCES has
+      grouped[key].lines.push({
+        partName:   r.description||r.itemName||r.partName||'',
+        qty:        r.qty||'',
+        lpoNo:      r.lpoNo||'',
+        jobCardNo:  r.jobCardNo||'',
+        truck:      r.truck||'',
+        driverName: r.driverName||r.driver||''
+      });
+    }
   });
 
   var cols = 13;
@@ -13549,8 +13577,8 @@ function _doOpenSReqBulkEdit(rows) {
       + '<div style="display:grid;grid-template-columns:175px 145px 145px 145px 1fr;gap:14px">'
       + fg('Status', '<select class="sbe_status" onchange="onSbeStatusChange(this)" style="'+fs+'">'+statOpts+'</select>', true)
       + fg('Payment', '<select class="sbe_pay" style="'+fs+'">'+payOpts+'</select>', true)
-      + fg('Date Requested', '<input type="date" class="sbe_date" value="'+(r.dateRequested||'')+'" class="date-fld"'+roAttr+'>', false)
-      + fg('Date Received', '<input type="date" class="sbe_datercvd" value="'+(r.dateReceived||'')+'" class="date-fld">', false)
+      + fg('Date Requested', '<input type="date" class="sbe_date" value="'+(toDateInput(r.dateRequested)||'')+'" class="date-fld"'+roAttr+'>', false)
+      + fg('Date Received', '<input type="date" class="sbe_datercvd" value="'+(toDateInput(r.dateReceived)||'')+'" class="date-fld">', false)
       + '<div style="display:flex;flex-direction:column;gap:5px"><label style="font-size:10px;font-weight:700;color:#515154;text-transform:uppercase;letter-spacing:.06em">Remarks</label>'
       + '<textarea class="sbe_remarks" style="'+fsTa+'">'+(r.remarks||'')+'</textarea></div>'
       + '</div>';
@@ -13884,6 +13912,19 @@ let SPARE_MOVES  = [];
 let STORE_RECEIPTS = [];
 let STORE_ISSUANCES = [];
 let ISS_PENDING = []; // Issuance requests awaiting approval
+
+// Parse linesJson string → lines array for ISS_PENDING records coming from Firebase.
+// The sheet stores lines as a JSON string in one column; the original getSheet2()
+// parsed this before returning, but Firebase stores raw sheet data.
+function _parseIssPending(records) {
+  return (records||[]).map(function(r) {
+    if (!r.lines && r.linesJson) {
+      try { r.lines = JSON.parse(r.linesJson); } catch(e) { r.lines = []; }
+    }
+    if (!r.lines) r.lines = [];
+    return r;
+  });
+}
 
 function nextJCCode() {
   let mx = 0;
@@ -16592,7 +16633,7 @@ async function loadAppData(){
     STORE_INVENTORY = all[5].records;
     STORE_REQS      = all[6].records;
     STORE_ISSUANCES = all[7].records;
-    ISS_PENDING     = all[8].records;
+    ISS_PENDING     = _parseIssPending(all[8].records);
     TYRES           = all[9].records;
     TYRE_POS        = all[10].records;
     TYRE_GRNS       = all[11].records;
@@ -16677,7 +16718,7 @@ async function loadAppData(){
       store_receipts:    { collections: ['storeReceipts'], fetch: function(){ return wsFbRead('/storeReceipts'); }, apply: function(r){ STORE_RECEIPTS=r.records; } },
       store_issuances:   { collections: ['storeIssuances'],fetch: function(){ return wsFbRead('/storeIssuances'); }, apply: function(r){ STORE_ISSUANCES=r.records; } },
       store_reqs:        { collections: ['storeReqs'],     fetch: function(){ return wsFbRead('/storeReqs');    }, apply: function(r){ STORE_REQS=r.records; } },
-      pending_issuances: { collections: ['pendingIssuances'],fetch: function(){ return wsFbRead('/pendingIssuances'); }, apply: function(r){ ISS_PENDING=r.records; } },
+      pending_issuances: { collections: ['pendingIssuances'],fetch: function(){ return wsFbRead('/pendingIssuances'); }, apply: function(r){ ISS_PENDING=_parseIssPending(r.records); } },
       spm_requests:      { collections: ['spareMoves'],    fetch: function(){ return wsFbRead('/spareMoves');   }, apply: function(r){ SPARE_MOVES=r.records; } },
       spm_hold:          { collections: ['spareMoves'],    fetch: function(){ return wsFbRead('/spareMoves');   }, apply: function(r){ SPARE_MOVES=r.records; } },
       dashboard:         { collections: ['jobCards','requisitions'],
@@ -16740,6 +16781,10 @@ async function loadAppData(){
             return _wsFbDb.ref(root + '/' + col + '/' + id).once('value').then(function(snap) {
               var rec = snap.val();
               if (!rec) return;
+              // Parse linesJson for pendingIssuances records
+              if (col === 'pendingIssuances' && !rec.lines && rec.linesJson) {
+                try { rec.lines = JSON.parse(rec.linesJson); } catch(e) { rec.lines = []; }
+              }
               var localArr = _wsArrayMap[col];
               if (localArr) {
                 var idx = localArr.findIndex(function(x){ return x.id === rec.id; });
