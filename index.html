@@ -4374,7 +4374,14 @@ function deleteRecord(id){
 async function doDelete(id){
   if(!confirm('Delete this record? Cannot be undone.'))return;
   const bk=ALL.find(r=>r.id===id);ALL=ALL.filter(r=>r.id!==id);updateBadges();applyFilters();toast('Deleting...','in');
-  callAPI('delete',{id}).then(()=>toast('Deleted ✓','in')).catch(()=>{toast('Delete failed','er');if(bk){ALL.push(bk);updateBadges();applyFilters();}});
+  callAPI('delete',{id}).then(function(res){
+    if(res&&res.error&&!res.alreadyGone){
+      toast('Delete failed: '+res.error,'er');
+      if(bk){ALL.push(bk);updateBadges();applyFilters();}
+    } else {
+      toast('Deleted ✓','in');
+    }
+  }).catch(function(){toast('Delete failed','er');if(bk){ALL.push(bk);updateBadges();applyFilters();}});
 }
 
 // -- PASSWORD --
@@ -4403,7 +4410,10 @@ function saveSupplier(){
     data.id=Date.now().toString(36)+Math.random().toString(36).slice(2);
     SUPPLIERS.unshift(data);
     closeModal('supmodal');updateBadges();renderSuppliers();toast('Saving...','in');
-    callAPI('addSupplier',{record:data}).then(function(){toast('Supplier added ✓','ok');}).catch(function(){toast('Sync failed','er');SUPPLIERS=SUPPLIERS.filter(s=>s.id!==data.id);updateBadges();renderSuppliers();});
+    callAPI('addSupplier',{record:data}).then(function(res){
+      if(res&&res.id){var old=data.id;data.id=res.id;var ix=SUPPLIERS.findIndex(function(s){return s.id===old;});if(ix>=0)SUPPLIERS[ix]=data;}
+      toast('Supplier added ✓','ok');
+    }).catch(function(){toast('Sync failed','er');SUPPLIERS=SUPPLIERS.filter(s=>s.id!==data.id);updateBadges();renderSuppliers();});
   }
   btn.disabled=false;btn.textContent='Save Supplier';
 }
@@ -4452,7 +4462,10 @@ function saveSparePart(){
     data.id=Date.now().toString(36)+Math.random().toString(36).slice(2);
     SPAREPARTS.unshift(data);
     closeModal('spmodal');updateBadges();renderSpareParts();toast('Saving...','in');
-    callAPI('addSparePart',{record:data}).then(function(){toast('Spare part added ✓','ok');}).catch(function(){toast('Sync failed','er');SPAREPARTS=SPAREPARTS.filter(p=>p.id!==data.id);updateBadges();renderSpareParts();});
+    callAPI('addSparePart',{record:data}).then(function(res){
+      if(res&&res.id){var old=data.id;data.id=res.id;var ix=SPAREPARTS.findIndex(function(p){return p.id===old;});if(ix>=0)SPAREPARTS[ix]=data;}
+      toast('Spare part added ✓','ok');
+    }).catch(function(){toast('Sync failed','er');SPAREPARTS=SPAREPARTS.filter(p=>p.id!==data.id);updateBadges();renderSpareParts();});
   }
   btn.disabled=false;btn.textContent='Save Spare Part';
 }
@@ -5882,12 +5895,17 @@ async function _doDeleteFitReq(ids,rows){
   var locked=rows.filter(function(r){var s=(r.status||'').toUpperCase();return s==='ACTIVE'||s==='CLOSED';});
   if(locked.length){toast('Cannot delete approved records ('+locked.length+' blocked)','er');return;}
   if(!confirm('Delete '+ids.length+' request(s)?'))return;
-  var deleted=0;
+  var deleted=0, failed=0;
   for(var i=0;i<ids.length;i++){
-    try{await callAPI('deleteFitRequest',{id:ids[i]});TYRE_FITS=TYRE_FITS.filter(function(r){return r.id!==ids[i];});deleted++;}catch(e){}
+    try{
+      var res=await callAPI('deleteFitRequest',{id:ids[i]});
+      if(res&&res.error&&!res.alreadyGone){failed++;}
+      else{TYRE_FITS=TYRE_FITS.filter(function(r){return r.id!==ids[i];});deleted++;}
+    }catch(e){failed++;}
   }
   fitReqClearSelection();updateBadges();renderTyreFitRequests();
-  toast(deleted+' deleted','ok');
+  if(deleted>0)toast(deleted+' deleted','ok');
+  if(failed>0)toast(failed+' failed to delete','er');
 }
 
 
@@ -7373,7 +7391,8 @@ async function deleteBatFitReqSelected(){
     var selCnt=document.getElementById('batfitreq_selcount');if(selCnt)selCnt.textContent='Deleting...';
     // Parallel deletes
     var results=await Promise.all(ids.map(function(id){
-      return callAPI('deleteBattFitment',{id:id}).then(function(){
+      return callAPI('deleteBattFitment',{id:id}).then(function(res){
+        if(res&&res.error&&!res.alreadyGone){ return {ok:false}; }
         BAT_FITS=BAT_FITS.filter(function(r){return r.id!==id;});
         return {ok:true};
       }).catch(function(){return {ok:false};});
@@ -8102,7 +8121,7 @@ function editSpareMove(id) {
     _spmEditId = id;
     var titleEl2 = document.getElementById('spm_modal_title'); if (titleEl2) titleEl2.textContent = '✏ Edit Spare Movement Request';
     var saveBtn = document.getElementById('spm_save_btn'); if (saveBtn) saveBtn.textContent = '💾 Update Request';
-    document.getElementById('spm_date').value = r.dateRequested || todayStr();
+    document.getElementById('spm_date').value = toDateInput(r.dateRequested) || todayStr();
     document.getElementById('spm_reqby').value = r.requestedBy || '';
     var truckSelEdit = document.getElementById('spm_truck');
     if (truckSelEdit.tomselect) truckSelEdit.tomselect.setValue(r.truck || '', true); else truckSelEdit.value = r.truck || '';
@@ -8427,8 +8446,6 @@ async function saveBatPO() {
       });
       var res = await callAPI('addBatteryPO',{record:rec});
       if(res&&res.success!==false){
-        if(!BAT_POS)BAT_POS=[];
-        BAT_POS.push(Object.assign({},rec,{id:res.id||rec.id,poNo:res.poNo||rec.poNo}));
         created++;
       } else { toast('PO failed: '+(res&&res.error?res.error:'unknown'),'er'); failed++; }
     } catch(e){ toast('PO error: '+(e.message||e),'er'); failed++; }
@@ -9791,7 +9808,7 @@ async function saveTyrePO() {
     var rec = Object.assign({},line,{poNo:poNo,poDate:poDate,requestedBy:reqBy,expectedDelivery:expDel,status:status,
       qtyReceived:0,qtyOutstanding:line.qtyOrdered});
     return callAPI('saveTyrePO',{record:rec}).then(function(res){
-      if(res&&res.success){ TYRE_POS.push(Object.assign({},rec,{id:res.id,poNo:res.poNo})); return {ok:true}; }
+      if(res&&res.success){ return {ok:true}; }
       return {ok:false,err:res&&res.error?res.error:'unknown error'};
     }).catch(function(e){return {ok:false,err:e.message||e};});
   }));
@@ -12683,7 +12700,7 @@ function doEditSReq(r) {
   var oldBanners = document.querySelectorAll('.sreq-restrict-banner');
   oldBanners.forEach(function(b){ b.remove(); });
   document.getElementById('sreq_grand_total').textContent = '0.00';
-  var dtEl = document.getElementById('sreq_date'); if(dtEl) dtEl.value = r.dateRequested||'';
+  var dtEl = document.getElementById('sreq_date'); if(dtEl) dtEl.value = toDateInput(r.dateRequested)||'';
   var priEl = document.getElementById('sreq_priority'); if(priEl) priEl.value = r.priority||'';
   var rbyEl = document.getElementById('sreq_reqby'); if(rbyEl) rbyEl.value = r.requestedBy||'';
   // Mark modal as edit mode
@@ -12711,7 +12728,7 @@ function doEditSReq(r) {
   var lpoEl = document.getElementById('sreq_lpo_'+n); if(lpoEl) lpoEl.value = r.lpoNo||'';
   var statEl = document.getElementById('sreq_status_'+n); if(statEl){ statEl.value = r.status||'NOT PAID'; onSReqStatusChange(n); }
   var payEl = document.getElementById('sreq_pay_'+n); if(payEl) payEl.value = r.paymentMode||'';
-  var drEl = document.getElementById('sreq_datercvd_'+n); if(drEl) drEl.value = r.dateReceived||'';
+  var drEl = document.getElementById('sreq_datercvd_'+n); if(drEl) drEl.value = toDateInput(r.dateReceived)||'';
   var remEl = document.getElementById('sreq_remarks_'+n); if(remEl) remEl.value = r.remarks||'';
   calcSReqLine(n);
   // Restrict fields for PAID NOT RECEIVED
@@ -12824,7 +12841,7 @@ async function deleteSReqSelected() {
       return callAPI('deleteRecord',{sheetName:'STORE_REQUISITIONS',id:id}).catch(function(){return {error:true};});
     }));
     delResults.forEach(function(r,i){
-      if(r&&r.error){failed++;}
+      if(r && r.error && !r.alreadyGone){failed++;}
       else{STORE_REQS=STORE_REQS.filter(function(x){return x.id!==ids[i];});deleted++;}
     });
 
@@ -13098,16 +13115,22 @@ async function saveStoreRequisition(){
   var saved=0,failed=0;
 
   if (editId) {
-    // UPDATE existing record — backend now handles inventory sync atomically.
-    // If status is becoming RECEIVED and inventory sync fails server-side,
-    // the backend returns an error and does NOT mark the requisition RECEIVED,
-    // so the two stay in sync (no silent partial state).
+    // UPDATE existing record
     try {
       var res = await callAPI('updateStoreReq', {record: lines[0]});
       if (res && res.error) {
         toast(res.error, 'er');
         failed = 1;
       } else if (res && res.success !== false) {
+        // For PNR records, restore original locked field values
+        // to prevent format differences from being written
+        var _sreqOrig = (STORE_REQS||[]).find(function(r){ return r.id === editId; });
+        if (_sreqOrig && (_sreqOrig.status||'').toUpperCase() === 'PAID NOT RECEIVED') {
+          ['dateRequested','description','qty','unitPrice','cost',
+           'supplier','lpoNo','paymentMode'].forEach(function(f) {
+            if (_sreqOrig[f] !== undefined) lines[0][f] = _sreqOrig[f];
+          });
+        }
         var ix = (STORE_REQS||[]).findIndex(function(r){ return r.id === editId; });
         if (ix !== -1) STORE_REQS[ix] = Object.assign({}, STORE_REQS[ix], lines[0]);
         saved = 1;
@@ -14397,7 +14420,10 @@ function saveDriver() {
     data.id = Date.now().toString(36)+Math.random().toString(36).slice(2);
     DRIVERS.unshift(data);
     closeModal('drvmodal'); updateBadges(); renderDrivers(); toast('Saving...','in');
-    callAPI('addDriver',{record:data}).then(function(){toast('Driver added ✓','ok');}).catch(function(){toast('Sync failed','er');DRIVERS=DRIVERS.filter(d=>d.id!==data.id);updateBadges();renderDrivers();});
+    callAPI('addDriver',{record:data}).then(function(res){
+          if(res&&res.id){var old=data.id;data.id=res.id;var ix=DRIVERS.findIndex(function(d){return d.id===old;});if(ix>=0)DRIVERS[ix]=data;}
+          toast('Driver added ✓','ok');
+        }).catch(function(){toast('Sync failed','er');DRIVERS=DRIVERS.filter(d=>d.id!==data.id);updateBadges();renderDrivers();});
   }
   btn.disabled=false; btn.textContent='Save Driver';
 }
@@ -14559,7 +14585,10 @@ function saveVehicle() {
     data.id = Date.now().toString(36)+Math.random().toString(36).slice(2);
     VEHICLES.unshift(data);
     closeModal('vehmodal'); updateBadges(); renderVehicles(); toast('Saving...','in');
-    callAPI('addVehicle',{record:data}).then(function(){toast('Vehicle added ✓','ok');}).catch(function(){toast('Sync failed','er');VEHICLES=VEHICLES.filter(v=>v.id!==data.id);updateBadges();renderVehicles();});
+    callAPI('addVehicle',{record:data}).then(function(res){
+          if(res&&res.id){var old=data.id;data.id=res.id;var ix=VEHICLES.findIndex(function(v){return v.id===old;});if(ix>=0)VEHICLES[ix]=data;}
+          toast('Vehicle added ✓','ok');
+        }).catch(function(){toast('Sync failed','er');VEHICLES=VEHICLES.filter(v=>v.id!==data.id);updateBadges();renderVehicles();});
   }
   btn.disabled=false; btn.textContent='Save Vehicle';
 }
