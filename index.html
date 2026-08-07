@@ -16704,6 +16704,7 @@ async function init(){
 // Load ALL data after login
 async function loadAppData(){
   showLoad('Loading your workspace...');
+  _wsDataReady = false; // reset — will be set true when load completes
   await _wsFbInit();
 
   var ok = await loadRecords();
@@ -16787,6 +16788,7 @@ async function loadAppData(){
     else if (currentView === 'tyre_rem_hold' && typeof renderTyreRemHold === 'function') renderTyreRemHold();
     else if (currentView === 'bat_rem_hold' && typeof renderBatRemHold === 'function') renderBatRemHold();
     toast('Connected - '+ALL.length+' records loaded','ok');
+    _wsDataReady = true; // initial load complete - listeners can now safely patch
     var _wasOffline = false;
 
     // ── PER-COLLECTION TIMESTAMP LISTENERS ───────────────────────
@@ -16796,6 +16798,7 @@ async function loadAppData(){
     var _wsDebounceTimers  = {};
     var _wsFetchingNow     = {};  // in-flight guard per collection set
     var _wsPendingFetch    = {};  // pending flag per collection set
+    var _wsDataReady       = false; // true after initial loadAppData completes
 
     var _wsViewSyncConfig = {
       main:              { collections: ['requisitions'],  fetch: function(){ return wsFbRead('/requisitions'); }, apply: function(r){ ALL=r.records; } },
@@ -16864,7 +16867,9 @@ async function loadAppData(){
         var meta = metaSnap.val() || {};
         var collections = config.collections;
 
-        var canPatch = collections.every(function(col) {
+        // Force full fetch if initial load not yet complete —
+        // single-record patch on partially loaded data causes wrong display
+        var canPatch = _wsDataReady && collections.every(function(col) {
           var op = meta[col + '_lastOp'];
           var id = meta[col + '_lastId'];
           return id && (op === 'add' || op === 'update' || op === 'delete');
