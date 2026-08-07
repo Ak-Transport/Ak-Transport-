@@ -7601,7 +7601,7 @@ function confirmBatApproval(fitId,isIss){
       // Background refresh
       Promise.all([wsFbRead('/batteries'),wsFbRead('/batteryFitments')]).then(function(r){if(r[0]&&r[0].records)BATTERIES=r[0].records;if(r[1]&&r[1].records)BAT_FITS=r[1].records;updateBadges();renderBatRemHold();});
     }else toast('Error: '+(res&&res.error?res.error:'Failed'),'er');
-  });
+  }).catch(function(e){ toast('Operation failed: '+(e&&e.message||e),'er'); });
 }
 function confirmBatReject(fitId){
   var comment=prompt('Reason for rejection (optional):');
@@ -7624,7 +7624,7 @@ function confirmBatReject(fitId){
       }
       updateBadges();renderBatRemHold();
     }else toast('Error: '+(res&&res.error?res.error:'Failed'),'er');
-  });
+  }).catch(function(e){ toast('Reject failed: '+(e&&e.message||e),'er'); });
 }
 
 // -- BATTERY SALES --
@@ -8193,8 +8193,16 @@ async function saveSpareMove() {
     if (res && res.success) {
       closeModal('spareMoveModal');
       toast('\u2705 Spare movement request '+res.reqNo+' submitted - awaiting approval','ok');
-      updateBadges();
-      if (currentView==='spm_requests'||currentView==='spm_hold') renderSpareMovements(_spmCurrentFilter);
+      // Re-fetch SPARE_MOVES from Firebase to show the new record immediately
+      // (no optimistic push — Firebase is source of truth)
+      wsFbRead('/spareMoves').then(function(r){
+        if(r&&r.records) SPARE_MOVES=r.records;
+        updateBadges();
+        if(currentView==='spm_requests'||currentView==='spm_hold') renderSpareMovements(_spmCurrentFilter);
+      }).catch(function(){
+        updateBadges();
+        if(currentView==='spm_requests'||currentView==='spm_hold') renderSpareMovements(_spmCurrentFilter);
+      });
     } else {
       toast(res&&res.error?res.error:'Failed to submit request','er');
     }
@@ -11083,15 +11091,7 @@ async function saveBulkEdit() {
       if (pay.toUpperCase().trim() !== origPay) pnrChanged.push('Payment Mode');
       if (reqby.toUpperCase().trim() !== origReqby) pnrChanged.push('Requested By');
       var beDate = (document.getElementById('be_date_'+n)||{}).value||'';
-      // Normalize stored date to YYYY-MM-DD for comparison
-      // Stored format may be DD/MM/YYYY or YYYY-MM-DD
-      var _normDate = function(d) {
-        if (!d) return '';
-        d = d.trim();
-        var dmy = d.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
-        if (dmy) return dmy[3]+'-'+dmy[2].padStart(2,'0')+'-'+dmy[1].padStart(2,'0');
-        return d;
-      };
+      // _normDate is declared at function scope above
       if (beDate && beDate !== _normDate(orig.dateRequested)) pnrChanged.push('Date Requested');
       if (pnrChanged.length > 0) {
         toast('Record '+(n+1)+' ('+orig.reqNo+'): Only Status, Date Received, Date Issued and Remarks can be changed for PAID NOT RECEIVED. Cannot change: '+pnrChanged.join(', '),'er'); return;
@@ -11141,6 +11141,16 @@ async function saveBulkEdit() {
   }
 
   if (!updates.length) { toast('Nothing to save','er'); return; }
+
+  // Normalize stored date formats to YYYY-MM-DD for comparison
+  // Must be declared at function scope — used in both PNR and RNI blocks
+  var _normDate = function(d) {
+    if (!d) return '';
+    d = String(d).trim();
+    var dmy = d.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+    if (dmy) return dmy[3]+'-'+dmy[2].padStart(2,'0')+'-'+dmy[1].padStart(2,'0');
+    return d;
+  };
 
   var saved=0, failed=0;
   if (btn) { btn.disabled=true; btn.textContent='Saving...'; }
