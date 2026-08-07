@@ -15052,7 +15052,7 @@ function attachSigned(id, input) {
       if (!res) throw new Error('No response from server');
       if (res.error) throw new Error(res.error);
       if (!res.fileId) throw new Error('Upload incomplete - no file ID returned');
-      // Update local JOBCARDS array
+      // Update local JOBCARDS array immediately for UI
       const i = JOBCARDS.findIndex(x => x.id === id);
       if (i !== -1) {
         JOBCARDS[i].signedPdfUrl = res.viewUrl;
@@ -15060,6 +15060,20 @@ function attachSigned(id, input) {
       }
       toast('Signed PDF uploaded ✓', 'ok');
       renderJCSummary();
+      // Re-fetch this job card from Firebase after backend syncs
+      // to confirm signedPdfUrl/Id are stored and survive page refresh
+      setTimeout(function() {
+        if (_wsFbDb) {
+          _wsFbDb.ref('/ak_workshop/jobCards/' + id).once('value').then(function(snap) {
+            var rec = snap.val();
+            if (rec) {
+              var idx = JOBCARDS.findIndex(function(x){ return x.id === id; });
+              if (idx !== -1) JOBCARDS[idx] = rec;
+              renderJCSummary();
+            }
+          }).catch(function(){});
+        }
+      }, 2000); // wait 2s for backend to finish syncing
     } catch(err) {
       var msg = err.message || 'Unknown error';
       toast('Upload failed: ' + msg, 'er');
@@ -15123,6 +15137,19 @@ async function deleteSigned(id) {
     }
     toast('Signed PDF removed ✓', 'in');
     renderJCSummary();
+    // Re-fetch from Firebase to confirm deletion persists across refresh
+    setTimeout(function() {
+      if (_wsFbDb) {
+        _wsFbDb.ref('/ak_workshop/jobCards/' + id).once('value').then(function(snap) {
+          var rec = snap.val();
+          if (rec) {
+            var idx = JOBCARDS.findIndex(function(x){ return x.id === id; });
+            if (idx !== -1) JOBCARDS[idx] = rec;
+            renderJCSummary();
+          }
+        }).catch(function(){});
+      }
+    }, 2000);
   } catch(err) {
     toast('Delete failed: ' + err.message, 'er');
   }
