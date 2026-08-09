@@ -1821,7 +1821,15 @@ var _sf = document.getElementById('STATUSFILTER'); if(_sf) _sf.addEventListener(
 // -- APPLY FILTERS --
 function applyFilters() {
   // Don't run for non-table views
-  if (['dashboard','suppliers','spareparts','jobcards','jcsummary','drivers','vehicles','storeinv','storereq','storercv','storeiss','iss_pending','storereq_rcv','storereq_oh','storereq_pnr','storereq_np'].includes(currentView)) return;
+  if (['dashboard','suppliers','spareparts','jobcards','jcsummary','drivers','vehicles',
+       'storeinv','storereq','storercv','storeiss','iss_pending',
+       'storereq_rcv','storereq_oh','storereq_pnr','storereq_np',
+       'tyre_inventory','tyre_pos','tyre_pos_rcv','tyre_pos_prcv','tyre_pos_pnr','tyre_pos_np',
+       'tyre_fitted','tyre_fit_requests','tyre_rem_hold','tyre_scrap','tyre_grns',
+       'bat_inventory','bat_pos','bat_pos_rcv','bat_pos_prcv','bat_pos_pnr','bat_pos_np',
+       'bat_fitted','bat_fit_requests','bat_rem_hold','bat_sales','bat_grns',
+       'spm_requests','spm_hold','pending_issuances',
+       'store_inventory','store_receipts','store_issuances','store_reqs'].includes(currentView)) return;
   // Ensure orderStatus/clientName are enriched on every record
   ALL.forEach(function(r){
     if(r.jobCardNo && (!r.orderStatus && !r.clientName)){
@@ -4404,8 +4412,11 @@ function saveSupplier(){
   if(editingSup){
     data.id=editingSup;
     const i=SUPPLIERS.findIndex(s=>s.id===editingSup);if(i!==-1)SUPPLIERS[i]={...SUPPLIERS[i],...data};
-    closeModal('supmodal');updateBadges();renderSuppliers();toast('Saving...','in');
-    callAPI('updateSupplier',{record:data}).then(()=>toast('Supplier updated ✓','ok')).catch(()=>toast('Sync failed','er'));
+    closeModal('supmodal');toast('Saving...','in');
+    callAPI('updateSupplier',{record:data}).then(function(){
+      toast('Supplier updated ✓','ok');
+      _wsFetchAndRender({'SUPPLIERS':'/suppliers'}, function(){ renderSuppliers(); });
+    }).catch(()=>toast('Sync failed','er'));
   }else{
     data.id=Date.now().toString(36)+Math.random().toString(36).slice(2);
     SUPPLIERS.unshift(data);
@@ -4421,7 +4432,10 @@ function deleteSupplier(id){
   if(!confirm('Delete this supplier? Cannot be undone.'))return;
   const bk=SUPPLIERS.find(s=>s.id===id);
   SUPPLIERS=SUPPLIERS.filter(s=>s.id!==id);updateBadges();renderSuppliers();toast('Deleting...','in');
-  callAPI('deleteSupplier',{id}).then(()=>toast('Supplier deleted ✓','in')).catch(()=>{toast('Delete failed','er');if(bk){SUPPLIERS.push(bk);updateBadges();renderSuppliers();}});
+  callAPI('deleteSupplier',{id}).then(function(){
+    toast('Supplier deleted ✓','in');
+    _wsFetchAndRender({'SUPPLIERS':'/suppliers'}, function(){ renderSuppliers(); });
+  }).catch(()=>{toast('Delete failed','er');if(bk){SUPPLIERS.push(bk);updateBadges();renderSuppliers();}});
 }
 function renderSuppliers(){
   document.getElementById('viewsub').textContent=SUPPLIERS.length+' supplier'+(SUPPLIERS.length!==1?'s':'');
@@ -4456,8 +4470,11 @@ function saveSparePart(){
   if(editingPart){
     data.id=editingPart;
     const i=SPAREPARTS.findIndex(p=>p.id===editingPart);if(i!==-1)SPAREPARTS[i]={...SPAREPARTS[i],...data};
-    closeModal('spmodal');updateBadges();renderSpareParts();toast('Saving...','in');
-    callAPI('updateSparePart',{record:data}).then(()=>toast('Spare part updated ✓','ok')).catch(()=>toast('Sync failed','er'));
+    closeModal('spmodal');toast('Saving...','in');
+    callAPI('updateSparePart',{record:data}).then(function(){
+      toast('Spare part updated ✓','ok');
+      _wsFetchAndRender({'SPAREPARTS':'/spareParts'}, function(){ renderSpareParts(); });
+    }).catch(()=>toast('Sync failed','er'));
   }else{
     data.id=Date.now().toString(36)+Math.random().toString(36).slice(2);
     SPAREPARTS.unshift(data);
@@ -4473,7 +4490,10 @@ function deleteSparePart(id){
   if(!confirm('Delete this spare part? Cannot be undone.'))return;
   const bk=SPAREPARTS.find(p=>p.id===id);
   SPAREPARTS=SPAREPARTS.filter(p=>p.id!==id);updateBadges();renderSpareParts();toast('Deleting...','in');
-  callAPI('deleteSparePart',{id}).then(()=>toast('Spare part deleted ✓','in')).catch(()=>{toast('Delete failed','er');if(bk){SPAREPARTS.push(bk);updateBadges();renderSpareParts();}});
+  callAPI('deleteSparePart',{id}).then(function(){
+    toast('Spare part deleted ✓','in');
+    _wsFetchAndRender({'SPAREPARTS':'/spareParts'}, function(){ renderSpareParts(); });
+  }).catch(()=>{toast('Delete failed','er');if(bk){SPAREPARTS.push(bk);updateBadges();renderSpareParts();}});
 }
 function renderSpareParts(){
   document.getElementById('viewsub').textContent=SPAREPARTS.length+' part'+(SPAREPARTS.length!==1?'s':'');
@@ -5223,9 +5243,10 @@ async function saveTyreInvEdit(){
   res.forEach(function(r){if(r.ok)saved++;else{failed++;if(r.err)toast(r.err,'er');}});
   if(btn){btn.disabled=false;btn.textContent='\uD83D\uDCBE Save Changes';}
   document.getElementById('tinv_editmodal').classList.add('hidden');
-  tyreInvClearSelection();renderTyreInventory();
+  tyreInvClearSelection();
   if(saved>0)toast(saved+' tyre(s) updated \u2713','ok');
   if(failed>0)toast(failed+' failed','er');
+  _wsFetchAndRender({'TYRES':'/tyres'}, function(){ renderTyreInventory(); });
 }
 async function deleteTyreInvSelected(){
   var ids=Array.from(_tyreInvSelected);
@@ -5261,9 +5282,10 @@ async function deleteTyreInvSelected(){
     var delBtn2=document.getElementById('tyrinv_del_btn');
     if(delBtn2){delBtn2.disabled=false;delBtn2.innerHTML='&#128465; Delete';}
     delRes.forEach(function(r){if(r.ok)deleted++;else failed++;});
-    tyreInvClearSelection();updateBadges();renderTyreInventory();
+    tyreInvClearSelection();
     if(deleted>0)toast(deleted+' tyre(s) deleted \u2713','ok');
     if(failed>0)toast(failed+' failed','er');
+    _wsFetchAndRender({'TYRES':'/tyres','TYRE_POS':'/tyrePOs'}, function(){ renderTyreInventory(); });
   });
 }
 
@@ -5879,9 +5901,10 @@ async function saveFitReqEdit(){
   }
   if(btn){btn.disabled=false;btn.textContent='\uD83D\uDCBE Save Changes';}
   document.getElementById('fitreqeditmodal').classList.add('hidden');
-  fitReqClearSelection(); updateBadges(); renderTyreFitRequests();
+  fitReqClearSelection();
   if(saved>0)toast(saved+' record(s) updated \u2713','ok');
   if(failed>0)toast(failed+' failed','er');
+  _wsFetchAndRender({'TYRE_FITS':'/tyreFitments','TYRES':'/tyres'}, function(){ renderTyreFitRequests(); });
 }
 async function deleteFitReqSelected(){
   var ids=Array.from(_fitReqSelected);
@@ -5903,9 +5926,10 @@ async function _doDeleteFitReq(ids,rows){
       else{TYRE_FITS=TYRE_FITS.filter(function(r){return r.id!==ids[i];});deleted++;}
     }catch(e){failed++;}
   }
-  fitReqClearSelection();updateBadges();renderTyreFitRequests();
+  fitReqClearSelection();
   if(deleted>0)toast(deleted+' deleted','ok');
   if(failed>0)toast(failed+' failed to delete','er');
+  _wsFetchAndRender({'TYRE_FITS':'/tyreFitments','TYRES':'/tyres'}, function(){ renderTyreFitRequests(); });
 }
 
 
@@ -5940,10 +5964,10 @@ async function approveFitment(fitId, serial) {
       var fit=idx>=0?TYRE_FITS[idx]:null;
       if(fit){var tidx=TYRES.findIndex(function(t){return t.serialNo===fit.tyreSerial;});if(tidx>=0){TYRES[tidx].status='FITTED';TYRES[tidx].currentVehicle=fit.vehicle||'';TYRES[tidx].currentPosition=fit.position||'';}}
       ['TRFSTATUS','TRQSTATUS'].forEach(function(id){var e=document.getElementById(id);if(e)e.value='';});
-      updateBadges(); renderTyreRemHold();
       toast('Fitment approved \u2014 tyre '+serial+' is now FITTED \u2713','ok');
-      // Background refresh
-      Promise.all([wsFbRead('/tyres'),wsFbRead('/tyreFitments')]).then(function(r){TYRES=r[0].records||[];if(r[1]&&r[1].records)TYRE_FITS=r[1].records;updateBadges();if(currentView==='tyre_rem_hold')renderTyreRemHold();else if(currentView==='tyre_fit_requests')renderTyreFitRequests();});
+      _wsFetchAndRender({'TYRES':'/tyres','TYRE_FITS':'/tyreFitments'}, function(){
+        if(currentView==='tyre_rem_hold')renderTyreRemHold();else if(currentView==='tyre_fit_requests')renderTyreFitRequests();
+      });
     } else { toast(res.error||'Failed to approve','er'); }
   } catch(e){ toast('Error approving fitment','er'); }
 }
@@ -5962,10 +5986,10 @@ async function approveRemoval(fitId, serial) {
         if(tidx>=0){TYRES[tidx].status='IN STORE';TYRES[tidx].currentVehicle='';TYRES[tidx].currentPosition='';}
       }
       ['TRFSTATUS','TRQSTATUS'].forEach(function(id){var e=document.getElementById(id);if(e)e.value='';});
-      updateBadges(); renderTyreRemHold();
       toast('Removal approved \u2014 tyre '+serial+' back in store \u2713','ok');
-      // Background refresh
-      Promise.all([wsFbRead('/tyres'),wsFbRead('/tyreFitments')]).then(function(r){TYRES=r[0].records||[];if(r[1]&&r[1].records)TYRE_FITS=r[1].records;updateBadges();if(currentView==='tyre_rem_hold')renderTyreRemHold();else if(currentView==='tyre_fit_requests')renderTyreFitRequests();});
+      _wsFetchAndRender({'TYRES':'/tyres','TYRE_FITS':'/tyreFitments'}, function(){
+        if(currentView==='tyre_rem_hold')renderTyreRemHold();else if(currentView==='tyre_fit_requests')renderTyreFitRequests();
+      });
     } else { toast(res.error||'Failed to approve','er'); }
   } catch(e){ toast('Error approving removal','er'); }
 }
@@ -5991,9 +6015,10 @@ async function rejectFitment(fitId, status, serial) {
           TYRE_FITS[idx].rejectedAt=new Date().toISOString();
         }
       }
-      updateBadges();
-      if(currentView==='tyre_rem_hold')renderTyreRemHold();else renderTyreFitRequests();
       toast('Request for '+serial+' rejected','in');
+      _wsFetchAndRender({'TYRE_FITS':'/tyreFitments','TYRES':'/tyres'}, function(){
+        if(currentView==='tyre_rem_hold')renderTyreRemHold();else renderTyreFitRequests();
+      });
     } else { toast(res.error||'Failed to reject','er'); }
   } catch(e){ toast('Error rejecting request','er'); }
 }
@@ -6127,8 +6152,9 @@ async function bulkApproveScrapSales(){
   var _sa2=document.getElementById("scrap_approve_btn"),_sr2=document.getElementById("scrap_reject_btn");
   if(_sa2){_sa2.disabled=false;_sa2.textContent="✓ Approve Selected";}
   if(_sr2){_sr2.disabled=false;_sr2.textContent="✕ Reject Selected";}
-  tyreScrapClearSel();updateBadges();renderTyreScrap();
-  if(done>0)toast(done+" approved ✓","ok");
+  tyreScrapClearSel();
+  if(done>0)toast(done+' approved ✓','ok');
+  _wsFetchAndRender({'TYRE_SCRAPS':'/tyreScrapSales','TYRES':'/tyres'}, function(){ renderTyreScrap(); });
 }
 async function bulkRejectScrapSales(){
   var ids=Array.from(_tyreScrapSelected);
@@ -6153,9 +6179,55 @@ async function bulkRejectScrapSales(){
   var _sa4=document.getElementById("scrap_approve_btn"),_sr4=document.getElementById("scrap_reject_btn");
   if(_sr4){_sr4.disabled=false;_sr4.textContent="✕ Reject Selected";}
   if(_sa4){_sa4.disabled=false;_sa4.textContent="✓ Approve Selected";}
-  tyreScrapClearSel();updateBadges();renderTyreScrap();
-  if(done>0)toast(done+" sale(s) rejected","in");
+  tyreScrapClearSel();
+  if(done>0)toast(done+' sale(s) rejected','in');
+  _wsFetchAndRender({'TYRE_SCRAPS':'/tyreScrapSales','TYRES':'/tyres'}, function(){ renderTyreScrap(); });
 }
+
+// Helper: fetch one or more Firebase collections then render
+// Usage: _wsFetchAndRender({TYRES:'/tyres', TYRE_POS:'/tyrePOs'}, renderTyrePOs)
+async function _wsFetchAndRender(collectionMap, renderFn) {
+  try {
+    var promises = Object.keys(collectionMap).map(function(arrName) {
+      // Drivers and Vehicles live in /ak_trips, everything else in /ak_workshop
+      var root = (arrName === 'DRIVERS' || arrName === 'VEHICLES') ? '/ak_trips' : undefined;
+      return wsFbRead(collectionMap[arrName], root).then(function(r) {
+        if (r && r.records) {
+          if (arrName === 'TYRES') TYRES = r.records;
+          else if (arrName === 'TYRE_POS') TYRE_POS = r.records;
+          else if (arrName === 'TYRE_GRNS') TYRE_GRNS = r.records;
+          else if (arrName === 'TYRE_FITS') TYRE_FITS = r.records;
+          else if (arrName === 'TYRE_SCRAPS') TYRE_SCRAPS = r.records;
+          else if (arrName === 'BAT_POS') BAT_POS = r.records;
+          else if (arrName === 'BAT_GRNS') BAT_GRNS = r.records;
+          else if (arrName === 'BATTERIES') BATTERIES = r.records;
+          else if (arrName === 'BAT_FITS') BAT_FITS = r.records;
+          else if (arrName === 'BAT_SALES') BAT_SALES = r.records;
+          else if (arrName === 'SPARE_MOVES') SPARE_MOVES = r.records;
+          else if (arrName === 'STORE_REQS') STORE_REQS = r.records;
+          else if (arrName === 'STORE_INVENTORY') STORE_INVENTORY = r.records;
+          else if (arrName === 'STORE_ISSUANCES') STORE_ISSUANCES = r.records;
+          else if (arrName === 'STORE_RECEIPTS') STORE_RECEIPTS = r.records;
+          else if (arrName === 'ISS_PENDING') ISS_PENDING = _parseIssPending(r.records);
+          else if (arrName === 'SUPPLIERS') SUPPLIERS = r.records;
+          else if (arrName === 'SPAREPARTS') SPAREPARTS = r.records;
+          else if (arrName === 'DRIVERS') DRIVERS = r.records;
+          else if (arrName === 'VEHICLES') VEHICLES = r.records;
+          else if (arrName === 'JOBCARDS') JOBCARDS = r.records;
+          else if (arrName === 'USERS') USERS = r.records;
+          else if (arrName === 'ALL') ALL = r.records;
+        }
+      });
+    });
+    await Promise.all(promises);
+    updateBadges();
+    if (typeof renderFn === 'function') renderFn();
+  } catch(e) {
+    updateBadges();
+    if (typeof renderFn === 'function') renderFn();
+  }
+}
+
 function renderTyreScrap() {
   document.getElementById('viewtitle').textContent = 'Tyre Scrap Sales';
   document.getElementById('viewsub').textContent = '';
@@ -6222,6 +6294,7 @@ async function approveScrapSale(id){
   var approvedBy=CURRENT_USER?CURRENT_USER.name||CURRENT_USER.username:'Admin';
   var btn=event&&event.target?event.target:null;
   if(btn){btn.disabled=true;btn.textContent='Approving...';}
+  try {
   var res=await callAPI('approveScrapSale',{id:id,approvedBy:approvedBy});
   if(res&&res.success){
     var idx=(TYRE_SCRAPS||[]).findIndex(function(r){return r.id===id;});
@@ -6229,13 +6302,13 @@ async function approveScrapSale(id){
     // Update tyre locally
     var scrap=idx>=0?TYRE_SCRAPS[idx]:null;
     if(scrap){var tidx=(TYRES||[]).findIndex(function(t){return t.serialNo===scrap.tyreSerial;});if(tidx>=0)TYRES[tidx].status='SOLD';}
-    updateBadges();renderTyreScrap();
     toast('Scrap sale approved \u2713','ok');
-    Promise.all([wsFbRead('/tyreScrapSales'),wsFbRead('/tyres')]).then(function(r){TYRE_SCRAPS=r[0].records||[];TYRES=r[1].records||[];updateBadges();if(currentView==='tyre_scrap')renderTyreScrap();});
+    _wsFetchAndRender({'TYRE_SCRAPS':'/tyreScrapSales','TYRES':'/tyres'}, function(){ if(currentView==='tyre_scrap')renderTyreScrap(); });
   } else {
     toast(res&&res.error?res.error:'Approval failed','er');
     if(btn){btn.disabled=false;btn.textContent='\u2713 Approve';}
   }
+  } catch(e){ toast('Approval failed: '+(e.message||e),'er'); if(btn){btn.disabled=false;btn.textContent='\u2713 Approve';} }
 }
 
 // -- BATTERY FILTER HELPER --
@@ -6532,10 +6605,10 @@ async function saveBpoBulkEdit() {
   }
   if(btn){btn.disabled=false;btn.textContent='\uD83D\uDCBE Save Changes';}
   document.getElementById('bpobulkmodal').classList.add('hidden');
-  bpoClearSelection(); updateBadges();
-  renderBatPOs(window._batPOFilter||'all');
+  bpoClearSelection();
   if(saved>0)toast(saved+' battery request(s) updated \u2713','ok');
   if(failed>0)toast(failed+' failed to save','er');
+  _wsFetchAndRender({'BAT_POS':'/batteryPOs'}, function(){ renderBatPOs(window._batPOFilter||'all'); });
 }
 async function deleteBpoSelected() {
   var ids = Array.from(_bpoSelected);
@@ -6566,8 +6639,9 @@ async function _doDeleteBpoSelected(ids, rows) {
   var deleted=results.filter(function(r){return r.ok;}).length;
   var _bpoDelBtn2=document.getElementById('bpo_delete_btn');
   if(_bpoDelBtn2){_bpoDelBtn2.disabled=false;_bpoDelBtn2.innerHTML='&#128465; Delete Selected';}
-  bpoClearSelection(); updateBadges(); renderBatPOs('all');
+  bpoClearSelection();
   toast(deleted+' battery request(s) deleted','ok');
+  _wsFetchAndRender({'BAT_POS':'/batteryPOs','BATTERIES':'/batteries'}, function(){ renderBatPOs('all'); });
 }
 
 function bpoExportExcel() {
@@ -6918,9 +6992,10 @@ async function saveBatInvEdit(){
   res.forEach(function(r){if(r.ok)saved++;else{failed++;if(r.err)toast(r.err,'er');}});
   if(btn){btn.disabled=false;btn.textContent='\uD83D\uDCBE Save Changes';}
   document.getElementById('batinv_editmodal').classList.add('hidden');
-  batInvClearSelection();renderBatInventory();
+  batInvClearSelection();
   if(saved>0)toast(saved+' battery/batteries updated \u2713','ok');
   if(failed>0)toast(failed+' failed','er');
+  _wsFetchAndRender({'BATTERIES':'/batteries','BAT_POS':'/batteryPOs'}, function(){ renderBatInventory(); });
 }
 async function deleteBatInvSelected(){
   var ids=Array.from(_batInvSelected);
@@ -6953,9 +7028,10 @@ async function deleteBatInvSelected(){
     delRes.forEach(function(r){if(r.ok)deleted++;else failed++;});
     var delBtn2=document.getElementById('batinv_del_btn');
     if(delBtn2){delBtn2.disabled=false;delBtn2.textContent='Delete Selected';}
-    batInvClearSelection();updateBadges();renderBatInventory();
+    batInvClearSelection();
     if(deleted>0)toast(deleted+' battery/batteries deleted \u2713','ok');
     if(failed>0)toast(failed+' failed','er');
+    _wsFetchAndRender({'BATTERIES':'/batteries','BAT_POS':'/batteryPOs'}, function(){ renderBatInventory(); });
   });
 }
 
@@ -7193,17 +7269,11 @@ async function bulkApproveBatFitReq(){
   _batRemHoldSelected.clear();_batFitReqSelected.clear();
   // Clear status filters so history stays visible after approval
   ['BQFSTATUS','BHFSTATUS'].forEach(function(id){var e=document.getElementById(id);if(e)e.value='';});
-  updateBadges();
-  if(currentView==='bat_rem_hold')renderBatRemHold();else renderBatFitRequests();
-  Promise.all([wsFbRead('/batteries'),wsFbRead('/batteryFitments')]).then(function(r){
-    if(r[0]&&r[0].records)BATTERIES=r[0].records;if(r[1]&&r[1].records)BAT_FITS=r[1].records;
-    updateBadges();
-    if(_batRemHoldSelected.size===0&&_batFitReqSelected.size===0){
-      if(currentView==='bat_rem_hold')renderBatRemHold();else renderBatFitRequests();
-    }
-  });
   if(done>0)toast(done+' approved ✓','ok');
   if(failed>0)toast(failed+' failed','er');
+  _wsFetchAndRender({'BATTERIES':'/batteries','BAT_FITS':'/batteryFitments'}, function(){
+    if(currentView==='bat_rem_hold')renderBatRemHold();else renderBatFitRequests();
+  });
 }
 
 function openBatFitReqEdit(){
@@ -7275,9 +7345,10 @@ async function saveBatFitReqEdit(){
   }
   if(btn){btn.disabled=false;btn.textContent="💾 Save Changes";}
   document.getElementById("batfitreqeditmodal").classList.add("hidden");
-  batFitReqClearSel();updateBadges();renderBatFitRequests();
-  if(saved>0)toast(saved+" record(s) updated ✓","ok");
-  if(failed>0)toast(failed+" failed","er");
+  batFitReqClearSel();
+  if(saved>0)toast(saved+' record(s) updated ✓','ok');
+  if(failed>0)toast(failed+' failed','er');
+  _wsFetchAndRender({'BAT_FITS':'/batteryFitments','BATTERIES':'/batteries'}, function(){ renderBatFitRequests(); });
 }
 
 async function bulkRejectBatFitReq(){
@@ -7301,10 +7372,11 @@ async function bulkRejectBatFitReq(){
   var failed=results.filter(function(r){return !r.ok;}).length;
   _batRemHoldSelected.clear();_batFitReqSelected.clear();
   ['BQFSTATUS','BHFSTATUS'].forEach(function(id){var e=document.getElementById(id);if(e)e.value='';});
-  updateBadges();
-  if(currentView==='bat_rem_hold')renderBatRemHold();else renderBatFitRequests();
   if(done>0)toast(done+' rejected','in');
   if(failed>0)toast(failed+' failed','er');
+  _wsFetchAndRender({'BAT_FITS':'/batteryFitments','BATTERIES':'/batteries'}, function(){
+    if(currentView==='bat_rem_hold')renderBatRemHold();else renderBatFitRequests();
+  });
 }
 
 async function bulkApproveTyreFitReq(){
@@ -7332,21 +7404,11 @@ async function bulkApproveTyreFitReq(){
   // Clear whichever selection was used and re-render correct view
   tyreRemHoldClearSel();fitReqClearSelection();
   ['TRFSTATUS','TRQSTATUS'].forEach(function(id){var e=document.getElementById(id);if(e)e.value='';});
-  updateBadges();
-  if(currentView==='tyre_rem_hold') renderTyreRemHold();
-  else renderTyreFitRequests();
-  Promise.all([wsFbRead('/tyres'),wsFbRead('/tyreFitments')]).then(function(r){
-    if(r[0]&&r[0].records)TYRES=r[0].records;
-    if(r[1]&&r[1].records)TYRE_FITS=r[1].records;
-    updateBadges();
-    // Only re-render if user has not started a new selection
-    if(_tyreRemHoldSelected.size===0&&_fitReqSelected.size===0){
-      if(currentView==='tyre_rem_hold') renderTyreRemHold();
-      else renderTyreFitRequests();
-    }
-  });
   if(done>0)toast(done+' approved \u2713','ok');
   if(failed>0)toast(failed+' failed','er');
+  _wsFetchAndRender({'TYRES':'/tyres','TYRE_FITS':'/tyreFitments'}, function(){
+    if(currentView==='tyre_rem_hold') renderTyreRemHold(); else renderTyreFitRequests();
+  });
 }
 
 async function bulkRejectTyreFitReq(){
@@ -7369,11 +7431,11 @@ async function bulkRejectTyreFitReq(){
   var done=results.filter(function(r){return r.ok;}).length;
   var failed=results.filter(function(r){return !r.ok;}).length;
   tyreRemHoldClearSel();fitReqClearSelection();
-  updateBadges();
-  if(currentView==='tyre_rem_hold') renderTyreRemHold();
-  else renderTyreFitRequests();
   if(done>0)toast(done+' rejected','in');
   if(failed>0)toast(failed+' failed','er');
+  _wsFetchAndRender({'TYRE_FITS':'/tyreFitments','TYRES':'/tyres'}, function(){
+    if(currentView==='tyre_rem_hold') renderTyreRemHold(); else renderTyreFitRequests();
+  });
 }
 
 function batFitReqClearSel(){_batFitReqSelected.clear();document.querySelectorAll('.batfitreq-chk').forEach(function(cb){cb.checked=false;});batFitReqUpdateSelBar();}
@@ -7401,9 +7463,10 @@ async function deleteBatFitReqSelected(){
     var failed=results.filter(function(r){return !r.ok;}).length;
     var delBtnR=document.getElementById('batfitreq_del_btn');
     if(delBtnR){delBtnR.disabled=false;delBtnR.innerHTML='&#128465; Delete Selected';}
-    batFitReqClearSel();updateBadges();renderBatFitRequests();
+    batFitReqClearSel();
     if(deleted>0)toast(deleted+' deleted ✓','ok');
     if(failed>0)toast(failed+' failed','er');
+    _wsFetchAndRender({'BAT_FITS':'/batteryFitments','BATTERIES':'/batteries'}, function(){ renderBatFitRequests(); });
   };
   if(hasLocked)askPassword(doDelete);else doDelete();
 }
@@ -7597,9 +7660,10 @@ function confirmBatApproval(fitId,isIss){
       }
       // Clear status filters so history stays visible after approval
       ['BQFSTATUS','BHFSTATUS'].forEach(function(id){var e=document.getElementById(id);if(e)e.value='';});
-      updateBadges();renderBatRemHold();
-      // Background refresh
-      Promise.all([wsFbRead('/batteries'),wsFbRead('/batteryFitments')]).then(function(r){if(r[0]&&r[0].records)BATTERIES=r[0].records;if(r[1]&&r[1].records)BAT_FITS=r[1].records;updateBadges();renderBatRemHold();});
+      // Firebase refetch to confirm all changes then render
+      _wsFetchAndRender({'BAT_FITS':'/batteryFitments','BATTERIES':'/batteries'}, function(){
+        if(currentView==='bat_rem_hold')renderBatRemHold();else if(currentView==='bat_fit_requests')renderBatFitRequests();
+      });
     }else toast('Error: '+(res&&res.error?res.error:'Failed'),'er');
   }).catch(function(e){ toast('Operation failed: '+(e&&e.message||e),'er'); });
 }
@@ -7622,7 +7686,7 @@ function confirmBatReject(fitId){
           BAT_FITS[idx].removedReason='';
         } else { BAT_FITS[idx].status='REJECTED'; }
       }
-      updateBadges();renderBatRemHold();
+      _wsFetchAndRender({'BAT_FITS':'/batteryFitments','BATTERIES':'/batteries'}, function(){ renderBatRemHold(); });
     }else toast('Error: '+(res&&res.error?res.error:'Failed'),'er');
   }).catch(function(e){ toast('Reject failed: '+(e&&e.message||e),'er'); });
 }
@@ -7659,8 +7723,9 @@ async function bulkApproveBatSales(){
   var _ba2=document.getElementById('batsale_approve_btn'),_br2=document.getElementById('batsale_reject_btn');
   if(_ba2){_ba2.disabled=false;_ba2.textContent='✓ Approve Selected';}
   if(_br2){_br2.disabled=false;_br2.textContent='✕ Reject Selected';}
-  batSalesClearSel();updateBadges();renderBatSales();
+  batSalesClearSel();
   if(done>0)toast(done+' approved ✓','ok');
+  _wsFetchAndRender({'BAT_SALES':'/batterySales','BATTERIES':'/batteries'}, function(){ renderBatSales(); });
 }
 async function bulkRejectBatSales(){
   var ids=Array.from(_batSalesSelected);
@@ -7685,8 +7750,9 @@ async function bulkRejectBatSales(){
   var _ba4=document.getElementById('batsale_approve_btn'),_br4=document.getElementById('batsale_reject_btn');
   if(_br4){_br4.disabled=false;_br4.textContent='✕ Reject Selected';}
   if(_ba4){_ba4.disabled=false;_ba4.textContent='✓ Approve Selected';}
-  batSalesClearSel();updateBadges();renderBatSales();
+  batSalesClearSel();
   if(done>0)toast(done+' rejected','in');
+  _wsFetchAndRender({'BAT_SALES':'/batterySales','BATTERIES':'/batteries'}, function(){ renderBatSales(); });
 }
 
 function toggleAllBatSales(cb){
@@ -7771,9 +7837,8 @@ async function approveBatterySale(id){
     // Update battery status locally
     var sale=idx>=0?BAT_SALES[idx]:null;
     if(sale){var bidx=(BATTERIES||[]).findIndex(function(b){return b.batteryRef===sale.batteryRef;});if(bidx>=0)BATTERIES[bidx].status='SOLD';}
-    updateBadges();renderBatSales();
     toast('Battery sale approved \u2713','ok');
-    Promise.all([wsFbRead('/batterySales'),wsFbRead('/batteries')]).then(function(r){BAT_SALES=r[0].records||[];BATTERIES=r[1].records||[];updateBadges();renderBatSales();});
+    _wsFetchAndRender({'BAT_SALES':'/batterySales','BATTERIES':'/batteries'}, function(){ renderBatSales(); });
   } else {
     toast(res&&res.error?res.error:'Approval failed','er');
     if(btn){btn.disabled=false;btn.textContent='\u2713 Approve';}
@@ -8173,7 +8238,7 @@ async function saveSpareMove() {
         closeModal('spareMoveModal');
         toast('\u2705 Spare movement request updated','ok');
         _spmEditId = null;
-        if (currentView==='spm_requests'||currentView==='spm_hold') renderSpareMovements(_spmCurrentFilter);
+        _wsFetchAndRender({'SPARE_MOVES':'/spareMoves'}, function(){ if(currentView==='spm_requests'||currentView==='spm_hold') renderSpareMovements(_spmCurrentFilter); });
       } else {
         toast(res2&&res2.error?res2.error:'Failed to update request','er');
       }
@@ -8226,6 +8291,7 @@ function deleteSpareMove(id) {
       var res = await callAPI('deleteSpareMovement', { id: id });
       if (res && res.success !== false) {
         toast('Deleted \u2713','in');
+        _wsFetchAndRender({'SPARE_MOVES':'/spareMoves'}, function(){ if(currentView==='spm_requests'||currentView==='spm_hold') renderSpareMovements(_spmCurrentFilter); });
       } else {
         throw new Error(res&&res.error?res.error:'Delete failed');
       }
@@ -8250,10 +8316,7 @@ async function approveSpareMove(id) {
       if (ix!==-1) { SPARE_MOVES[ix].status='APPROVED'; SPARE_MOVES[ix].approvedBy=approvedBy.toUpperCase(); SPARE_MOVES[ix].dateApproved=todayStr(); }
       if (res.inventoryWarning) toast('\u26a0\ufe0f '+res.inventoryWarning,'er');
       else toast('\u2705 Approved - added to Store Inventory','ok');
-      wsFbRead('/storeInventory').then(function(r){if(r&&r.records)STORE_INVENTORY=r.records;}).catch(function(){});
-      wsFbRead('/spareMoves').then(function(r3){if(r3&&r3.records)SPARE_MOVES=r3.records;updateBadges();if(currentView==='spm_requests'||currentView==='spm_hold')renderSpareMovements(_spmCurrentFilter);}).catch(function(){});
-      updateBadges();
-      if (currentView==='spm_requests'||currentView==='spm_hold') renderSpareMovements(_spmCurrentFilter);
+      _wsFetchAndRender({'SPARE_MOVES':'/spareMoves','STORE_INVENTORY':'/storeInventory'}, function(){ if(currentView==='spm_requests'||currentView==='spm_hold') renderSpareMovements(_spmCurrentFilter); });
     } else {
       toast(res&&res.error?res.error:'Approval failed','er');
     }
@@ -8271,9 +8334,7 @@ async function rejectSpareMove(id) {
       var ix = SPARE_MOVES.findIndex(function(r){return r.id===id;});
       if (ix!==-1) { SPARE_MOVES[ix].status='REJECTED'; SPARE_MOVES[ix].rejectedBy=rejectedBy.toUpperCase(); SPARE_MOVES[ix].dateRejected=todayStr(); }
       toast('Request rejected','ok');
-      wsFbRead('/spareMoves').then(function(r3){if(r3&&r3.records)SPARE_MOVES=r3.records;updateBadges();if(currentView==='spm_requests'||currentView==='spm_hold')renderSpareMovements(_spmCurrentFilter);}).catch(function(){});
-      updateBadges();
-      if (currentView==='spm_requests'||currentView==='spm_hold') renderSpareMovements(_spmCurrentFilter);
+      _wsFetchAndRender({'SPARE_MOVES':'/spareMoves'}, function(){ if(currentView==='spm_requests'||currentView==='spm_hold') renderSpareMovements(_spmCurrentFilter); });
     } else {
       toast(res&&res.error?res.error:'Rejection failed','er');
     }
@@ -8459,9 +8520,10 @@ async function saveBatPO() {
     } catch(e){ toast('PO error: '+(e.message||e),'er'); failed++; }
   }
   if(btn){btn.disabled=false;btn.textContent='\u{1F4CB} Create Requisition';}
-  closeModal('batPOmodal'); updateBadges(); renderBatPOs('all');
+  closeModal('batPOmodal');
   if(created>0) toast('Created '+created+' battery request'+(created>1?'s':'')+' \u2713','ok');
   if(failed>0)  toast(failed+' request(s) failed','er');
+  _wsFetchAndRender({'BAT_POS':'/batteryPOs','BATTERIES':'/batteries'}, function(){ renderBatPOs('all'); });
 }
 
 function openBatGRNForm(poNo) {
@@ -8665,8 +8727,9 @@ async function saveBatGRN() {
       });
       var [gr,br,pr] = await Promise.all([wsFbRead('/batteryGRNs'),wsFbRead('/batteries'),wsFbRead('/batteryPOs')]);
       BAT_GRNS=gr.records||[]; BATTERIES=br.records||[]; BAT_POS=pr.records||[];
-      closeModal('batGRNmodal');updateBadges();renderBatGRNs();
+      closeModal('batGRNmodal');
       toast(grnLines.length+' battery/batteries received ✓','ok');
+      _wsFetchAndRender({'BATTERIES':'/batteries','BAT_GRNS':'/batteryGRNs','BAT_POS':'/batteryPOs'}, function(){ renderBatGRNs(); });
     } else { toast('Failed: '+(res&&res.error?res.error:'unknown'),'er'); }
   } catch(e){ toast('Error: '+(e.message||e),'er'); }
   if(btn){btn.disabled=false;btn.textContent='Confirm Inward';}
@@ -8883,8 +8946,9 @@ async function saveFitBattery(){
   var failed=fitResults.filter(function(r){return !r||!r.success;}).length;
   fitResults.forEach(function(r,j){if(!r||!r.success)toast('Line '+(j+1)+': '+(r&&r.error?r.error:'Failed'),'er');});
   if(btn){btn.disabled=false;btn.textContent='🔧 Submit Fitment Requests';}
-  closeModal('fitBatmodal');updateBadges();
+  closeModal('fitBatmodal');
   if(saved>0){
+    _wsFetchAndRender({'BAT_FITS':'/batteryFitments','BATTERIES':'/batteries'}, function(){ if(currentView==='bat_fit_requests')renderBatFitRequests(); });
     // Clear any active filters so full history is visible
     ['BQFF1','BQFV1','BQFF2','BQFV2','BQFSTATUS'].forEach(function(id){var e=document.getElementById(id);if(e)e.value='';});
     toast(saved+' fitment request'+(saved>1?'s':'')+' submitted ✓','ok');
@@ -8941,8 +9005,9 @@ async function saveRemoveBattery(){
   }));
   remResults.forEach(function(r,j){if(r.ok)saved++;else{failed++;toast('Line '+(j+1)+': '+r.err,'er');}});
   if(btn){btn.disabled=false;btn.textContent='🔄 Submit Removal Requests';}
-  closeModal('removeBatmodal');updateBadges();
+  closeModal('removeBatmodal');
   if(saved>0){
+    _wsFetchAndRender({'BAT_FITS':'/batteryFitments','BATTERIES':'/batteries'}, function(){ renderBatRemHold(); });
     // Clear any active filters so full history is visible
     ['BHFF1','BHFV1','BHFF2','BHFV2','BHFSTATUS'].forEach(function(id){var e=document.getElementById(id);if(e)e.value='';});
     wsFbRead('/batteryFitments').then(function(r2){if(r2&&r2.records){BAT_FITS=r2.records;}renderBatRemHold();}).catch(function(){renderBatRemHold();});
@@ -8999,8 +9064,9 @@ async function saveBatSale(){
   }));
   saleResults.forEach(function(r,j){if(r.ok)saved++;else{failed++;toast('Line '+(j+1)+': '+r.err,'er');}});
   if(btn){btn.disabled=false;btn.textContent='Record Sales';}
-  closeModal('batSalemodal');updateBadges();
+  closeModal('batSalemodal');
   if(saved>0){
+    _wsFetchAndRender({'BAT_SALES':'/batterySales','BATTERIES':'/batteries'}, function(){ renderBatSales(); });
     toast(saved+' sale'+(saved>1?'s':'')+' recorded ✓','ok');
     wsFbRead('/batterySales').then(function(r2){if(r2&&r2.records){BAT_SALES=r2.records;}renderBatSales();});
     wsFbRead('/batteries').then(function(r3){if(r3&&r3.records)BATTERIES=r3.records;});
@@ -9365,9 +9431,8 @@ async function updateTyrePOStatus(id, newStatus) {
   try {
     await callAPI('updateTyrePO',{record:Object.assign({},po,{status:newStatus})});
     po.status = newStatus;
-    updateBadges();
-    renderTyrePOs(currentView==='tyre_pos_pnr'?'PAID NOT RECEIVED':currentView==='tyre_pos_np'?'NOT PAID':'all');
     toast('Status updated to '+newStatus+' ✓','ok');
+    _wsFetchAndRender({'TYRE_POS':'/tyrePOs'}, function(){ renderTyrePOs(currentView==='tyre_pos_pnr'?'PAID NOT RECEIVED':currentView==='tyre_pos_np'?'NOT PAID':'all'); });
   } catch(e){ toast('Failed to update status','er'); }
 }
 function openGRNForm(poNo) {
@@ -9596,9 +9661,9 @@ async function saveTyreGRN() {
     if (res&&res.success) {
       // Refresh all in parallel
       var grnRefresh=await Promise.all([
-        callAPI('getTyres').catch(function(){return {records:[]};}),
-        callAPI('getTyreGRNs').catch(function(){return {records:[]};}),
-        callAPI('getTyrePOs').catch(function(){return {records:[]};})
+        wsFbRead('/tyres'),
+        wsFbRead('/tyreGRNs'),
+        wsFbRead('/tyrePOs')
       ]);
       TYRES=grnRefresh[0].records||[]; TYRE_GRNS=grnRefresh[1].records||[]; TYRE_POS=grnRefresh[2].records||[];
       // Auto-update PO status based on qty received vs ordered
@@ -9614,11 +9679,13 @@ async function saveTyreGRN() {
           try { await callAPI('updateTyrePO',{record:Object.assign({},mpo,{status:autoStatus})}); mpo.status=autoStatus; } catch(e){}
         }
       }
-      closeModal('tyreGRNmodal'); updateBadges();
-      if (currentView==='tyre_grns') renderTyreGRNs();
-      else if (currentView==='tyre_inventory') renderTyreInventory();
-      else if (currentView.startsWith('tyre_pos')) renderTyrePOs(currentView==='tyre_pos'?'all':currentView==='tyre_pos_rcv'?'FULLY RECEIVED':currentView==='tyre_pos_prcv'?'PARTIALLY RECEIVED':'all');
+      closeModal('tyreGRNmodal');
       toast(lines.length+' tyre(s) received into inventory ✓','ok');
+      _wsFetchAndRender({'TYRES':'/tyres','TYRE_GRNS':'/tyreGRNs','TYRE_POS':'/tyrePOs'}, function(){
+        if (currentView==='tyre_grns') renderTyreGRNs();
+        else if (currentView==='tyre_inventory') renderTyreInventory();
+        else if (currentView.startsWith('tyre_pos')) renderTyrePOs(currentView==='tyre_pos'?'all':currentView==='tyre_pos_rcv'?'FULLY RECEIVED':currentView==='tyre_pos_prcv'?'PARTIALLY RECEIVED':'all');
+      });
     } else { toast('Failed: '+(res&&res.error?res.error:'unknown error'),'er'); }
   } catch(e){ toast('Error: '+(e.message||e),'er'); }
   if(btn){btn.disabled=false;btn.textContent='💾 Confirm Inward';}
@@ -9822,9 +9889,9 @@ async function saveTyrePO() {
   }));
   tpoResults.forEach(function(r){if(r.ok)created++;else{failed++;toast('PO failed: '+r.err,'er');}});
   if(btn){btn.disabled=false;btn.textContent='📋 Create Requisition';}
-  closeModal('tyrePOmodal'); updateBadges(); renderTyrePOs();
-  if(created>0) toast('Created '+created+' purchase order'+(created>1?'s':'')+' ✓','ok');
-  if(failed>0)  toast(failed+' PO(s) failed','er');
+  closeModal('tyrePOmodal'); if(created>0) toast('Created '+created+' purchase order'+(created>1?'s':'')+' ✓','ok');
+  if(failed>0) toast(failed+' PO(s) failed','er');
+  _wsFetchAndRender({'TYRE_POS':'/tyrePOs','TYRES':'/tyres'}, function(){ renderTyrePOs(); });
 }
 async function saveFitTyre() {
   var vFitSel=document.getElementById('fit_vehicle');
@@ -9888,7 +9955,7 @@ async function saveFitTyre() {
   if(saved>0){
     ['TRFSTATUS','TRQSTATUS'].forEach(function(id){var e=document.getElementById(id);if(e)e.value='';});
     toast(saved+' fitment request'+(saved>1?'s':'')+' submitted ✓','ok');
-    callAPI('getTyreFitments').then(function(r2){if(r2&&r2.records){TYRE_FITS=r2.records;}if(currentView==='tyre_rem_hold')renderTyreRemHold();else if(currentView==='tyre_fit_requests')renderTyreFitRequests();}).catch(function(){});
+    _wsFetchAndRender({'TYRE_FITS':'/tyreFitments','TYRES':'/tyres'}, function(){ if(currentView==='tyre_rem_hold')renderTyreRemHold();else if(currentView==='tyre_fit_requests')renderTyreFitRequests(); });
   }
   if(failed>0)toast(failed+' failed','er');
 }
@@ -9934,11 +10001,12 @@ async function saveRemoveTyre() {
   }));
   remResults.forEach(function(r,j){if(r.ok)saved++;else{failed++;toast('Line '+(j+1)+': '+r.err,'er');}});
   if(btn){btn.disabled=false;btn.textContent='🔄 Submit Removal Requests';}
-  closeModal('tyreRemovemodal');updateBadges();
+  closeModal('tyreRemovemodal');
   if(saved>0){
+    _wsFetchAndRender({'TYRE_FITS':'/tyreFitments','TYRES':'/tyres'}, function(){ if(currentView==='tyre_rem_hold')renderTyreRemHold();else renderTyreFitRequests(); });
     ['TRFSTATUS','TRQSTATUS'].forEach(function(id){var e=document.getElementById(id);if(e)e.value='';});
     toast(saved+' removal request'+(saved>1?'s':'')+' submitted ✓','ok');
-    callAPI('getTyreFitments').then(function(r2){if(r2&&r2.records){TYRE_FITS=r2.records;}if(currentView==='tyre_rem_hold')renderTyreRemHold();else if(currentView==='tyre_fit_requests')renderTyreFitRequests();}).catch(function(){});
+// Firebase refetch already handled by _wsFetchAndRender above
   }
   if(failed>0)toast(failed+' failed','er');
 }
@@ -9977,11 +10045,11 @@ async function saveScrapSale() {
   }));
   scrapRes.forEach(function(r,j){if(r.ok)saved++;else{failed++;toast('Line '+(j+1)+': '+r.err,'er');}});
   if(btn){btn.disabled=false;btn.textContent='🗑 Record Sales';}
-  closeModal('tyreScrapmodal');updateBadges();
+  closeModal('tyreScrapmodal');
   if(saved>0){
+    _wsFetchAndRender({'TYRE_SCRAPS':'/tyreScrapSales','TYRES':'/tyres'}, function(){ if(currentView==='tyre_scrap')renderTyreScrap(); });
     toast(saved+' sale'+(saved>1?'s':'')+' recorded ✓','ok');
-    callAPI('getTyreScrapSales').then(function(r2){if(r2&&r2.records)TYRE_SCRAPS=r2.records;if(currentView==='tyre_scrap')renderTyreScrap();});
-    callAPI('getTyres').then(function(r3){TYRES=r3.records||[];});
+    // Firebase refetch already handled by _wsFetchAndRender above
   }
   if(failed>0)toast(failed+' failed','er');
 }
@@ -10908,7 +10976,10 @@ async function saveSSReq(){
 
   if(btn){btn.disabled=false;btn.textContent='💾 Save All Lines';}
   closeModal('ssreqmodal');
-  if(saved>0){toast('Saved '+saved+' requisition'+(saved>1?'s':'')+' ✓','ok');showLoad('Refreshing data...');loadAppData();}
+  if(saved>0){
+    toast('Saved '+saved+' requisition'+(saved>1?'s':'')+' ✓','ok');
+    _wsFetchAndRender({'ALL':'/requisitions','STORE_REQS':'/storeReqs','STORE_INVENTORY':'/storeInventory'}, function(){ if(currentView==='storeinv')renderStoreInventory(); else applyFilters(); });
+  }
   if(failed>0) toast(failed+' line(s) failed','er');
 }
 
@@ -11174,11 +11245,10 @@ async function saveBulkEdit() {
   finally { if (btn) { btn.disabled=false; btn.textContent='💾 Save All Changes'; } }
   closeModal('bulkeditmodal');
   clearSelection();
-  buildHeader(); applyFilters(); updateBadges();
   if (saved>0) toast('Updated '+saved+' record'+(saved>1?'s':'')+' ✓','ok');
   if (failed>0) toast(failed+' record(s) failed','er');
-  // Restore selection bar state
   updateSelectionBar();
+  _wsFetchAndRender({'ALL':'/requisitions'}, function(){ buildHeader(); applyFilters(); });
 }
 
 // -- FREE MULTI REQUISITION --
@@ -11913,8 +11983,9 @@ async function deleteIssReqSelected(){
   }));
   var _dBtn2=document.getElementById('iss_req_delete_btn');
   if(_dBtn2){_dBtn2.disabled=false;_dBtn2.textContent='\U0001f5d1 Delete';}
-  issReqClearSelection();updateBadges();renderStoreIssuances();
+  issReqClearSelection();
   toast(deleted+' record(s) deleted','ok');
+  _wsFetchAndRender({'ISS_PENDING':'/pendingIssuances','STORE_ISSUANCES':'/storeIssuances'}, function(){ renderStoreIssuances(); });
 }
 
 
@@ -11963,16 +12034,14 @@ async function bulkApproveIssPending(){
   clearIssPendingSelection();
   // Refresh inventory and issuances in background
   Promise.all([
-    callAPI("getStoreInventory").then(function(r){STORE_INVENTORY=r.records||[];}).catch(function(){}),
-    callAPI("getStoreIssuances").then(function(r){STORE_ISSUANCES=r.records||[];}).catch(function(){}),
+    wsFbRead('/storeInventory').then(function(r){if(r&&r.records)STORE_INVENTORY=r.records;}).catch(function(){}),
+    wsFbRead('/storeIssuances').then(function(r){if(r&&r.records)STORE_ISSUANCES=r.records;}).catch(function(){}),
     callAPI("getAll").then(function(r){if(r&&r.records)ALL=r.records;}).catch(function(){})
   ]).then(function(){
-    updateBadges();
-    if(_issPendingSelected.size===0) renderIssPending();
-  });
-  updateBadges();renderIssPending();
-  if(done>0)toast(done+" issuance"+(done>1?"s":"")+" approved ✓","ok");
-  if(failed>0)toast(failed+" failed","er");
+    });
+  if(done>0)toast(done+' issuance'+(done>1?'s':'')+' approved ✓','ok');
+  if(failed>0)toast(failed+' failed','er');
+  _wsFetchAndRender({'ISS_PENDING':'/pendingIssuances','STORE_ISSUANCES':'/storeIssuances','STORE_INVENTORY':'/storeInventory'}, function(){ renderIssPending(); });
 }
 async function bulkRejectIssPending(){
   var ids=Array.from(_issPendingSelected);
@@ -12000,8 +12069,9 @@ async function bulkRejectIssPending(){
   var iphAppBtn4=document.getElementById("iph_approve_btn");
   if(iphRejBtn4){iphRejBtn4.disabled=false;iphRejBtn4.textContent="✕ Reject Selected";}
   if(iphAppBtn4){iphAppBtn4.disabled=false;iphAppBtn4.textContent="✓ Approve Selected";}
-  clearIssPendingSelection();updateBadges();renderIssPending();
-  if(done>0)toast(done+" rejected ✓","in");
+  clearIssPendingSelection();
+  if(done>0)toast(done+' rejected ✓','in');
+  _wsFetchAndRender({'ISS_PENDING':'/pendingIssuances'}, function(){ renderIssPending(); });
 }
 var _issPendingSelected = new Set();
 var _issReqSelected = new Set();
@@ -12150,9 +12220,9 @@ async function approveIssuance(id) {
       }
       // Background refresh in parallel - don't await, UI updates instantly
       Promise.all([
-        callAPI('getStoreInventory').then(function(r){STORE_INVENTORY=r.records||[];}).catch(function(){}),
+        wsFbRead('/storeInventory').then(function(r){if(r&&r.records)STORE_INVENTORY=r.records;}).catch(function(){}),
         wsFbRead('/requisitions').then(function(r){if(r&&r.records)ALL=r.records;}).catch(function(){}),
-        callAPI('getStoreIssuances').then(function(r){STORE_ISSUANCES=r.records||[];}).catch(function(){})
+        wsFbRead('/storeIssuances').then(function(r){if(r&&r.records)STORE_ISSUANCES=r.records;}).catch(function(){})
       ]).then(function(){updateBadges();})
       updateBadges();
       toast('✅ Issuance '+rec.issuanceNo+' approved by '+approvedBy,'ok');
@@ -12522,9 +12592,10 @@ async function saveTpoBulkEdit() {
   res2.forEach(function(r){if(r.ok)saved++;else failed++;});
   if(btn){btn.disabled=false;btn.textContent='\uD83D\uDCBE Save Changes';}
   document.getElementById('tpobulkmodal').classList.add('hidden');
-  tpoClearSelection(); updateBadges(); renderTyrePOs(window._tyrePOCurrentFilter||'all');
+  tpoClearSelection();
   if(saved>0) toast(saved+' record'+(saved>1?'s':'')+' updated \u2713','ok');
   if(failed>0) toast(failed+' failed','er');
+  _wsFetchAndRender({'TYRE_POS':'/tyrePOs','TYRES':'/tyres'}, function(){ renderTyrePOs(window._tyrePOCurrentFilter||'all'); });
 }
 async function deleteTpoSelected() {
   var ids = Array.from(_tpoSelected);
@@ -12550,8 +12621,9 @@ async function _doDeleteTpoSelected(ids, rows) {
       deleted++;
     }catch(e){}
   }
-  tpoClearSelection(); updateBadges(); renderTyrePOs('all');
+  tpoClearSelection();
   toast(deleted+' tyre request(s) deleted','ok');
+  _wsFetchAndRender({'TYRE_POS':'/tyrePOs','TYRES':'/tyres'}, function(){ renderTyrePOs('all'); });
 }
 
 function tpoExportExcel() {
@@ -12782,8 +12854,8 @@ function deleteSReq(el) {
   if (!confirm('Delete store requisition '+(r.reqNo||id)+'?')) return;
   callAPI('deleteRecord',{sheetName:'STORE_REQUISITIONS',id:id}).then(function(){
     STORE_REQS = STORE_REQS.filter(function(x){ return x.id!==id; });
-    renderStoreRequisition(_sreqCurrentFilter);
     toast('Deleted ✓','ok');
+    _wsFetchAndRender({'STORE_REQS':'/storeReqs'}, function(){ renderStoreRequisition(_sreqCurrentFilter); });
   }).catch(function(){ toast('Delete failed','er'); });
 }
 
@@ -12812,9 +12884,8 @@ function deleteSReqProtected(el) {
         var ws = ALL.filter(function(x){ return (x.lpoNo||'').toUpperCase()===lpo; });
         for (var j=0;j<ws.length;j++) { try { await callAPI('delete',{id:ws[j].id}); ALL=ALL.filter(function(x){return x.id!==ws[j].id;}); } catch(e){} }
       }
-      renderStoreRequisition(_sreqCurrentFilter);
-      updateBadges();
       toast('Deleted ✓','ok');
+      _wsFetchAndRender({'STORE_REQS':'/storeReqs','STORE_INVENTORY':'/storeInventory','ALL':'/requisitions'}, function(){ renderStoreRequisition(_sreqCurrentFilter); });
     } catch(e){ toast('Delete failed','er'); }
   });
 }
@@ -12887,10 +12958,9 @@ async function deleteSReqSelected() {
     }
 
     sreqClearSelection();
-    renderStoreRequisition(_sreqCurrentFilter);
-    updateBadges();
     if (deleted>0) toast('Deleted ' + deleted + ' record'+(deleted>1?'s':'')+' and related inventory/workshop data ✓','ok');
     if (failed>0)  toast(failed + ' failed to delete','er');
+    _wsFetchAndRender({'STORE_REQS':'/storeReqs','STORE_INVENTORY':'/storeInventory','ALL':'/requisitions'}, function(){ renderStoreRequisition(_sreqCurrentFilter); });
   };
 
   if (rcvRows.length > 0) {
@@ -13432,8 +13502,7 @@ async function saveIssueFromStore(){
       });
       closeModal('issmodal');
       toast('✅ '+lines.length+' request'+(lines.length>1?'s':'')+' submitted - awaiting approval','ok');
-      updateBadges();
-      if(currentView==='iss_pending') renderIssPending();
+      _wsFetchAndRender({'ISS_PENDING':'/pendingIssuances'}, function(){ if(currentView==='iss_pending') renderIssPending(); });
     }else{toast('Failed: '+(batchRes&&batchRes.error?batchRes.error:'Unknown error'),'er');}
   }catch(e){toast('Failed: '+(e.message||e),'er');}
   finally{if(btn){btn.disabled=false;btn.textContent='📤 Submit Issue Request';}}
@@ -14231,11 +14300,13 @@ function saveJobCard() {
     data.id = editingJC;
     const i = JOBCARDS.findIndex(j => j.id === editingJC);
     if (i !== -1) JOBCARDS[i] = { ...JOBCARDS[i], ...data };
-    closeModal('jcmodal'); updateBadges(); renderJobCards(); toast('Saving...', 'in');
-    callAPI('updateJobCard', { record: data }).then(() => toast('Job Card updated ✓', 'ok')).catch(() => toast('Sync failed', 'er'));
+    closeModal('jcmodal'); toast('Saving...', 'in');
+    callAPI('updateJobCard', { record: data }).then(function(){
+      toast('Job Card updated ✓', 'ok');
+      _wsFetchAndRender({'JOBCARDS':'/jobCards'}, function(){ renderJobCards(); });
+    }).catch(() => toast('Sync failed', 'er'));
   } else {
     data.id = Date.now().toString(36) + Math.random().toString(36).slice(2);
-    JOBCARDS.unshift(data);
     closeModal('jcmodal'); updateBadges(); renderJobCards(); toast('Saving...', 'in');
     callAPI('addJobCard', { record: data }).then(function(res){
       // The server assigns the real, authoritative code — if it differs
@@ -14247,6 +14318,7 @@ function saveJobCard() {
         if (i !== -1) { JOBCARDS[i].code = res.code; JOBCARDS[i].jobCardNo = res.code; renderJobCards(); }
       }
       toast('Job Card added ✓ (' + (res && res.code ? res.code : data.code) + ')', 'ok');
+      _wsFetchAndRender({'JOBCARDS':'/jobCards'}, function(){ renderJobCards(); });
     }).catch(function(){ toast('Sync failed', 'er'); JOBCARDS = JOBCARDS.filter(j => j.id !== data.id); updateBadges(); renderJobCards(); });
   }
   btn.disabled = false; btn.textContent = 'Save Job Card';
@@ -14258,7 +14330,10 @@ function deleteJobCard(id) {
   const bk = JOBCARDS.find(j => j.id === id);
   JOBCARDS = JOBCARDS.filter(j => j.id !== id);
   updateBadges(); renderJobCards(); toast('Deleting...', 'in');
-  callAPI('deleteJobCard', { id }).then(() => toast('Job Card deleted ✓', 'in')).catch(() => { toast('Delete failed', 'er'); if(bk){JOBCARDS.push(bk);updateBadges();renderJobCards();} });
+  callAPI('deleteJobCard', { id }).then(function(){
+    toast('Job Card deleted ✓', 'in');
+    _wsFetchAndRender({'JOBCARDS':'/jobCards'}, function(){ renderJobCards(); });
+  }).catch(() => { toast('Delete failed', 'er'); if(bk){JOBCARDS.push(bk);updateBadges();renderJobCards();} });
 }
 
 function renderJobCards() {
@@ -14424,8 +14499,11 @@ function saveDriver() {
     data.id = editingDriver;
     const i = DRIVERS.findIndex(d=>d.id===editingDriver);
     if(i!==-1) DRIVERS[i] = {...DRIVERS[i],...data};
-    closeModal('drvmodal'); updateBadges(); renderDrivers(); toast('Saving...','in');
-    callAPI('updateDriver',{record:data}).then(()=>toast('Driver updated ✓','ok')).catch(()=>toast('Sync failed','er'));
+    closeModal('drvmodal'); toast('Saving...','in');
+    callAPI('updateDriver',{record:data}).then(function(){
+      toast('Driver updated ✓','ok');
+      _wsFetchAndRender({'DRIVERS':'/drivers'}, function(){ renderDrivers(); });
+    }).catch(()=>toast('Sync failed','er'));
   } else {
     data.id = Date.now().toString(36)+Math.random().toString(36).slice(2);
     DRIVERS.unshift(data);
@@ -14442,7 +14520,10 @@ function deleteDriver(id) {
   if(!confirm('Delete this driver? Cannot be undone.')) return;
   const bk = DRIVERS.find(d=>d.id===id);
   DRIVERS = DRIVERS.filter(d=>d.id!==id); updateBadges(); renderDrivers(); toast('Deleting...','in');
-  callAPI('deleteDriver',{id}).then(()=>toast('Driver deleted ✓','in')).catch(()=>{toast('Delete failed','er');if(bk){DRIVERS.push(bk);updateBadges();renderDrivers();}});
+  callAPI('deleteDriver',{id}).then(function(){
+    toast('Driver deleted ✓','in');
+    _wsFetchAndRender({'DRIVERS':'/drivers'}, function(){ renderDrivers(); });
+  }).catch(()=>{toast('Delete failed','er');if(bk){DRIVERS.push(bk);updateBadges();renderDrivers();}});
 }
 
 function renderDrivers() {
@@ -14589,8 +14670,11 @@ function saveVehicle() {
     data.id = editingVehicle;
     const i = VEHICLES.findIndex(v=>v.id===editingVehicle);
     if(i!==-1) VEHICLES[i] = {...VEHICLES[i],...data};
-    closeModal('vehmodal'); updateBadges(); renderVehicles(); toast('Saving...','in');
-    callAPI('updateVehicle',{record:data}).then(()=>toast('Vehicle updated ✓','ok')).catch(()=>toast('Sync failed','er'));
+    closeModal('vehmodal'); toast('Saving...','in');
+    callAPI('updateVehicle',{record:data}).then(function(){
+      toast('Vehicle updated ✓','ok');
+      _wsFetchAndRender({'VEHICLES':'/vehicles'}, function(){ renderVehicles(); });
+    }).catch(()=>toast('Sync failed','er'));
   } else {
     data.id = Date.now().toString(36)+Math.random().toString(36).slice(2);
     VEHICLES.unshift(data);
@@ -14607,7 +14691,10 @@ function deleteVehicle(id) {
   if(!confirm('Delete this vehicle? Cannot be undone.')) return;
   const bk = VEHICLES.find(v=>v.id===id);
   VEHICLES = VEHICLES.filter(v=>v.id!==id); updateBadges(); renderVehicles(); toast('Deleting...','in');
-  callAPI('deleteVehicle',{id}).then(()=>toast('Vehicle deleted ✓','in')).catch(()=>{toast('Delete failed','er');if(bk){VEHICLES.push(bk);updateBadges();renderVehicles();}});
+  callAPI('deleteVehicle',{id}).then(function(){
+    toast('Vehicle deleted ✓','in');
+    _wsFetchAndRender({'VEHICLES':'/vehicles'}, function(){ renderVehicles(); });
+  }).catch(()=>{toast('Delete failed','er');if(bk){VEHICLES.push(bk);updateBadges();renderVehicles();}});
 }
 
 function renderVehicles() {
@@ -15098,7 +15185,7 @@ function attachSigned(id, input) {
         JOBCARDS[i].signedPdfId = res.fileId;
       }
       toast('Signed PDF uploaded ✓', 'ok');
-      renderJCSummary();
+      _wsFetchAndRender({'JOBCARDS':'/jobCards'}, function(){ renderJCSummary(); });
       // Re-fetch this job card from Firebase after backend syncs
       // to confirm signedPdfUrl/Id are stored and survive page refresh
       setTimeout(function() {
@@ -15175,7 +15262,6 @@ async function deleteSigned(id) {
       delete JOBCARDS[i].signedPdfId;
     }
     toast('Signed PDF removed ✓', 'in');
-    renderJCSummary();
     // Re-fetch from Firebase to confirm deletion persists across refresh
     setTimeout(function() {
       if (_wsFbDb) {
@@ -15381,9 +15467,11 @@ function doQuickStatusUpdate(id, newStatus) {
   var i = JOBCARDS.findIndex(function(x){ return x.id === id; });
   if (i === -1) return;
   JOBCARDS[i].workStatus = newStatus;
-  renderJCSummary();
   toast('Updating status...', 'in');
-  callAPI('updateJobCard', { record: JOBCARDS[i] }).then(function(){ toast('Status updated ✓', 'ok'); }).catch(function(){ toast('Sync failed', 'er'); });
+  callAPI('updateJobCard', { record: JOBCARDS[i] }).then(function(){
+    toast('Status updated ✓', 'ok');
+    _wsFetchAndRender({'JOBCARDS':'/jobCards'}, function(){ renderJCSummary(); });
+  }).catch(function(){ toast('Sync failed', 'er'); renderJCSummary(); });
 }
 
 
@@ -16260,13 +16348,19 @@ async function saveUser() {
     data.id = editingUser;
     const i = USERS.findIndex(u => u.id === editingUser);
     if (i !== -1) USERS[i] = { ...USERS[i], ...data };
-    closeModal('addusermodal'); renderUserTable(); toast('Saving...', 'in');
-    callAPI('updateUser', { record: data }).then(() => toast('User updated ✓', 'ok')).catch(() => toast('Sync failed', 'er'));
+    closeModal('addusermodal'); toast('Saving...', 'in');
+    callAPI('updateUser', { record: data }).then(function(){
+      toast('User updated ✓', 'ok');
+      _wsFetchAndRender({'USERS':'/users'}, function(){ renderUserTable(); });
+    }).catch(() => toast('Sync failed', 'er'));
   } else {
     data.id = Date.now().toString(36) + Math.random().toString(36).slice(2);
-    USERS.push(data);
-    closeModal('addusermodal'); renderUserTable(); toast('Saving...', 'in');
-    callAPI('addUser', { record: data }).then(() => toast('User added ✓', 'ok')).catch(() => { toast('Sync failed', 'er'); USERS = USERS.filter(u => u.id !== data.id); renderUserTable(); });
+    closeModal('addusermodal'); toast('Saving...', 'in');
+    callAPI('addUser', { record: data }).then(function(res){
+      if(res&&res.id) data.id=res.id;
+      USERS.push(data); toast('User added ✓', 'ok');
+      _wsFetchAndRender({'USERS':'/users'}, function(){ renderUserTable(); });
+    }).catch(() => { toast('Sync failed', 'er'); });
   }
 }
 
@@ -16275,7 +16369,10 @@ async function deleteUser(id) {
   const bk = USERS.find(u => u.id === id);
   USERS = USERS.filter(u => u.id !== id);
   renderUserTable(); toast('Deleting...', 'in');
-  callAPI('deleteUser', { id }).then(() => toast('User deleted ✓', 'in')).catch(() => { toast('Delete failed', 'er'); if(bk) { USERS.push(bk); renderUserTable(); } });
+  callAPI('deleteUser', { id }).then(function(){
+    toast('User deleted \u2713', 'in');
+    _wsFetchAndRender({'USERS':'/users'}, function(){ renderUserTable(); });
+  }).catch(() => { toast('Delete failed', 'er'); if(bk) { USERS.push(bk); renderUserTable(); } });
 }
 
 
@@ -16936,6 +17033,30 @@ async function loadAppData(){
           else if (view==='drivers') renderDrivers();
           else if (view==='vehicles') renderVehicles();
           else if (view==='dashboard') renderDashboard();
+          else if (view==='tyre_inventory') renderTyreInventory();
+          else if (view==='tyre_pos'||view==='tyre_pos_rcv'||view==='tyre_pos_prcv'||view==='tyre_pos_pnr'||view==='tyre_pos_np') renderTyrePOs(view==='tyre_pos'?'all':view==='tyre_pos_rcv'?'FULLY RECEIVED':view==='tyre_pos_prcv'?'PARTIALLY RECEIVED':view==='tyre_pos_pnr'?'PAID NOT RECEIVED':'NOT PAID');
+          else if (view==='tyre_fitted') renderTyreFitted();
+          else if (view==='tyre_fit_requests') renderTyreFitRequests();
+          else if (view==='tyre_rem_hold') renderTyreRemHold();
+          else if (view==='tyre_scrap') renderTyreScrap();
+          else if (view==='tyre_grns') renderTyreGRNs();
+          else if (view==='bat_inventory') renderBatInventory();
+          else if (view==='bat_pos'||view==='bat_pos_rcv'||view==='bat_pos_prcv'||view==='bat_pos_pnr'||view==='bat_pos_np') renderBatPOs(view==='bat_pos'?'all':view==='bat_pos_rcv'?'FULLY RECEIVED':view==='bat_pos_prcv'?'PARTIALLY RECEIVED':view==='bat_pos_pnr'?'PAID NOT RECEIVED':'NOT PAID');
+          else if (view==='bat_fitted') renderBatFitted();
+          else if (view==='bat_fit_requests') renderBatFitRequests();
+          else if (view==='bat_rem_hold') renderBatRemHold();
+          else if (view==='bat_sales') renderBatSales();
+          else if (view==='bat_grns') renderBatGRNs();
+          else if (view==='spm_requests') renderSpareMovements('all');
+          else if (view==='spm_hold') renderSpareMovements('PENDING');
+          else if (view==='storeinv'||view==='store_inventory') renderStoreInventory();
+          else if (view==='storereq'||view==='store_reqs') renderStoreRequisition('all');
+          else if (view==='storereq_rcv') renderStoreRequisition('RECEIVED');
+          else if (view==='storereq_pnr') renderStoreRequisition('PAID NOT RECEIVED');
+          else if (view==='storereq_np') renderStoreRequisition('NOT PAID');
+          else if (view==='storereq_oh') renderStoreRequisition('ON HOLD');
+          else if (view==='storeiss') renderStoreIssuances();
+          else if (view==='iss_pending') renderIssPending();
           else applyFilters();
         } catch(e){}
         window.scrollTo(0, _scrollY);
@@ -18288,26 +18409,31 @@ function doSignIn() {
   var u = (document.getElementById('aklgu').value || '').trim();
   var p = (document.getElementById('aklgp').value || '');
   var errEl = document.getElementById('aklge');
-  errEl.textContent = '';
-  if (!u || !p) { errEl.textContent = 'Enter username and password'; return; }
+  if (errEl) errEl.textContent = '';
+  if (!u || !p) { if (errEl) errEl.textContent = 'Enter username and password'; return; }
 
   var btn = document.getElementById('aklgbtn');
-  var loginBox = document.getElementById('aklgb');
-  if (btn) { btn.disabled = true; btn.textContent = ''; }
-  if (loginBox) {
-    loginBox.innerHTML = '<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:20px 0;gap:18px">'
-      + '<div style="width:48px;height:48px;border:3px solid #d2d2d7;border-top-color:#0a2d6e;border-radius:50%;animation:spin .7s linear infinite"></div>'
-      + '<div style="font-size:18px;font-weight:700;color:#0a2d6e;letter-spacing:-.2px">Logging in...</div>'
-      + '<div style="font-size:13px;color:#86868b">Connecting to database</div>'
-      + '</div>';
+  if (btn) { btn.disabled = true; btn.textContent = 'Signing in...'; }
+
+  // Helper to show error and re-enable button without page reload
+  function _loginErr(msg) {
+    if (btn) { btn.disabled = false; btn.textContent = 'Sign In'; }
+    if (errEl) errEl.textContent = msg || 'Login failed';
   }
 
-  // Firebase-first auth - hash comparison in browser, no Apps Script call
-  _wsFbInit().then(function() {
-    return _wsFbDb ? _wsFbDb.ref('/ak_trips/users').once('value') : Promise.resolve(null);
-  }).then(async function(snap) {
+  // Firebase-first auth with 8s timeout
+  var fbPromise = new Promise(function(resolve) {
+    var timer = setTimeout(function(){ resolve(null); }, 8000);
+    _wsFbInit().then(function() {
+      if (!_wsFbDb) { clearTimeout(timer); resolve(null); return; }
+      _wsFbDb.ref('/ak_trips/users').once('value').then(function(snap){
+        clearTimeout(timer); resolve(snap);
+      }).catch(function(){ clearTimeout(timer); resolve(null); });
+    }).catch(function(){ clearTimeout(timer); resolve(null); });
+  });
+
+  fbPromise.then(async function(snap) {
     var found = null;
-    var usedFirebase = false;
 
     if (snap) {
       var val = snap.val() || {};
@@ -18315,43 +18441,59 @@ function doSignIn() {
       var fbUser = fbUsers.find(function(usr) {
         return (usr.username||'').toLowerCase() === u.toLowerCase();
       });
-      if (fbUser && fbUser.passwordHash) {
-        var enc = new TextEncoder();
-        var hashBuf = await crypto.subtle.digest('SHA-256', enc.encode(p));
-        var hashHex = Array.from(new Uint8Array(hashBuf))
-          .map(function(b){ return ('0'+b.toString(16)).slice(-2); }).join('');
-        if (hashHex === fbUser.passwordHash) {
-          found = fbUser;
-          usedFirebase = true;
+      if (fbUser) {
+        if ((fbUser.status||'active') === 'inactive') {
+          _loginErr('Account inactive. Contact admin.'); return;
+        }
+        if (fbUser.passwordHash) {
+          // Secure hash comparison
+          var enc = new TextEncoder();
+          var hashBuf = await crypto.subtle.digest('SHA-256', enc.encode(p));
+          var hashHex = Array.from(new Uint8Array(hashBuf))
+            .map(function(b){ return ('0'+b.toString(16)).slice(-2); }).join('');
+          if (hashHex === fbUser.passwordHash) {
+            found = fbUser;
+          } else {
+            _loginErr('Incorrect password'); return;
+          }
+        } else if (fbUser.password) {
+          // Plain text fallback for users added before hash sync
+          if (fbUser.password === p) {
+            found = fbUser;
+          } else {
+            _loginErr('Incorrect password'); return;
+          }
+        }
+      }
+    }
+
+    // Fallback: Apps Script loginUser
+    if (!found) {
+      try {
+        var controller = new AbortController();
+        var timer2 = setTimeout(function(){ controller.abort(); }, 30000);
+        var loginRes = await fetch(API, {
+          method: 'POST',
+          body: JSON.stringify({action: 'loginUser', username: u, password: p}),
+          headers: {'Content-Type': 'text/plain'},
+          signal: controller.signal
+        });
+        clearTimeout(timer2);
+        var loginData = await loginRes.json();
+        if (loginData && loginData.success && loginData.user) {
+          found = loginData.user;
         } else {
-          // Wrong password - fail immediately
-          errEl.textContent = 'Incorrect password';
-          if (btn) { btn.disabled = false; btn.textContent = 'Sign In'; }
-          // Restore login form
-          location.reload();
+          _loginErr(loginData && loginData.error ? loginData.error : 'Username or password incorrect');
           return;
         }
+      } catch(apiFallbackErr) {
+        _loginErr('Cannot connect to server — check your internet connection');
+        return;
       }
     }
 
-    // Fallback: client-side check against USERS array (pre-Firebase path)
-    if (!found) {
-      var userList = (typeof USERS !== 'undefined' && USERS) ? USERS : [];
-      for (var i = 0; i < userList.length; i++) {
-        if ((userList[i].username||'').toLowerCase() === u.toLowerCase()) {
-          found = userList[i]; break;
-        }
-      }
-      if (!found) { errEl.textContent = 'Username not found'; if(btn){btn.disabled=false;btn.textContent='Sign In';} location.reload(); return; }
-      if ((found.status||'active') === 'inactive') { errEl.textContent = 'Account inactive. Contact admin.'; if(btn){btn.disabled=false;btn.textContent='Sign In';} location.reload(); return; }
-      if ((found.password||'') !== p) { errEl.textContent = 'Incorrect password'; if(btn){btn.disabled=false;btn.textContent='Sign In';} location.reload(); return; }
-    }
-
-    if ((found.status||'active') === 'inactive') {
-      errEl.textContent = 'Account inactive. Contact admin.';
-      if(btn){btn.disabled=false;btn.textContent='Sign In';}
-      location.reload(); return;
-    }
+    if (!found) { _loginErr('Username not found'); return; }
+    if ((found.status||'active') === 'inactive') { _loginErr('Account inactive. Contact admin.'); return; }
 
     setTimeout(function() {
       document.getElementById('aklg').style.display = 'none';
