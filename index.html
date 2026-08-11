@@ -4556,6 +4556,15 @@ async function populateFormDropdowns() {
     oc2.value = '__custom__'; oc2.textContent = '✏ Type manually...';
     descSel.appendChild(oc2);
     if (curDesc) descSel.value = curDesc;
+    new TomSelect(descSel, {
+      allowEmptyOption: true,
+      placeholder: 'Search spare part or type custom...',
+      maxOptions: 500,
+      highlight: true,
+      dropdownParent: 'body',
+      onChange: function(val) { onDescSelect(); }
+    });
+    if (curDesc && descSel.tomselect) descSel.tomselect.setValue(curDesc, true);
   }
 
   // 3. DRIVER dropdown
@@ -4589,6 +4598,9 @@ async function populateFormDropdowns() {
     oc.value = '__custom__'; oc.textContent = '✏ Type manually...';
     truckSel.appendChild(oc);
     if (cur) { truckSel.value = cur; }
+    initTomSelect('f_truck');
+    // Restore value after TomSelect reinit
+    if (cur && truckSel.tomselect) truckSel.tomselect.setValue(cur, true);
   }
 
   // 5. JOB CARD dropdown - exclude COMPLETED
@@ -11112,6 +11124,16 @@ async function saveBulkEdit() {
   var ids = JSON.parse(wrap.getAttribute('data-ids')||'[]');
   var btn = document.getElementById('bulk_save_btn');
 
+  // Normalize stored date formats to YYYY-MM-DD for comparison
+  // Declared here at function scope so PNR and RNI blocks can both use it
+  var _normDate = function(d) {
+    if (!d) return '';
+    d = String(d).trim();
+    var dmy = d.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+    if (dmy) return dmy[3]+'-'+dmy[2].padStart(2,'0')+'-'+dmy[1].padStart(2,'0');
+    return d;
+  };
+
   // Validate and build records
   var updates = [];
   for (var n = 0; n < count; n++) {
@@ -11161,9 +11183,8 @@ async function saveBulkEdit() {
       if (lpo.trim() !== origLpo) pnrChanged.push('LPO No');
       if (pay.toUpperCase().trim() !== origPay) pnrChanged.push('Payment Mode');
       if (reqby.toUpperCase().trim() !== origReqby) pnrChanged.push('Requested By');
-      var beDate = (document.getElementById('be_date_'+n)||{}).value||'';
-      // _normDate is declared at function scope above
-      if (beDate && beDate !== _normDate(orig.dateRequested)) pnrChanged.push('Date Requested');
+      // NOTE: Date Requested is locked for PNR records — skip comparison to avoid
+      // false positives from date format differences (DD/MM/YYYY vs YYYY-MM-DD)
       if (pnrChanged.length > 0) {
         toast('Record '+(n+1)+' ('+orig.reqNo+'): Only Status, Date Received, Date Issued and Remarks can be changed for PAID NOT RECEIVED. Cannot change: '+pnrChanged.join(', '),'er'); return;
       }
@@ -11171,7 +11192,8 @@ async function saveBulkEdit() {
       if (newStat !== 'RECEIVED NOT ISSUED' && newStat !== 'RECEIVED') {
         toast('Record '+(n+1)+': Status cannot be changed from RECEIVED NOT ISSUED to '+stat,'er'); return;
       }
-      // Only Status, Date Issued, Remarks allowed
+      // Only Status, Date Issued, Remarks allowed to change for RNI
+      // Date Requested and Date Received are locked fields — skip comparison
       var rniChanged = [];
       if (desc.toUpperCase().trim() !== (orig.description||'').toUpperCase().trim()) rniChanged.push('Description');
       if (qty.trim() !== (orig.qty||'').toString().trim()) rniChanged.push('Qty');
@@ -11180,10 +11202,8 @@ async function saveBulkEdit() {
       if (lpo.trim() !== (orig.lpoNo||'').toUpperCase().trim()) rniChanged.push('LPO No');
       if (pay.toUpperCase().trim() !== (orig.paymentMode||'').toUpperCase().trim()) rniChanged.push('Payment Mode');
       if (reqby.toUpperCase().trim() !== (orig.requestedBy||'').toUpperCase().trim()) rniChanged.push('Requested By');
-      var beDate2 = (document.getElementById('be_date_'+n)||{}).value||'';
-      if (beDate2 && beDate2 !== _normDate(orig.dateRequested)) rniChanged.push('Date Requested');
-      var beDateRcvd = (document.getElementById('be_datercvd_'+n)||{}).value||'';
-      if (beDateRcvd && beDateRcvd !== _normDate(orig.dateReceived||'')) rniChanged.push('Date Received');
+      // NOTE: Date Requested and Date Received are NOT checked here —
+      // they are locked/read-only in the RNI edit form so cannot be changed by user.
       if (rniChanged.length > 0) {
         toast('Record '+(n+1)+' ('+orig.reqNo+'): Only Status, Date Issued and Remarks can be changed for RECEIVED NOT ISSUED. Cannot change: '+rniChanged.join(', '),'er'); return;
       }
@@ -11203,8 +11223,13 @@ async function saveBulkEdit() {
       description: desc, qty: qty, unitPrice: up, cost: total,
       supplier: sup, lpoNo: lpo, status: stat, paymentMode: pay,
       requestedBy: reqby,
-      dateRequested: (document.getElementById('be_date_'+n)||{}).value || orig.dateRequested,
-      dateReceived:  (document.getElementById('be_datercvd_'+n)||{}).value || '',
+      // For PNR/RNI: restore locked fields from original to avoid format changes
+      dateRequested: (origStat === 'PAID NOT RECEIVED' || origStat === 'RECEIVED NOT ISSUED')
+        ? (orig.dateRequested || '')
+        : ((document.getElementById('be_date_'+n)||{}).value || orig.dateRequested || ''),
+      dateReceived: origStat === 'RECEIVED NOT ISSUED'
+        ? (orig.dateReceived || '')
+        : ((document.getElementById('be_datercvd_'+n)||{}).value || ''),
       dateIssued:    (document.getElementById('be_dateissued_'+n)||{}).value || '',
       remarks:       (document.getElementById('be_remarks_'+n)||{}).value || '',
     });
@@ -11212,16 +11237,6 @@ async function saveBulkEdit() {
   }
 
   if (!updates.length) { toast('Nothing to save','er'); return; }
-
-  // Normalize stored date formats to YYYY-MM-DD for comparison
-  // Must be declared at function scope — used in both PNR and RNI blocks
-  var _normDate = function(d) {
-    if (!d) return '';
-    d = String(d).trim();
-    var dmy = d.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
-    if (dmy) return dmy[3]+'-'+dmy[2].padStart(2,'0')+'-'+dmy[1].padStart(2,'0');
-    return d;
-  };
 
   var saved=0, failed=0;
   if (btn) { btn.disabled=true; btn.textContent='Saving...'; }
@@ -11255,23 +11270,29 @@ async function saveBulkEdit() {
 var _freeLineCount = 0;
 
 async function openFreeReq() {
-  var _loads=[];
-  if(!SUPPLIERS.length) _loads.push(wsFbRead('/suppliers').then(function(r){if(r.records.length)SUPPLIERS=r.records;else return callAPI('getSuppliers').then(function(r2){if(r2&&r2.records)SUPPLIERS=r2.records;});}).catch(function(){}));
-  if(!SPAREPARTS.length) _loads.push(wsFbRead('/spareParts').then(function(r){if(r.records.length)SPAREPARTS=r.records;else return callAPI('getSpareParts').then(function(r2){if(r2&&r2.records)SPAREPARTS=r2.records;});}).catch(function(){}));
-  if(!VEHICLES.length) _loads.push(wsFbRead('/vehicles','/ak_trips').then(function(r){if(r.records.length)VEHICLES=r.records;else return callAPI('getVehicles').then(function(r2){if(r2&&r2.records)VEHICLES=r2.records;});}).catch(function(){}));
-  if(_loads.length) await Promise.all(_loads);
-
   if (!can('workshop_create')) { toast('No permission to create requisitions', 'er'); return; }
   if (!can('req')) { toast('No permission','er'); return; }
+
+  // Show modal immediately with loading state
   _freeLineCount = 0;
   var wrap = document.getElementById('free_lines_wrap');
   if (wrap) {
     wrap.querySelectorAll('select').forEach(function(s){ if(s.tomselect) s.tomselect.destroy(); });
-    wrap.innerHTML = '';
+    wrap.innerHTML = '<div style="text-align:center;padding:32px;color:var(--t2);font-size:13px">⏳ Loading data...</div>';
   }
   document.getElementById('free_grand_total').textContent = '0.00';
-  addFreeReqLine();
   document.getElementById('freereqmodal').classList.remove('hidden');
+
+  // Load all required data in parallel, waiting for completion
+  var _loads = [];
+  if (!SUPPLIERS.length)  _loads.push(wsFbRead('/suppliers').then(function(r){ if(r&&r.records&&r.records.length) SUPPLIERS=r.records; else return callAPI('getSuppliers').then(function(r2){if(r2&&r2.records)SUPPLIERS=r2.records;}); }).catch(function(){}));
+  if (!SPAREPARTS.length) _loads.push(wsFbRead('/spareParts').then(function(r){ if(r&&r.records&&r.records.length) SPAREPARTS=r.records; else return callAPI('getSpareParts').then(function(r2){if(r2&&r2.records)SPAREPARTS=r2.records;}); }).catch(function(){}));
+  if (!VEHICLES.length)   _loads.push(wsFbRead('/vehicles','/ak_trips').then(function(r){ if(r&&r.records&&r.records.length) VEHICLES=r.records; else return callAPI('getVehicles').then(function(r2){if(r2&&r2.records)VEHICLES=r2.records;}); }).catch(function(){}));
+  if (_loads.length) await Promise.all(_loads);
+
+  // Now data is guaranteed loaded — build the form
+  if (wrap) wrap.innerHTML = '';
+  addFreeReqLine();
 }
 
 function addFreeReqLine() {
@@ -11280,16 +11301,10 @@ function addFreeReqLine() {
   var wrap = document.getElementById('free_lines_wrap');
   if (!wrap) return;
 
-  var partOpts = '<option value="">Select spare part...</option>';
-  SPAREPARTS.filter(function(p){return p.status!=='INACTIVE';}).forEach(function(p){
-    partOpts += '<option value="'+p.name+'">'+p.code+' - '+p.name+'</option>';
-  });
   var supOpts = '<option value="">Select supplier...</option>';
   SUPPLIERS.filter(function(s){return s.status!=='INACTIVE';}).forEach(function(s){
     supOpts += '<option value="'+s.name+'">'+s.name+'</option>';
   });
-  var truckOpts = '<option value="">Search vehicle...</option>';
-  VEHICLES.forEach(function(v){ truckOpts += '<option value="'+v.plate+'">'+v.plate+(v.vehicleType?' ('+v.vehicleType+')':'')+'</option>'; });
 
   var fs = 'width:100%;height:38px;padding:0 10px;font-size:13px;border:1.5px solid #d2d2d7;border-radius:7px;background:#fff;box-sizing:border-box;font-family:Inter,sans-serif';
   var fg = function(lbl, html, star) {
@@ -11310,7 +11325,7 @@ function addFreeReqLine() {
     + '</div>'
     // ROW 1: Truck | Vehicle Type | Job Card | Driver | Category | Priority | Requested By
     + '<div style="display:grid;grid-template-columns:repeat(7,1fr);gap:14px;margin-bottom:14px">'
-    + fg('Truck / Vehicle No', '<select id="fr_truck_'+n+'" style="'+fs+'">'+truckOpts+'</select>', true)
+    + fg('Truck / Vehicle No', '<select id="fr_truck_'+n+'" style="'+fs+'"><option value=""></option></select>', true)
     + '<div id="fr_vtype_fg_'+n+'" style="display:flex;flex-direction:column;gap:5px"><label style="font-size:10px;font-weight:700;color:#515154;text-transform:uppercase;letter-spacing:.06em">Vehicle Type</label><div style="min-height:38px;display:flex;align-items:center"><input type="text" id="fr_vtype_'+n+'" readonly style="'+fs+';opacity:.6;cursor:not-allowed;color:var(--ac);font-weight:600"></div></div>'
     + '<div id="fr_jobcard_fg_'+n+'" style="display:flex;flex-direction:column;gap:5px"><label style="font-size:10px;font-weight:700;color:#515154;text-transform:uppercase;letter-spacing:.06em">Job Card No</label><div style="min-height:38px;display:flex;align-items:center"><select id="fr_jobcard_'+n+'" onchange="onFRJCSelect('+n+')" style="'+fs+'"><option value="">Select...</option></select></div></div>'
     + '<div id="fr_driver_fg_'+n+'" style="display:flex;flex-direction:column;gap:5px"><label style="font-size:10px;font-weight:700;color:#515154;text-transform:uppercase;letter-spacing:.06em">Driver Name</label><div style="min-height:38px;display:flex;align-items:center"><select id="fr_driver_'+n+'" style="'+fs+'"><option value="">Select...</option></select></div></div>'
@@ -11321,7 +11336,7 @@ function addFreeReqLine() {
     // ROW 2: Spare Part | Qty | Unit Price | Total | Supplier | LPO | Date Requested
     + '<div style="display:grid;grid-template-columns:2.5fr 80px 130px 130px 1.8fr 110px 140px;gap:14px;margin-bottom:14px">'
     + fg('Spare Part / Description',
-        '<select id="fr_desc_'+n+'" onchange="onFRDescChange('+n+')" style="'+fs+'">'+partOpts+'<option value="__custom__">✏ Enter manually...</option></select>'
+        '<select id="fr_desc_'+n+'" onchange="onFRDescChange('+n+')" style="'+fs+'"><option value=""></option></select>'
         + '<input type="text" id="fr_desc_txt_'+n+'" placeholder="Type description..." style="'+fs+';margin-top:4px;display:none">', true)
     + fg('Qty', '<input type="number" id="fr_qty_'+n+'" min="1" value="1" oninput="calcFRLine('+n+')" style="'+fs+'">', true)
     + fg('Unit Price', '<input type="number" id="fr_up_'+n+'" placeholder="0.00" min="0" oninput="calcFRLine('+n+')" style="'+fs+'">', true)
@@ -11342,16 +11357,37 @@ function addFreeReqLine() {
 
   wrap.appendChild(card);
 
-  // Tom Select for truck and supplier and description
-  new TomSelect(document.getElementById('fr_truck_' + n), {
-    allowEmptyOption: true, placeholder: 'Search vehicle...',
+  // Tom Select for truck — build options from VEHICLES (already loaded by openFreeReq)
+  var truckTS = new TomSelect(document.getElementById('fr_truck_' + n), {
+    allowEmptyOption: true,
+    placeholder: 'Search vehicle...',
+    valueField: 'value',
+    labelField: 'text',
+    searchField: ['text'],
+    options: [{ value: '', text: '' }].concat(VEHICLES.map(function(v){
+      return { value: v.plate, text: v.plate + (v.vehicleType ? ' ('+v.vehicleType+')' : '') };
+    })),
     onChange: function(val) { onFRTruckChange(n, val); }
   });
+
+  // Tom Select for supplier
   new TomSelect(document.getElementById('fr_sup_' + n), {
     allowEmptyOption: true, placeholder: 'Search or type supplier...', create: true, dropdownParent: 'body'
   });
+
+  // Tom Select for spare part — build options from SPAREPARTS (already loaded by openFreeReq)
   new TomSelect(document.getElementById('fr_desc_' + n), {
-    allowEmptyOption: true, placeholder: 'Search spare part...', dropdownParent: 'body',
+    allowEmptyOption: true,
+    placeholder: 'Search spare part...',
+    dropdownParent: 'body',
+    valueField: 'value',
+    labelField: 'text',
+    searchField: ['text'],
+    options: [{ value: '', text: '' }].concat(
+      SPAREPARTS.filter(function(p){ return p.status !== 'INACTIVE'; }).map(function(p){
+        return { value: p.name, text: p.code + ' - ' + p.name };
+      })
+    ).concat([{ value: '__custom__', text: '✏ Enter manually...' }]),
     onChange: function() { onFRDescChange(n); }
   });
 
