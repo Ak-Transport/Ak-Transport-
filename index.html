@@ -4539,6 +4539,8 @@ async function populateFormDropdowns() {
       supSel.appendChild(o);
     });
     if (cur && cur !== '__custom__') supSel.value = cur;
+    initTomSelect('f_supplier');
+    // No setValue call needed — initTomSelect reads the pre-selected HTML option
   }
 
   // 2. SPARE PARTS dropdown
@@ -4564,7 +4566,7 @@ async function populateFormDropdowns() {
       dropdownParent: 'body',
       onChange: function(val) { onDescSelect(); }
     });
-    if (curDesc && descSel.tomselect) descSel.tomselect.setValue(curDesc, true);
+    // No setValue call — TomSelect reads pre-selected HTML option at init
   }
 
   // 3. DRIVER dropdown
@@ -4599,8 +4601,7 @@ async function populateFormDropdowns() {
     truckSel.appendChild(oc);
     if (cur) { truckSel.value = cur; }
     initTomSelect('f_truck');
-    // Restore value after TomSelect reinit
-    if (cur && truckSel.tomselect) truckSel.tomselect.setValue(cur, true);
+    // No setValue call needed — initTomSelect reads the pre-selected HTML option
   }
 
   // 5. JOB CARD dropdown - exclude COMPLETED
@@ -11100,6 +11101,58 @@ function openBulkEdit() {
       + '</div>';
 
     wrap.appendChild(card);
+
+    // ── TomSelect: Supplier ──────────────────────────────────────
+    var beSupEl = document.getElementById('be_sup_' + n);
+    if (beSupEl) {
+      // TomSelect reads the pre-selected option from HTML at init time —
+      // no need for setValue call (avoids case-sensitivity mismatch)
+      new TomSelect(beSupEl, {
+        allowEmptyOption: true, placeholder: 'Search supplier...',
+        maxOptions: 300, highlight: true, dropdownParent: 'body', create: true
+      });
+    }
+
+    // ── TomSelect: Spare Part / Description ─────────────────────
+    // Replace plain text input with a searchable select + hidden input
+    var beDescInput = document.getElementById('be_desc_' + n);
+    if (beDescInput && beDescInput.tagName === 'INPUT') {
+      var _savedDesc = r.description || '';
+      var beDescSel = document.createElement('select');
+      beDescSel.style.cssText = fs;
+      var _dMatched = false;
+      // Empty option
+      var _o0 = document.createElement('option'); _o0.value = ''; _o0.textContent = ''; beDescSel.appendChild(_o0);
+      SPAREPARTS.filter(function(p){ return p.status !== 'INACTIVE'; }).forEach(function(p){
+        var _o = document.createElement('option');
+        _o.value = p.name; _o.textContent = p.code + ' - ' + p.name;
+        if (p.name === _savedDesc) { _o.selected = true; _dMatched = true; }
+        beDescSel.appendChild(_o);
+      });
+      if (!_dMatched && _savedDesc) {
+        var _oc = document.createElement('option');
+        _oc.value = _savedDesc; _oc.textContent = _savedDesc; _oc.selected = true;
+        beDescSel.appendChild(_oc);
+      }
+      var _ocm = document.createElement('option'); _ocm.value = '__custom__'; _ocm.textContent = '✏ Type manually...'; beDescSel.appendChild(_ocm);
+      // Replace input with select
+      beDescInput.parentNode.replaceChild(beDescSel, beDescInput);
+      // Hidden input keeps same id so saveBulkEdit reads it
+      var _hi = document.createElement('input');
+      _hi.type = 'hidden'; _hi.id = 'be_desc_' + n; _hi.value = _savedDesc;
+      beDescSel.parentNode.appendChild(_hi);
+      // Init TomSelect — reads pre-selected option from HTML naturally
+      (function(_n, _sel, _hi2, _desc) {
+        new TomSelect(_sel, {
+          allowEmptyOption: true, placeholder: 'Search spare part...',
+          maxOptions: 500, highlight: true, dropdownParent: 'body', create: true,
+          onChange: function(val) { if (_hi2) _hi2.value = (val === '__custom__') ? '' : (val || ''); }
+        });
+        // Sync hidden input with whatever TomSelect resolved as selected
+        if (_sel.tomselect) _hi2.value = _sel.tomselect.getValue() || _desc;
+      })(n, beDescSel, _hi, _savedDesc);
+    }
+
   });
 
   // Store row ids for save
