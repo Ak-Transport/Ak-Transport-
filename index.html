@@ -65,14 +65,58 @@
   window.addEventListener('load', function() { _wsFbInit(); });
 
   // Read a Workshop Firebase collection
+  // ── FIREBASE READ TRACKER (Phase 1 diagnostics) ──────────────────
+  // Tracks reads centrally since every Firebase read goes through wsFbRead.
+  // Usage in browser console:
+  //   showFbStats()   → print summary table sorted by MB
+  //   resetFbStats()  → clear counters and start fresh
+  var _fbStats = {};
+
+  function _trackRead(label, val, records) {
+    try {
+      // Safe byte estimation — JSON.stringify length is a good enough proxy
+      // Blob is more accurate but not available in all contexts
+      var str = JSON.stringify(val || null);
+      var bytes = str ? str.length * 2 : 0; // ×2 for UTF-16 approximation
+      var isFull = records > 1;
+      if (!_fbStats[label]) _fbStats[label] = { reads:0, fullReads:0, singleReads:0, bytes:0 };
+      _fbStats[label].reads++;
+      _fbStats[label].bytes += bytes;
+      if (isFull) _fbStats[label].fullReads++;
+      else _fbStats[label].singleReads++;
+    } catch(e) { /* tracker must never break the app */ }
+  }
+
+  window.showFbStats = function() {
+    var rows = Object.keys(_fbStats).map(function(p) {
+      var s = _fbStats[p];
+      return { Path: p, Reads: s.reads, 'Full reads': s.fullReads,
+               'Single reads': s.singleReads, MB: (s.bytes/1024/1024).toFixed(3) };
+    }).sort(function(a,b){ return parseFloat(b.MB)-parseFloat(a.MB); });
+    var totalMB = rows.reduce(function(t,r){ return t+parseFloat(r.MB); }, 0);
+    console.group('📊 Firebase Read Stats (Workshop) — ' + new Date().toLocaleTimeString());
+    console.table(rows);
+    console.log('TOTAL: ' + rows.reduce(function(t,r){return t+r.Reads;},0) +
+                ' reads, ' + totalMB.toFixed(2) + ' MB');
+    console.groupEnd();
+    return rows;
+  };
+
+  window.resetFbStats = function() {
+    _fbStats = {};
+    console.log('✅ Firebase stats reset at ' + new Date().toLocaleTimeString());
+  };
+
   function wsFbRead(path, root) {
     root = root || '/ak_workshop';
     return _wsFbInit().then(function() {
       if (!_wsFbDb) return { records: [] };
       return _wsFbDb.ref(root + path).once('value').then(function(snap) {
         var val = snap.val();
+        var records = val ? Object.values(val) : [];
+        _trackRead((root === '/ak_workshop' ? 'workshop:' : root+':') + path, val, records.length);
         if (!val) return { records: [] };
-        return { records: Object.values(val) };
+        return { records: records };
       });
     });
   }
@@ -1843,17 +1887,34 @@ function applyFilters() {
   if (currentView === 'today') data = data.filter(r => r.priority === 'HIGH PRIORITY' && r.status === 'NOT PAID');
   else if (currentView !== 'workshop') data = data.filter(r => r.status === currentView);
   if (fs) data = data.filter(r => r.status === fs);
+  // Search field filters — normalize date fields before comparison
+  var _dateFields = ['dateRequested','dateReceived','dateIssued'];
   [{f:document.getElementById('SEARCHFIELD1').value,v:(document.getElementById('SEARCH1').value||'').trim().toLowerCase()},
    {f:document.getElementById('SEARCHFIELD2').value,v:(document.getElementById('SEARCH2').value||'').trim().toLowerCase()},
    {f:document.getElementById('SEARCHFIELD3').value,v:(document.getElementById('SEARCH3').value||'').trim().toLowerCase()}
-  ].forEach(s => { if(s.f&&s.v) data = data.filter(r => (r[s.f]||'').toLowerCase().includes(s.v)); });
+  ].forEach(s => {
+    if (!s.f || !s.v) return;
+    data = data.filter(function(r) {
+      var val = (r[s.f]||'').toLowerCase();
+      // For date fields, also compare the normalized YYYY-MM-DD version
+      // so searching "2026-07-21" finds records stored as "21/07/2026"
+      if (_dateFields.includes(s.f)) {
+        var dmy = val.match(/^(\d{2})\/(\d{2})\/(\d{4})/);
+        if (dmy) {
+          var normalized = (dmy[3] + '-' + dmy[2] + '-' + dmy[1]).toLowerCase();
+          return normalized.includes(s.v) || val.includes(s.v);
+        }
+      }
+      return val.includes(s.v);
+    });
+  });
   // Date range filter
   var dateFrom = document.getElementById('DATE_FROM') ? document.getElementById('DATE_FROM').value : '';
   var dateTo   = document.getElementById('DATE_TO')   ? document.getElementById('DATE_TO').value   : '';
   var dateField = getActiveDateField();
   if (dateField && (dateFrom || dateTo)) {
     data = data.filter(function(r) {
-      var val = (r[dateField]||'').substring(0,10);
+      var val = _normDateVal(r[dateField]||'');
       if (!val) return false;
       if (dateFrom && val < dateFrom) return false;
       if (dateTo   && val > dateTo)   return false;
@@ -2303,7 +2364,7 @@ function getDataPeriod(){
   var months=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
   var max=null;
   ALL.forEach(function(r){
-    var d=(r.dateRequested||'').substring(0,10);
+    var d=_normDateVal(r.dateRequested||'');
     if(!d||d.length<10)return;
     if(!max||d>max)max=d;
   });
@@ -5383,6 +5444,26 @@ function onBSFChange(){
 }
 var _DATE_FIELDS=['date','dateRequested','dateReceived','dateFitted','dateRemoved','dateIssued','poDate','scrapDate','saleDate','grnDate','purchaseDate','requestDate'];
 function _isDateField(f){return _DATE_FIELDS.some(function(d){return f===d||f.toLowerCase().indexOf('date')>=0;});}
+// Normalize any date string to YYYY-MM-DD for consistent comparison
+// Handles DD/MM/YYYY, D/M/YYYY, DD-MM-YYYY, YYYY-MM-DD, YYYY/MM/DD and ISO strings
+function _normDateVal(val) {
+  if (!val) return '';
+  var s = String(val).trim();
+  // Strip time component if present (e.g. "2026-05-01T00:00:00")
+  if (s.length > 10 && s.charAt(10) === 'T') s = s.substring(0,10);
+  // Already YYYY-MM-DD
+  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+  // YYYY/MM/DD
+  var ym = s.match(/^(\d{4})\/(\d{2})\/(\d{2})$/);
+  if (ym) return ym[1]+'-'+ym[2]+'-'+ym[3];
+  // DD/MM/YYYY or D/M/YYYY (with or without leading zeros)
+  var dm = s.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/);
+  if (dm) return dm[3]+'-'+dm[2].padStart(2,'0')+'-'+dm[1].padStart(2,'0');
+  // Fallback: try JS Date parse
+  var d = new Date(s);
+  if (!isNaN(d.getTime())) return d.toISOString().substring(0,10);
+  return s;
+}
 function _applyTyreFilter(rows, prefix, fieldMap) {
   var filters=[{f:'',v:''},{f:'',v:''},{f:'',v:''}];
   for(var i=1;i<=3;i++){
@@ -5398,7 +5479,13 @@ function _applyTyreFilter(rows, prefix, fieldMap) {
     for(var i=0;i<3;i++){
       var fi=filters[i];
       if(!fi.f||!fi.v) continue;
-      if(_isDateField(fi.f)) continue; // handled by date range
+      if(_isDateField(fi.f)){
+        // For date fields: normalize stored value and search in YYYY-MM-DD format
+        var _dv = _normDateVal(String(rm[fi.f]||''));
+        var _rv = String(rm[fi.f]||'').toLowerCase();
+        if(_dv.indexOf(fi.v)<0 && _rv.indexOf(fi.v)<0) return false;
+        continue;
+      }
       if(String(rm[fi.f]||'').toLowerCase().indexOf(fi.v)<0) return false;
     }
     if(st){
@@ -5407,7 +5494,7 @@ function _applyTyreFilter(rows, prefix, fieldMap) {
       else if(_rs!==st) return false;
     }
     if(dateField&&(df||dt)){
-      var d=String(rm[dateField]||'').substring(0,10);
+      var d=_normDateVal(String(rm[dateField]||''));
       if(df&&d&&d<df) return false;
       if(dt&&d&&d>dt) return false;
     }
@@ -6344,7 +6431,12 @@ function _applyBattFilter(rows, prefix, fieldMap) {
     for(var i=0;i<filters.length;i++){
       var fi=filters[i];
       if(!fi.f||!fi.v) continue;
-      if(_isDateField(fi.f)) continue;
+      if(_isDateField(fi.f)){
+        var _dv=_normDateVal(String(rm[fi.f]||''));
+        var _rv=String(rm[fi.f]||'').toLowerCase();
+        if(_dv.indexOf(fi.v)<0&&_rv.indexOf(fi.v)<0) return false;
+        continue;
+      }
       if(String(rm[fi.f]||'').toLowerCase().indexOf(fi.v)<0) return false;
     }
     if(st){
@@ -6353,7 +6445,7 @@ function _applyBattFilter(rows, prefix, fieldMap) {
       else if(_rs!==st) return false;
     }
     if(dateField&&(df||dt)){
-      var d=String(rm[dateField]||'').substring(0,10);
+      var d=_normDateVal(String(rm[dateField]||''));
       if(df&&d&&d<df) return false;
       if(dt&&d&&d>dt) return false;
     }
@@ -8003,11 +8095,13 @@ function applySpmFilter() {
     var tr = rows[idx]; idx++;
     if (!tr) return;
     var statusMatch = !st || (r.status||'').toUpperCase()===st;
-    var f1Match = SPM_DATE_FIELDS.includes(f1) || !f1 || !v1 || String(fieldVal(r,f1)).toLowerCase().indexOf(v1) >= 0;
-    var f2Match = SPM_DATE_FIELDS.includes(f2) || !f2 || !v2 || String(fieldVal(r,f2)).toLowerCase().indexOf(v2) >= 0;
+    var _spmNorm1 = SPM_DATE_FIELDS.includes(f1) ? _normDateVal(String(fieldVal(r,f1)||'')) : '';
+    var f1Match = !f1 || !v1 || (SPM_DATE_FIELDS.includes(f1) ? (_spmNorm1.indexOf(v1)>=0||String(fieldVal(r,f1)).toLowerCase().indexOf(v1)>=0) : String(fieldVal(r,f1)).toLowerCase().indexOf(v1)>=0);
+    var _spmNorm2 = SPM_DATE_FIELDS.includes(f2) ? _normDateVal(String(fieldVal(r,f2)||'')) : '';
+    var f2Match = !f2 || !v2 || (SPM_DATE_FIELDS.includes(f2) ? (_spmNorm2.indexOf(v2)>=0||String(fieldVal(r,f2)).toLowerCase().indexOf(v2)>=0) : String(fieldVal(r,f2)).toLowerCase().indexOf(v2)>=0);
     var dateMatch = true;
     if (activeDateField && (dFrom || dTo)) {
-      var dv = fieldVal(r, activeDateField);
+      var dv = _normDateVal(String(fieldVal(r, activeDateField)||''));
       if (dFrom && dv < dFrom) dateMatch = false;
       if (dTo && dv > dTo) dateMatch = false;
     }
@@ -11818,9 +11912,9 @@ function renderStoreIssuances() {
   function applyIssFilters(recs){
     return recs.filter(function(r){
       if(sifSt&&(r.status||'').toUpperCase()!==sifSt)return false;
-      if(sif1f&&sif1v&&String(r[sif1f]||'').toLowerCase().indexOf(sif1v)<0)return false;
-      if(sif2f&&sif2v&&String(r[sif2f]||'').toLowerCase().indexOf(sif2v)<0)return false;
-      if(sif3f&&sif3v&&String(r[sif3f]||'').toLowerCase().indexOf(sif3v)<0)return false;
+      if(sif1f&&sif1v){var _d1=_isDateField(sif1f)?_normDateVal(String(r[sif1f]||'')):null;if(!(_d1&&_d1.indexOf(sif1v)>=0)&&String(r[sif1f]||'').toLowerCase().indexOf(sif1v)<0)return false;}
+      if(sif2f&&sif2v){var _d2=_isDateField(sif2f)?_normDateVal(String(r[sif2f]||'')):null;if(!(_d2&&_d2.indexOf(sif2v)>=0)&&String(r[sif2f]||'').toLowerCase().indexOf(sif2v)<0)return false;}
+      if(sif3f&&sif3v){var _d3=_isDateField(sif3f)?_normDateVal(String(r[sif3f]||'')):null;if(!(_d3&&_d3.indexOf(sif3v)>=0)&&String(r[sif3f]||'').toLowerCase().indexOf(sif3v)<0)return false;}
       return true;
     });
   }
@@ -12776,13 +12870,21 @@ function renderStoreRequisition(statusFilter) {
   if (!isAll) data = data.filter(function(r){ return (r.status||'').toUpperCase() === statusFilter.toUpperCase(); });
   if (statusF) data = data.filter(function(r){ return (r.status||'').toUpperCase() === statusF; });
   filters.forEach(function(fi){
-    if (fi.f && fi.v && fi.f!=='dateRequested' && fi.f!=='dateReceived')
-      data = data.filter(function(r){ return (r[fi.f]||'').toString().toLowerCase().includes(fi.v); });
+    if (fi.f && fi.v) {
+      var _isDF = (fi.f==='dateRequested'||fi.f==='dateReceived');
+      data = data.filter(function(r){
+        if (_isDF) {
+          var _dn=_normDateVal(r[fi.f]||'');
+          return _dn.includes(fi.v)||(r[fi.f]||'').toString().toLowerCase().includes(fi.v);
+        }
+        return (r[fi.f]||'').toString().toLowerCase().includes(fi.v);
+      });
+    }
   });
   // Date range filter
   if (dateField && (dateFrom || dateTo)) {
     data = data.filter(function(r){
-      var d = (r[dateField]||'');
+      var d = _normDateVal(r[dateField]||'');
       if (dateFrom && d < dateFrom) return false;
       if (dateTo   && d > dateTo)   return false;
       return true;
@@ -15938,6 +16040,7 @@ function doLogout() {
   CURRENT_USER = null;
   window.CURRENT_USER = null;
   try { sessionStorage.clear(); } catch(e) {}
+  try { localStorage.removeItem('ak_ws_data_v2'); } catch(e) {}
   // Hide main layout
   var ml = document.getElementById('mainlayout'); if(ml) ml.style.display='none';
   // Restore login box - use DOM manipulation to avoid string quoting issues
@@ -16600,7 +16703,14 @@ function applyJCFilter() {
   var hasFilter = filters.some(function(f){ return f.field && f.val; });
   filters.forEach(function(f) {
     if (f.field && f.val) {
-      data = data.filter(function(j) { return (j[f.field]||'').toLowerCase().includes(f.val); });
+      data = data.filter(function(j) {
+        if (_isDateField(f.field)) {
+          var _dv=_normDateVal(String(j[f.field]||''));
+          var _rv=String(j[f.field]||'').toLowerCase();
+          return _dv.includes(f.val)||_rv.includes(f.val);
+        }
+        return (j[f.field]||'').toLowerCase().includes(f.val);
+      });
     }
   });
   // Date range filter
@@ -16610,7 +16720,7 @@ function applyJCFilter() {
   if (dateField && (dateFrom || dateTo)) {
     hasFilter = true;
     data = data.filter(function(j) {
-      var val = (j[dateField]||'').substring(0,10);
+      var val = _normDateVal(j[dateField]||'');
       if (!val) return false;
       if (dateFrom && val < dateFrom) return false;
       if (dateTo   && val > dateTo)   return false;
@@ -16667,14 +16777,23 @@ function applyJCSFilter() {
   ];
   var data = JOBCARDS.slice();
   var hasFilter = filters.some(function(f){ return f.field && f.val; });
-  filters.forEach(function(f){ if(f.field&&f.val) data=data.filter(function(j){ return (j[f.field]||'').toLowerCase().includes(f.val); }); });
+  filters.forEach(function(f){
+    if(f.field&&f.val) data=data.filter(function(j){
+      if(_isDateField(f.field)){
+        var _dv=_normDateVal(String(j[f.field]||''));
+        var _rv=String(j[f.field]||'').toLowerCase();
+        return _dv.includes(f.val)||_rv.includes(f.val);
+      }
+      return (j[f.field]||'').toLowerCase().includes(f.val);
+    });
+  });
   var dateFrom = (document.getElementById('JCS_DATE_FROM')||{}).value||'';
   var dateTo   = (document.getElementById('JCS_DATE_TO')||{}).value||'';
   var dateField = getActiveJCSDateField();
   if (dateField && (dateFrom || dateTo)) {
     hasFilter = true;
     data = data.filter(function(j) {
-      var val=(j[dateField]||'').substring(0,10);
+      var val=_normDateVal(j[dateField]||'');
       if(!val) return false;
       if(dateFrom && val<dateFrom) return false;
       if(dateTo   && val>dateTo)   return false;
@@ -16900,58 +17019,135 @@ async function init(){
 // Load ALL data after login
 async function loadAppData(){
   showLoad('Loading your workspace...');
-  _wsDataReady = false; // reset — will be set true when load completes
+  _wsDataReady = false;
   await _wsFbInit();
 
-  var ok = await loadRecords();
-  if(ok){
-    // Load ALL secondary data from Firebase in one parallel batch
-    // No Apps Script involved - instant reads from Firebase
-    var all = await Promise.all([
-      wsFbRead('/suppliers'),
-      wsFbRead('/spareParts'),
-      wsFbRead('/jobCards'),
-      wsFbRead('/drivers',   '/ak_trips'),
-      wsFbRead('/vehicles',  '/ak_trips'),
-      wsFbRead('/storeInventory'),
-      wsFbRead('/storeReqs'),
-      wsFbRead('/storeIssuances'),
-      wsFbRead('/pendingIssuances'),
-      wsFbRead('/tyres'),
-      wsFbRead('/tyrePOs'),
-      wsFbRead('/tyreGRNs'),
-      wsFbRead('/tyreFitments'),
-      wsFbRead('/tyreScrapSales'),
-      wsFbRead('/batteryPOs'),
-      wsFbRead('/batteryGRNs'),
-      wsFbRead('/batteries'),
-      wsFbRead('/batteryFitments'),
-      wsFbRead('/batterySales'),
-      wsFbRead('/spareMoves')
-    ]);
-    SUPPLIERS       = all[0].records;
-    SPAREPARTS      = all[1].records;
-    JOBCARDS        = all[2].records;
-    DRIVERS         = all[3].records;
-    VEHICLES        = all[4].records;
-    STORE_INVENTORY = all[5].records;
-    STORE_REQS      = all[6].records;
-    STORE_ISSUANCES = all[7].records;
-    ISS_PENDING     = _parseIssPending(all[8].records);
-    TYRES           = all[9].records;
-    TYRE_POS        = all[10].records;
-    TYRE_GRNS       = all[11].records;
-    TYRE_FITS       = all[12].records;
-    TYRE_SCRAPS     = all[13].records;
-    BAT_POS         = all[14].records;
-    BAT_GRNS        = all[15].records;
-    BATTERIES       = all[16].records;
-    BAT_FITS        = all[17].records;
-    BAT_SALES       = all[18].records;
-    SPARE_MOVES     = all[19].records;
+  // ── CACHE STRATEGY ──────────────────────────────────────────────
+  // On first load: fetch from Firebase, cache to localStorage
+  // On refresh:    load from cache immediately (instant), then
+  //                refresh from Firebase in background silently
+  var CACHE_KEY = 'ak_ws_data_v2';
+  var CACHE_TTL = 5 * 60 * 1000; // 5 minutes — after this, foreground refresh
+
+  function _saveCache(data) {
+    try {
+      localStorage.setItem(CACHE_KEY, JSON.stringify({ ts: Date.now(), data: data }));
+    } catch(e) { /* localStorage full or unavailable — ignore */ }
   }
-  hideLoad();
-  if(ok){
+
+  function _loadCache() {
+    try {
+      var raw = localStorage.getItem(CACHE_KEY);
+      if (!raw) return null;
+      var parsed = JSON.parse(raw);
+      if (!parsed || !parsed.data || !parsed.ts) return null;
+      var age = Date.now() - parsed.ts;
+      return { data: parsed.data, fresh: age < CACHE_TTL, age: age };
+    } catch(e) { return null; }
+  }
+
+  function _applyData(d) {
+    if (!d) return;
+    ALL             = d.ALL             || [];
+    SUPPLIERS       = d.SUPPLIERS       || [];
+    SPAREPARTS      = d.SPAREPARTS      || [];
+    JOBCARDS        = d.JOBCARDS        || [];
+    DRIVERS         = d.DRIVERS         || [];
+    VEHICLES        = d.VEHICLES        || [];
+    STORE_INVENTORY = d.STORE_INVENTORY || [];
+    STORE_REQS      = d.STORE_REQS      || [];
+    STORE_ISSUANCES = d.STORE_ISSUANCES || [];
+    ISS_PENDING     = _parseIssPending(d.ISS_PENDING || []);
+    TYRES           = d.TYRES           || [];
+    TYRE_POS        = d.TYRE_POS        || [];
+    TYRE_GRNS       = d.TYRE_GRNS       || [];
+    TYRE_FITS       = d.TYRE_FITS       || [];
+    TYRE_SCRAPS     = d.TYRE_SCRAPS     || [];
+    BAT_POS         = d.BAT_POS         || [];
+    BAT_GRNS        = d.BAT_GRNS        || [];
+    BATTERIES       = d.BATTERIES       || [];
+    BAT_FITS        = d.BAT_FITS        || [];
+    BAT_SALES       = d.BAT_SALES       || [];
+    SPARE_MOVES     = d.SPARE_MOVES     || [];
+  }
+
+  async function _fetchFromFirebase() {
+    var ok = await loadRecords(); // loads ALL (requisitions)
+    if (!ok) return null;
+    try {
+      var all = await Promise.all([
+        wsFbRead('/suppliers'),      wsFbRead('/spareParts'),
+        wsFbRead('/jobCards'),       wsFbRead('/drivers',   '/ak_trips'),
+        wsFbRead('/vehicles',  '/ak_trips'),
+        wsFbRead('/storeInventory'), wsFbRead('/storeReqs'),
+        wsFbRead('/storeIssuances'), wsFbRead('/pendingIssuances'),
+        wsFbRead('/tyres'),          wsFbRead('/tyrePOs'),
+        wsFbRead('/tyreGRNs'),       wsFbRead('/tyreFitments'),
+        wsFbRead('/tyreScrapSales'), wsFbRead('/batteryPOs'),
+        wsFbRead('/batteryGRNs'),    wsFbRead('/batteries'),
+        wsFbRead('/batteryFitments'),wsFbRead('/batterySales'),
+        wsFbRead('/spareMoves')
+      ]);
+      return {
+        ALL:             ALL,
+        SUPPLIERS:       all[0].records,  SPAREPARTS:      all[1].records,
+        JOBCARDS:        all[2].records,  DRIVERS:         all[3].records,
+        VEHICLES:        all[4].records,  STORE_INVENTORY: all[5].records,
+        STORE_REQS:      all[6].records,  STORE_ISSUANCES: all[7].records,
+        ISS_PENDING:     all[8].records,  TYRES:           all[9].records,
+        TYRE_POS:        all[10].records, TYRE_GRNS:       all[11].records,
+        TYRE_FITS:       all[12].records, TYRE_SCRAPS:     all[13].records,
+        BAT_POS:         all[14].records, BAT_GRNS:        all[15].records,
+        BATTERIES:       all[16].records, BAT_FITS:        all[17].records,
+        BAT_SALES:       all[18].records, SPARE_MOVES:     all[19].records,
+      };
+    } catch(e) {
+      console.warn('loadAppData: secondary batch failed:', e.message);
+      return null;
+    }
+  }
+
+  var cache = _loadCache();
+
+  if (cache && cache.data && cache.data.ALL && cache.data.ALL.length > 0) {
+    // ── CACHE HIT: apply immediately for instant load ──────────────
+    _applyData(cache.data);
+    // Update requisitions from Firebase (most volatile — always refresh)
+    loadRecords(true); // silent, background
+    // Keep loading screen visible for minimum 1.5s so staff see familiar messages
+    var _cacheLoadStart = Date.now();
+    var _cacheMinWait = 1500;
+    var _hideAfterWait = function() {
+      var elapsed = Date.now() - _cacheLoadStart;
+      var remaining = _cacheMinWait - elapsed;
+      if (remaining > 0) {
+        setTimeout(function() { hideLoad(); _finishLoad(true); }, remaining);
+      } else {
+        hideLoad(); _finishLoad(true);
+      }
+    };
+    _hideAfterWait();
+    if (!cache.fresh) {
+      // Cache older than 5 min — refresh all in background silently
+      setTimeout(async function() {
+        var fresh = await _fetchFromFirebase();
+        if (fresh) { _applyData(fresh); _saveCache(fresh); updateBadges(); applyFilters(); }
+      }, 500);
+    }
+  } else {
+    // ── NO CACHE: full Firebase fetch (first load or cache cleared) ─
+    var data = await _fetchFromFirebase();
+    if (data) {
+      _applyData(data);
+      _saveCache(data);
+    }
+    hideLoad();
+    _finishLoad(!!data);
+  }
+}
+
+function _finishLoad(ok) {
+  if (ok) {
     // Enrich requisitions with JC order status + client
     ALL.forEach(function(r){
       if(r.jobCardNo){
@@ -16985,7 +17181,6 @@ async function loadAppData(){
     else if (currentView === 'bat_rem_hold' && typeof renderBatRemHold === 'function') renderBatRemHold();
     toast('Connected - '+ALL.length+' records loaded','ok');
     _wsDataReady = true; // initial load complete - listeners can now safely patch
-    var _wasOffline = false;
 
     // ── PER-COLLECTION TIMESTAMP LISTENERS ───────────────────────
     // Each collection has its own _updatedAt timestamp in /_meta.
@@ -17218,7 +17413,7 @@ async function loadAppData(){
     // Attach listeners for initial view
     if (typeof currentView !== 'undefined') window._wsSyncListenersForView(currentView);
 
-  }else{
+  } else {
     document.getElementById('emptystate').style.display='block';
     document.getElementById('emptystate').innerHTML='<div style="font-size:40px;margin-bottom:10px">⚠️</div><div style="font-size:15px;font-weight:600;color:var(--t2);margin-bottom:5px">Cannot connect to database</div><div style="font-size:13px;margin-bottom:14px">Check your internet connection</div><button class="btn bp" onclick="loadAppData()">Try Again</button>';
   }
@@ -18510,15 +18705,29 @@ function doSignIn() {
     if (errEl) errEl.textContent = msg || 'Login failed';
   }
 
-  // Firebase-first auth with 8s timeout
+  // Firebase-first auth with 12s timeout
   var fbPromise = new Promise(function(resolve) {
-    var timer = setTimeout(function(){ resolve(null); }, 8000);
-    _wsFbInit().then(function() {
-      if (!_wsFbDb) { clearTimeout(timer); resolve(null); return; }
-      _wsFbDb.ref('/ak_trips/users').once('value').then(function(snap){
-        clearTimeout(timer); resolve(snap);
+    var timer = setTimeout(function(){ resolve(null); }, 12000);
+    function _tryFbRead() {
+      _wsFbInit().then(function() {
+        if (!_wsFbDb) {
+          // Firebase not ready yet — wait 1s and retry once
+          setTimeout(function() {
+            _wsFbInit().then(function() {
+              if (!_wsFbDb) { clearTimeout(timer); resolve(null); return; }
+              _wsFbDb.ref('/ak_trips/users').once('value')
+                .then(function(snap){ clearTimeout(timer); resolve(snap); })
+                .catch(function(){ clearTimeout(timer); resolve(null); });
+            }).catch(function(){ clearTimeout(timer); resolve(null); });
+          }, 1000);
+          return;
+        }
+        _wsFbDb.ref('/ak_trips/users').once('value')
+          .then(function(snap){ clearTimeout(timer); resolve(snap); })
+          .catch(function(){ clearTimeout(timer); resolve(null); });
       }).catch(function(){ clearTimeout(timer); resolve(null); });
-    }).catch(function(){ clearTimeout(timer); resolve(null); });
+    }
+    _tryFbRead();
   });
 
   fbPromise.then(async function(snap) {
@@ -18557,10 +18766,12 @@ function doSignIn() {
     }
 
     // Fallback: Apps Script loginUser
+    // This runs if: Firebase timed out, user not found in Firebase,
+    // or user found but has no passwordHash or password field
     if (!found) {
       try {
         var controller = new AbortController();
-        var timer2 = setTimeout(function(){ controller.abort(); }, 30000);
+        var timer2 = setTimeout(function(){ controller.abort(); }, 45000);
         var loginRes = await fetch(API, {
           method: 'POST',
           body: JSON.stringify({action: 'loginUser', username: u, password: p}),
@@ -18568,15 +18779,25 @@ function doSignIn() {
           signal: controller.signal
         });
         clearTimeout(timer2);
-        var loginData = await loginRes.json();
+        var loginText = await loginRes.text();
+        var loginData;
+        try { loginData = JSON.parse(loginText); } catch(e) { loginData = null; }
         if (loginData && loginData.success && loginData.user) {
           found = loginData.user;
+        } else if (loginData && loginData.error) {
+          _loginErr(loginData.error);
+          return;
         } else {
-          _loginErr(loginData && loginData.error ? loginData.error : 'Username or password incorrect');
+          _loginErr('Login failed — please try again');
           return;
         }
       } catch(apiFallbackErr) {
-        _loginErr('Cannot connect to server — check your internet connection');
+        if (apiFallbackErr.name === 'AbortError') {
+          _loginErr('Server took too long to respond — please try again');
+        } else {
+          // Network error — give user actionable message
+          _loginErr('Cannot reach server. Check your internet connection and try again.');
+        }
         return;
       }
     }
