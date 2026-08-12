@@ -5459,9 +5459,13 @@ function _normDateVal(val) {
   // DD/MM/YYYY or D/M/YYYY (with or without leading zeros)
   var dm = s.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/);
   if (dm) return dm[3]+'-'+dm[2].padStart(2,'0')+'-'+dm[1].padStart(2,'0');
-  // Fallback: try JS Date parse
+  // Fallback: try JS Date parse — use LOCAL time methods to avoid UTC timezone shift
   var d = new Date(s);
-  if (!isNaN(d.getTime())) return d.toISOString().substring(0,10);
+  if (!isNaN(d.getTime())) {
+    return d.getFullYear()+'-'+
+           String(d.getMonth()+1).padStart(2,'0')+'-'+
+           String(d.getDate()).padStart(2,'0');
+  }
   return s;
 }
 function _applyTyreFilter(rows, prefix, fieldMap) {
