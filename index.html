@@ -1773,8 +1773,8 @@ body.no-delete .actbtn.d:not(.ws-action):not(.jc-action):not(.fleet-action):not(
     <div id="storeIssFilterRow" style="display:none;padding:0 20px 8px;flex-shrink:0">
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
         <div style="display:flex;gap:6px"><select id="SIFF1" style="background:var(--s1);border:1.5px solid var(--ac);border-radius:8px;padding:8px 10px;color:#1d3c6e;font-size:12px;font-weight:600;outline:none;cursor:pointer;width:148px;flex-shrink:0" onchange="(function(s){var v=document.getElementById('SIFV1');if(v){v.type=s.value==='dateIssued'?'date':'text';v.value='';}applyStoreIssFilter();})(this)"><option value="">— Filter 1 —</option><option value="issuanceNo">🔢 Issuance No</option><option value="dateIssued">📅 Date</option></select><input type="text" id="SIFV1" placeholder="Search..." autocomplete="off" spellcheck="false" style="flex:1;min-width:0;background:var(--s1);border:1.5px solid var(--br);border-radius:8px;padding:8px 12px;color:var(--tx);font-size:13px;outline:none" oninput="applyStoreIssFilter()"></div>
-        <div style="display:flex;gap:6px"><select id="SIFF2" style="background:var(--s1);border:1.5px solid var(--ac);border-radius:8px;padding:8px 10px;color:#1d3c6e;font-size:12px;font-weight:600;outline:none;cursor:pointer;width:148px;flex-shrink:0" onchange="applyStoreIssFilter()"><option value="">— Filter 2 —</option><option value="truck">🚛 Truck</option><option value="jobCardNo">📋 Job Card</option></select><input type="text" id="SIFV2" placeholder="Optional..." autocomplete="off" spellcheck="false" style="flex:1;min-width:0;background:var(--s1);border:1.5px solid var(--br);border-radius:8px;padding:8px 12px;color:var(--tx);font-size:13px;outline:none" oninput="applyStoreIssFilter()"></div>
-        <div style="display:flex;gap:6px"><select id="SIFF3" style="background:var(--s1);border:1.5px solid var(--ac);border-radius:8px;padding:8px 10px;color:#1d3c6e;font-size:12px;font-weight:600;outline:none;cursor:pointer;width:148px;flex-shrink:0" onchange="applyStoreIssFilter()"><option value="">— Filter 3 —</option><option value="category">📂 Category</option><option value="issuedBy">👤 Issued By</option></select><input type="text" id="SIFV3" placeholder="Optional..." autocomplete="off" spellcheck="false" style="flex:1;min-width:0;background:var(--s1);border:1.5px solid var(--br);border-radius:8px;padding:8px 12px;color:var(--tx);font-size:13px;outline:none" oninput="applyStoreIssFilter()"></div>
+        <div style="display:flex;gap:6px"><select id="SIFF2" style="background:var(--s1);border:1.5px solid var(--ac);border-radius:8px;padding:8px 10px;color:#1d3c6e;font-size:12px;font-weight:600;outline:none;cursor:pointer;width:148px;flex-shrink:0" onchange="applyStoreIssFilter()"><option value="">— Filter 2 —</option><option value="truck">🚛 Truck</option><option value="jobCardNo">📋 Job Card</option><option value="part">🔧 Part</option></select><input type="text" id="SIFV2" placeholder="Optional..." autocomplete="off" spellcheck="false" style="flex:1;min-width:0;background:var(--s1);border:1.5px solid var(--br);border-radius:8px;padding:8px 12px;color:var(--tx);font-size:13px;outline:none" oninput="applyStoreIssFilter()"></div>
+        <div style="display:flex;gap:6px"><select id="SIFF3" style="background:var(--s1);border:1.5px solid var(--ac);border-radius:8px;padding:8px 10px;color:#1d3c6e;font-size:12px;font-weight:600;outline:none;cursor:pointer;width:148px;flex-shrink:0" onchange="applyStoreIssFilter()"><option value="">— Filter 3 —</option><option value="issuedBy">👤 Issued By</option></select><input type="text" id="SIFV3" placeholder="Optional..." autocomplete="off" spellcheck="false" style="flex:1;min-width:0;background:var(--s1);border:1.5px solid var(--br);border-radius:8px;padding:8px 12px;color:var(--tx);font-size:13px;outline:none" oninput="applyStoreIssFilter()"></div>
         <div style="display:flex;gap:6px"><select id="SIFSTATUS" style="flex:1;background:var(--s1);border:1.5px solid var(--br);border-radius:8px;padding:8px 10px;color:var(--tx);font-size:12px;outline:none;cursor:pointer" onchange="applyStoreIssFilter()"><option value="">All Status</option><option value="PENDING">PENDING</option><option value="APPROVED">APPROVED</option><option value="REJECTED">REJECTED</option></select><button class="btn bg" onclick="clearStoreIssFilter()" style="padding:8px 14px;font-size:12px;white-space:nowrap">✕ Clear</button></div>
       </div>
     </div>
@@ -5459,6 +5459,10 @@ function _normDateVal(val) {
   // DD/MM/YYYY or D/M/YYYY (with or without leading zeros)
   var dm = s.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/);
   if (dm) return dm[3]+'-'+dm[2].padStart(2,'0')+'-'+dm[1].padStart(2,'0');
+  // Handle corrupted JS Date.toString() like "7 2026 00:00:00 GMT+0300"
+  // Extract YYYY-MM-DD pattern from anywhere in the string
+  var embedded = s.match(/(\d{4})-(\d{2})-(\d{2})/);
+  if (embedded) return embedded[0];
   // Fallback: try JS Date parse — use LOCAL time methods to avoid UTC timezone shift
   var d = new Date(s);
   if (!isNaN(d.getTime())) {
@@ -11913,12 +11917,43 @@ function renderStoreIssuances() {
   var sif3f=(document.getElementById('SIFF3')||{}).value||'';
   var sif3v=((document.getElementById('SIFV3')||{}).value||'').trim().toLowerCase();
   var sifSt=((document.getElementById('SIFSTATUS')||{}).value||'').toUpperCase();
+  // Helper: check if a filter field/value matches a record
+  // For truck/jobCardNo/part: also search inside lines[] since ISS_PENDING
+  // stores these inside linesJson not at top level
+  var _lineSearchFields = ['truck','jobCardNo','part'];
+  function _issFieldMatch(r, field, val) {
+    if (!field || !val) return true;
+    // For part — search description/partName/itemName inside lines
+    if (field === 'part') {
+      var topMatch = (String(r.description||r.partName||r.itemName||'').toLowerCase().indexOf(val) >= 0);
+      if (topMatch) return true;
+      var lines = r.lines || [];
+      return lines.some(function(l){
+        return String(l.partName||l.description||l.itemName||'').toLowerCase().indexOf(val) >= 0;
+      });
+    }
+    // For truck/jobCardNo — search top level AND inside lines[]
+    if (field === 'truck' || field === 'jobCardNo') {
+      var topVal = String(r[field]||'').toLowerCase();
+      if (topVal && topVal.indexOf(val) >= 0) return true;
+      var lines = r.lines || [];
+      return lines.some(function(l){ return String(l[field]||'').toLowerCase().indexOf(val) >= 0; });
+    }
+    // Date fields
+    if (_isDateField(field)) {
+      var dn = _normDateVal(String(r[field]||''));
+      return (dn && dn.indexOf(val) >= 0) || String(r[field]||'').toLowerCase().indexOf(val) >= 0;
+    }
+    // All other fields
+    return String(r[field]||'').toLowerCase().indexOf(val) >= 0;
+  }
+
   function applyIssFilters(recs){
     return recs.filter(function(r){
       if(sifSt&&(r.status||'').toUpperCase()!==sifSt)return false;
-      if(sif1f&&sif1v){var _d1=_isDateField(sif1f)?_normDateVal(String(r[sif1f]||'')):null;if(!(_d1&&_d1.indexOf(sif1v)>=0)&&String(r[sif1f]||'').toLowerCase().indexOf(sif1v)<0)return false;}
-      if(sif2f&&sif2v){var _d2=_isDateField(sif2f)?_normDateVal(String(r[sif2f]||'')):null;if(!(_d2&&_d2.indexOf(sif2v)>=0)&&String(r[sif2f]||'').toLowerCase().indexOf(sif2v)<0)return false;}
-      if(sif3f&&sif3v){var _d3=_isDateField(sif3f)?_normDateVal(String(r[sif3f]||'')):null;if(!(_d3&&_d3.indexOf(sif3v)>=0)&&String(r[sif3f]||'').toLowerCase().indexOf(sif3v)<0)return false;}
+      if(sif1f&&sif1v&&!_issFieldMatch(r,sif1f,sif1v))return false;
+      if(sif2f&&sif2v&&!_issFieldMatch(r,sif2f,sif2v))return false;
+      if(sif3f&&sif3v&&!_issFieldMatch(r,sif3f,sif3v))return false;
       return true;
     });
   }
@@ -12197,7 +12232,7 @@ async function bulkApproveIssPending(){
       // Step 1: issue from store (deducts inventory)
       var res=await callAPI("issueFromStore",{
         lines:r.lines||[],issuanceNo:r.issuanceNo,
-        dateIssued:r.dateIssued,issuedBy:r.issuedBy||"",remarks:r.remarks||""
+        dateIssued:_normDateVal(r.dateIssued)||new Date().toISOString().slice(0,10),issuedBy:r.issuedBy||"",remarks:r.remarks||""
       });
       if(res&&res.success!==false){
         // Step 2: mark as approved in PENDING_ISSUANCES sheet
@@ -12387,7 +12422,7 @@ async function approveIssuance(id) {
     var res = await callAPI('issueFromStore', {
       lines: rec.lines || [],
       issuanceNo: rec.issuanceNo,
-      dateIssued: rec.dateIssued,
+      dateIssued: _normDateVal(rec.dateIssued) || new Date().toISOString().slice(0,10),
       issuedBy: rec.issuedBy || '',
       remarks: rec.remarks || ''
     });
@@ -12401,16 +12436,49 @@ async function approveIssuance(id) {
         await callAPI('approvePendingIssuance', { id: id, approvedBy: approvedBy });
       } catch(e) { console.warn('Could not persist approval:', e); }
 
+      // Update ISS_PENDING locally
       var idx = ISS_PENDING.findIndex(function(r){ return r.id === id; });
       if (idx !== -1) {
         ISS_PENDING[idx] = Object.assign({}, ISS_PENDING[idx], { status:'APPROVED', approvedAt:approvedAt, approvedBy:approvedBy });
       }
-      // Background refresh in parallel - don't await, UI updates instantly
-      Promise.all([
-        wsFbRead('/storeInventory').then(function(r){if(r&&r.records)STORE_INVENTORY=r.records;}).catch(function(){}),
-        wsFbRead('/requisitions').then(function(r){if(r&&r.records)ALL=r.records;}).catch(function(){}),
-        wsFbRead('/storeIssuances').then(function(r){if(r&&r.records)STORE_ISSUANCES=r.records;}).catch(function(){})
-      ]).then(function(){updateBadges();})
+
+      // Push new workshop requisition records to ALL locally
+      // Firebase sync from issueFromStore takes time — don't re-fetch immediately
+      // Instead push the new records directly so they show instantly
+      if (res.records && res.records.length) {
+        res.records.forEach(function(r){ ALL.unshift(r); });
+      } else if (rec.lines && rec.lines.length) {
+        // Build approximate records from lines if backend didn't return them
+        rec.lines.forEach(function(l) {
+          ALL.unshift({
+            id: 'WOR-' + Date.now() + '-' + Math.random().toString(36).slice(2),
+            reqNo: l.reqNo || '',
+            dateRequested: rec.dateIssued || approvedAt,
+            truck: l.truck || '',
+            description: l.partName || '',
+            qty: l.qty || 0,
+            unitPrice: l.unitPrice || 0,
+            cost: l.totalCost || 0,
+            supplier: l.supplier || '',
+            dateReceived: rec.dateIssued || approvedAt,
+            status: 'RECEIVED',
+            paymentMode: 'STORE',
+            category: l.category || '',
+            requestedBy: rec.issuedBy || '',
+            remarks: 'FROM STORE — ' + rec.issuanceNo,
+          });
+        });
+      }
+
+      // Background refresh after delay to let Firebase sync complete
+      setTimeout(function() {
+        Promise.all([
+          wsFbRead('/storeInventory').then(function(r){if(r&&r.records)STORE_INVENTORY=r.records;}).catch(function(){}),
+          wsFbRead('/requisitions').then(function(r){if(r&&r.records&&r.records.length>=ALL.length)ALL=r.records;}).catch(function(){}),
+          wsFbRead('/storeIssuances').then(function(r){if(r&&r.records)STORE_ISSUANCES=r.records;}).catch(function(){})
+        ]).then(function(){ updateBadges(); applyFilters(); });
+      }, 3000); // wait 3 seconds for Firebase sync to complete
+
       updateBadges();
       toast('✅ Issuance '+rec.issuanceNo+' approved by '+approvedBy,'ok');
       renderIssPending();
