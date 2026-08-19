@@ -17186,6 +17186,8 @@ async function loadAppData(){
     _applyData(cache.data);
     // Update requisitions from Firebase (most volatile — always refresh)
     loadRecords(true); // silent, background
+    // Mark as live since data is loaded from cache
+    if (typeof setSyncStatus === 'function') setSyncStatus('on');
     // Keep loading screen visible for minimum 1.5s so staff see familiar messages
     var _cacheLoadStart = Date.now();
     var _cacheMinWait = 1500;
@@ -17220,14 +17222,23 @@ async function loadAppData(){
 
 function _finishLoad(ok) {
   if (ok) {
-    // Enrich requisitions with JC order status + client
-    ALL.forEach(function(r){
-      if(r.jobCardNo){
-        var jci=getJCInfo(r.jobCardNo);
-        r.orderStatus=jci.orderStatus;
-        r.clientName=jci.clientName;
+    // Enrich requisitions asynchronously in batches to avoid blocking UI thread
+    // Without this, 2,973 records block the thread and keep "Almost ready..." visible
+    (function _enrichBatch(startIdx) {
+      var batchSize = 300;
+      var end = Math.min(startIdx + batchSize, ALL.length);
+      for (var i = startIdx; i < end; i++) {
+        var r = ALL[i];
+        if (r.jobCardNo) {
+          var jci = getJCInfo(r.jobCardNo);
+          r.orderStatus = jci.orderStatus;
+          r.clientName  = jci.clientName;
+        }
       }
-    });
+      if (end < ALL.length) {
+        setTimeout(function(){ _enrichBatch(end); }, 0);
+      }
+    })(0);
     // Show main layout now that data is ready
     var ml = document.getElementById('mainlayout');
     if (ml) ml.style.display = 'flex';
