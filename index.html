@@ -6012,7 +6012,7 @@ async function saveFitReqEdit(){
   fitReqClearSelection();
   if(saved>0)toast(saved+' record(s) updated \u2713','ok');
   if(failed>0)toast(failed+' failed','er');
-  _wsFetchAndRender({'TYRE_FITS':'/tyreFitments','TYRES':'/tyres'}, function(){ renderTyreFitRequests(); });
+  renderTyreFitRequests(); setTimeout(function(){ _wsFetchAndRender({'TYRE_FITS':'/tyreFitments','TYRES':'/tyres'}, function(){ renderTyreFitRequests(); }); }, 3000);
 }
 async function deleteFitReqSelected(){
   var ids=Array.from(_fitReqSelected);
@@ -6037,7 +6037,7 @@ async function _doDeleteFitReq(ids,rows){
   fitReqClearSelection();
   if(deleted>0)toast(deleted+' deleted','ok');
   if(failed>0)toast(failed+' failed to delete','er');
-  _wsFetchAndRender({'TYRE_FITS':'/tyreFitments','TYRES':'/tyres'}, function(){ renderTyreFitRequests(); });
+  renderTyreFitRequests(); setTimeout(function(){ _wsFetchAndRender({'TYRE_FITS':'/tyreFitments','TYRES':'/tyres'}, function(){ renderTyreFitRequests(); }); }, 3000);
 }
 
 
@@ -6073,9 +6073,9 @@ async function approveFitment(fitId, serial) {
       if(fit){var tidx=TYRES.findIndex(function(t){return t.serialNo===fit.tyreSerial;});if(tidx>=0){TYRES[tidx].status='FITTED';TYRES[tidx].currentVehicle=fit.vehicle||'';TYRES[tidx].currentPosition=fit.position||'';}}
       ['TRFSTATUS','TRQSTATUS'].forEach(function(id){var e=document.getElementById(id);if(e)e.value='';});
       toast('Fitment approved \u2014 tyre '+serial+' is now FITTED \u2713','ok');
-      _wsFetchAndRender({'TYRES':'/tyres','TYRE_FITS':'/tyreFitments'}, function(){
+      renderTyreFitRequests(); setTimeout(function(){ _wsFetchAndRender({'TYRES':'/tyres','TYRE_FITS':'/tyreFitments'}, function(){
         if(currentView==='tyre_rem_hold')renderTyreRemHold();else if(currentView==='tyre_fit_requests')renderTyreFitRequests();
-      });
+      }); }, 3000);
     } else { toast(res.error||'Failed to approve','er'); }
   } catch(e){ toast('Error approving fitment','er'); }
 }
@@ -6095,9 +6095,9 @@ async function approveRemoval(fitId, serial) {
       }
       ['TRFSTATUS','TRQSTATUS'].forEach(function(id){var e=document.getElementById(id);if(e)e.value='';});
       toast('Removal approved \u2014 tyre '+serial+' back in store \u2713','ok');
-      _wsFetchAndRender({'TYRES':'/tyres','TYRE_FITS':'/tyreFitments'}, function(){
+      renderTyreFitRequests(); setTimeout(function(){ _wsFetchAndRender({'TYRES':'/tyres','TYRE_FITS':'/tyreFitments'}, function(){
         if(currentView==='tyre_rem_hold')renderTyreRemHold();else if(currentView==='tyre_fit_requests')renderTyreFitRequests();
-      });
+      }); }, 3000);
     } else { toast(res.error||'Failed to approve','er'); }
   } catch(e){ toast('Error approving removal','er'); }
 }
@@ -6262,7 +6262,7 @@ async function bulkApproveScrapSales(){
   if(_sr2){_sr2.disabled=false;_sr2.textContent="✕ Reject Selected";}
   tyreScrapClearSel();
   if(done>0)toast(done+' approved ✓','ok');
-  _wsFetchAndRender({'TYRE_SCRAPS':'/tyreScrapSales','TYRES':'/tyres'}, function(){ renderTyreScrap(); });
+  renderTyreScrap(); setTimeout(function(){ _wsFetchAndRender({'TYRE_SCRAPS':'/tyreScrapSales','TYRES':'/tyres'}, function(){ renderTyreScrap(); }); }, 3000);
 }
 async function bulkRejectScrapSales(){
   var ids=Array.from(_tyreScrapSelected);
@@ -6289,7 +6289,7 @@ async function bulkRejectScrapSales(){
   if(_sa4){_sa4.disabled=false;_sa4.textContent="✓ Approve Selected";}
   tyreScrapClearSel();
   if(done>0)toast(done+' sale(s) rejected','in');
-  _wsFetchAndRender({'TYRE_SCRAPS':'/tyreScrapSales','TYRES':'/tyres'}, function(){ renderTyreScrap(); });
+  renderTyreScrap(); setTimeout(function(){ _wsFetchAndRender({'TYRE_SCRAPS':'/tyreScrapSales','TYRES':'/tyres'}, function(){ renderTyreScrap(); }); }, 3000);
 }
 
 // Helper: fetch one or more Firebase collections then render
@@ -6411,7 +6411,7 @@ async function approveScrapSale(id){
     var scrap=idx>=0?TYRE_SCRAPS[idx]:null;
     if(scrap){var tidx=(TYRES||[]).findIndex(function(t){return t.serialNo===scrap.tyreSerial;});if(tidx>=0)TYRES[tidx].status='SOLD';}
     toast('Scrap sale approved \u2713','ok');
-    _wsFetchAndRender({'TYRE_SCRAPS':'/tyreScrapSales','TYRES':'/tyres'}, function(){ if(currentView==='tyre_scrap')renderTyreScrap(); });
+    if(currentView==='tyre_scrap')renderTyreScrap(); setTimeout(function(){ _wsFetchAndRender({'TYRE_SCRAPS':'/tyreScrapSales','TYRES':'/tyres'}, function(){ if(currentView==='tyre_scrap')renderTyreScrap(); }); }, 3000);
   } else {
     toast(res&&res.error?res.error:'Approval failed','er');
     if(btn){btn.disabled=false;btn.textContent='\u2713 Approve';}
@@ -7384,9 +7384,9 @@ async function bulkApproveBatFitReq(){
   ['BQFSTATUS','BHFSTATUS'].forEach(function(id){var e=document.getElementById(id);if(e)e.value='';});
   if(done>0)toast(done+' approved ✓','ok');
   if(failed>0)toast(failed+' failed','er');
-  _wsFetchAndRender({'BATTERIES':'/batteries','BAT_FITS':'/batteryFitments'}, function(){
+  renderBatFitRequests(); setTimeout(function(){ _wsFetchAndRender({'BATTERIES':'/batteries','BAT_FITS':'/batteryFitments'}, function(){
     if(currentView==='bat_rem_hold')renderBatRemHold();else renderBatFitRequests();
-  });
+  }); }, 3000);
 }
 
 function openBatFitReqEdit(){
@@ -7519,9 +7519,9 @@ async function bulkApproveTyreFitReq(){
   ['TRFSTATUS','TRQSTATUS'].forEach(function(id){var e=document.getElementById(id);if(e)e.value='';});
   if(done>0)toast(done+' approved \u2713','ok');
   if(failed>0)toast(failed+' failed','er');
-  _wsFetchAndRender({'TYRES':'/tyres','TYRE_FITS':'/tyreFitments'}, function(){
+  renderTyreFitRequests(); setTimeout(function(){ _wsFetchAndRender({'TYRES':'/tyres','TYRE_FITS':'/tyreFitments'}, function(){
     if(currentView==='tyre_rem_hold') renderTyreRemHold(); else renderTyreFitRequests();
-  });
+  }); }, 3000);
 }
 
 async function bulkRejectTyreFitReq(){
@@ -7799,7 +7799,7 @@ function confirmBatReject(fitId){
           BAT_FITS[idx].removedReason='';
         } else { BAT_FITS[idx].status='REJECTED'; }
       }
-      _wsFetchAndRender({'BAT_FITS':'/batteryFitments','BATTERIES':'/batteries'}, function(){ renderBatRemHold(); });
+      renderBatRemHold(); setTimeout(function(){ _wsFetchAndRender({'BAT_FITS':'/batteryFitments','BATTERIES':'/batteries'}, function(){ renderBatRemHold(); }); }, 3000);
     }else toast('Error: '+(res&&res.error?res.error:'Failed'),'er');
   }).catch(function(e){ toast('Reject failed: '+(e&&e.message||e),'er'); });
 }
@@ -7838,7 +7838,7 @@ async function bulkApproveBatSales(){
   if(_br2){_br2.disabled=false;_br2.textContent='✕ Reject Selected';}
   batSalesClearSel();
   if(done>0)toast(done+' approved ✓','ok');
-  _wsFetchAndRender({'BAT_SALES':'/batterySales','BATTERIES':'/batteries'}, function(){ renderBatSales(); });
+  renderBatSales(); setTimeout(function(){ _wsFetchAndRender({'BAT_SALES':'/batterySales','BATTERIES':'/batteries'}, function(){ renderBatSales(); }); }, 3000);
 }
 async function bulkRejectBatSales(){
   var ids=Array.from(_batSalesSelected);
@@ -7865,7 +7865,7 @@ async function bulkRejectBatSales(){
   if(_ba4){_ba4.disabled=false;_ba4.textContent='✓ Approve Selected';}
   batSalesClearSel();
   if(done>0)toast(done+' rejected','in');
-  _wsFetchAndRender({'BAT_SALES':'/batterySales','BATTERIES':'/batteries'}, function(){ renderBatSales(); });
+  renderBatSales(); setTimeout(function(){ _wsFetchAndRender({'BAT_SALES':'/batterySales','BATTERIES':'/batteries'}, function(){ renderBatSales(); }); }, 3000);
 }
 
 function toggleAllBatSales(cb){
@@ -7951,7 +7951,7 @@ async function approveBatterySale(id){
     var sale=idx>=0?BAT_SALES[idx]:null;
     if(sale){var bidx=(BATTERIES||[]).findIndex(function(b){return b.batteryRef===sale.batteryRef;});if(bidx>=0)BATTERIES[bidx].status='SOLD';}
     toast('Battery sale approved \u2713','ok');
-    _wsFetchAndRender({'BAT_SALES':'/batterySales','BATTERIES':'/batteries'}, function(){ renderBatSales(); });
+    renderBatSales(); setTimeout(function(){ _wsFetchAndRender({'BAT_SALES':'/batterySales','BATTERIES':'/batteries'}, function(){ renderBatSales(); }); }, 3000);
   } else {
     toast(res&&res.error?res.error:'Approval failed','er');
     if(btn){btn.disabled=false;btn.textContent='\u2713 Approve';}
@@ -9122,7 +9122,7 @@ async function saveRemoveBattery(){
   if(btn){btn.disabled=false;btn.textContent='🔄 Submit Removal Requests';}
   closeModal('removeBatmodal');
   if(saved>0){
-    _wsFetchAndRender({'BAT_FITS':'/batteryFitments','BATTERIES':'/batteries'}, function(){ renderBatRemHold(); });
+    renderBatRemHold(); setTimeout(function(){ _wsFetchAndRender({'BAT_FITS':'/batteryFitments','BATTERIES':'/batteries'}, function(){ renderBatRemHold(); }); }, 3000);
     // Clear any active filters so full history is visible
     ['BHFF1','BHFV1','BHFF2','BHFV2','BHFSTATUS'].forEach(function(id){var e=document.getElementById(id);if(e)e.value='';});
     wsFbRead('/batteryFitments').then(function(r2){if(r2&&r2.records){BAT_FITS=r2.records;}renderBatRemHold();}).catch(function(){renderBatRemHold();});
@@ -9181,7 +9181,7 @@ async function saveBatSale(){
   if(btn){btn.disabled=false;btn.textContent='Record Sales';}
   closeModal('batSalemodal');
   if(saved>0){
-    _wsFetchAndRender({'BAT_SALES':'/batterySales','BATTERIES':'/batteries'}, function(){ renderBatSales(); });
+    renderBatSales(); setTimeout(function(){ _wsFetchAndRender({'BAT_SALES':'/batterySales','BATTERIES':'/batteries'}, function(){ renderBatSales(); }); }, 3000);
     toast(saved+' sale'+(saved>1?'s':'')+' recorded ✓','ok');
     wsFbRead('/batterySales').then(function(r2){if(r2&&r2.records){BAT_SALES=r2.records;}renderBatSales();});
     wsFbRead('/batteries').then(function(r3){if(r3&&r3.records)BATTERIES=r3.records;});
@@ -10162,7 +10162,7 @@ async function saveScrapSale() {
   if(btn){btn.disabled=false;btn.textContent='🗑 Record Sales';}
   closeModal('tyreScrapmodal');
   if(saved>0){
-    _wsFetchAndRender({'TYRE_SCRAPS':'/tyreScrapSales','TYRES':'/tyres'}, function(){ if(currentView==='tyre_scrap')renderTyreScrap(); });
+    if(currentView==='tyre_scrap')renderTyreScrap(); setTimeout(function(){ _wsFetchAndRender({'TYRE_SCRAPS':'/tyreScrapSales','TYRES':'/tyres'}, function(){ if(currentView==='tyre_scrap')renderTyreScrap(); }); }, 3000);
     toast(saved+' sale'+(saved>1?'s':'')+' recorded ✓','ok');
     // Firebase refetch already handled by _wsFetchAndRender above
   }
@@ -12200,7 +12200,7 @@ async function deleteIssReqSelected(){
   var deleted=0;
   await Promise.all(ids.map(function(id){
     return callAPI('rejectPendingIssuance',{id:id,rejectedBy:'ADMIN'}).then(function(res){
-      if(res&&res.success!==false){var ix=ISS_PENDING.findIndex(function(r){return r.id===id;});if(ix>=0)ISS_PENDING[ix].status='REJECTED';deleted++;}
+      if(res&&res.success!==false){var ix=ISS_PENDING.findIndex(function(r){return r.id===id;});if(ix>=0)ISS_PENDING.splice(ix,1);deleted++;}
     }).catch(function(){});
   }));
   var _dBtn2=document.getElementById('iss_req_delete_btn');
@@ -12238,7 +12238,7 @@ async function bulkApproveIssPending(){
         // Step 2: mark as approved in PENDING_ISSUANCES sheet
         await callAPI("approvePendingIssuance",{id:r.id,approvedBy:approvedBy}).catch(function(){});
         var idx=ISS_PENDING.findIndex(function(x){return x.id===r.id;});
-        if(idx>=0){ISS_PENDING[idx].status="APPROVED";ISS_PENDING[idx].approvedBy=approvedBy;ISS_PENDING[idx].approvedAt=approvedAt;}
+        if(idx>=0) ISS_PENDING.splice(idx,1); // remove immediately
         done++;
       } else {
         failed++;
@@ -12254,16 +12254,17 @@ async function bulkApproveIssPending(){
   if(iphAppBtn2){iphAppBtn2.disabled=false;iphAppBtn2.textContent="✓ Approve Selected";}
   if(iphRejBtn2){iphRejBtn2.disabled=false;iphRejBtn2.textContent="✕ Reject Selected";}
   clearIssPendingSelection();
-  // Refresh inventory and issuances in background
-  Promise.all([
-    wsFbRead('/storeInventory').then(function(r){if(r&&r.records)STORE_INVENTORY=r.records;}).catch(function(){}),
-    wsFbRead('/storeIssuances').then(function(r){if(r&&r.records)STORE_ISSUANCES=r.records;}).catch(function(){}),
-    callAPI("getAll").then(function(r){if(r&&r.records)ALL=r.records;}).catch(function(){})
-  ]).then(function(){
-    });
   if(done>0)toast(done+' issuance'+(done>1?'s':'')+' approved ✓','ok');
   if(failed>0)toast(failed+' failed','er');
-  _wsFetchAndRender({'ISS_PENDING':'/pendingIssuances','STORE_ISSUANCES':'/storeIssuances','STORE_INVENTORY':'/storeInventory'}, function(){ renderIssPending(); });
+  renderIssPending();
+  // Background refresh after delay to let Firebase sync complete
+  setTimeout(function(){
+    Promise.all([
+      wsFbRead('/storeInventory').then(function(r){if(r&&r.records)STORE_INVENTORY=r.records;}).catch(function(){}),
+      wsFbRead('/storeIssuances').then(function(r){if(r&&r.records)STORE_ISSUANCES=r.records;}).catch(function(){}),
+      wsFbRead('/requisitions').then(function(r){if(r&&r.records&&r.records.length>=ALL.length)ALL=r.records;}).catch(function(){})
+    ]).then(function(){ updateBadges(); applyFilters(); });
+  }, 3000);
 }
 async function bulkRejectIssPending(){
   var ids=Array.from(_issPendingSelected);
@@ -12281,7 +12282,7 @@ async function bulkRejectIssPending(){
     return callAPI("rejectPendingIssuance",{id:r.id,rejectedBy:rejectedBy}).then(function(res){
       if(res&&res.success!==false){
         var idx=ISS_PENDING.findIndex(function(x){return x.id===r.id;});
-        if(idx>=0){ISS_PENDING[idx].status="REJECTED";ISS_PENDING[idx].rejectedBy=rejectedBy;ISS_PENDING[idx].rejectedAt=rejectedAt;}
+        if(idx>=0) ISS_PENDING.splice(idx,1); // remove immediately
         return {ok:true};
       } return {ok:false};
     }).catch(function(){return {ok:false};});
@@ -12293,7 +12294,14 @@ async function bulkRejectIssPending(){
   if(iphAppBtn4){iphAppBtn4.disabled=false;iphAppBtn4.textContent="✓ Approve Selected";}
   clearIssPendingSelection();
   if(done>0)toast(done+' rejected ✓','in');
-  _wsFetchAndRender({'ISS_PENDING':'/pendingIssuances'}, function(){ renderIssPending(); });
+  renderIssPending();
+  // Background refresh after delay — don't override local state immediately
+  setTimeout(function(){
+    wsFbRead('/pendingIssuances').then(function(r){
+      if(r&&r.records) ISS_PENDING=r.records;
+      renderIssPending();
+    }).catch(function(){});
+  }, 3000);
 }
 var _issPendingSelected = new Set();
 var _issReqSelected = new Set();
@@ -12310,6 +12318,9 @@ function renderIssPending() {
   ];
   var iphStatus = ((document.getElementById('IPHF_STATUS')||{}).value||'').toUpperCase();
   var data = (ISS_PENDING||[]).filter(function(r){
+    // By default hide APPROVED records — show only PENDING/REJECTED
+    // Unless user explicitly filters by status
+    if (!iphStatus && (r.status||'').toUpperCase() === 'APPROVED') return false;
     if (iphStatus && (r.status||'').toUpperCase() !== iphStatus) return false;
     for (var i=0; i<iphFilters.length; i++) {
       var fi = iphFilters[i]; if (!fi.f || !fi.v) continue;
@@ -12436,10 +12447,13 @@ async function approveIssuance(id) {
         await callAPI('approvePendingIssuance', { id: id, approvedBy: approvedBy });
       } catch(e) { console.warn('Could not persist approval:', e); }
 
-      // Update ISS_PENDING locally
+      // Update ISS_PENDING locally — remove approved record immediately
+      // so it doesn't re-appear if Firebase refresh returns stale data
       var idx = ISS_PENDING.findIndex(function(r){ return r.id === id; });
       if (idx !== -1) {
         ISS_PENDING[idx] = Object.assign({}, ISS_PENDING[idx], { status:'APPROVED', approvedAt:approvedAt, approvedBy:approvedBy });
+        // Remove from pending list immediately
+        ISS_PENDING.splice(idx, 1);
       }
 
       // Push new workshop requisition records to ALL locally
@@ -12471,13 +12485,27 @@ async function approveIssuance(id) {
       }
 
       // Background refresh after delay to let Firebase sync complete
+      // Note: do NOT refresh /pendingIssuances here — Firebase may not have
+      // synced the approval yet and would overwrite our local removal
       setTimeout(function() {
         Promise.all([
           wsFbRead('/storeInventory').then(function(r){if(r&&r.records)STORE_INVENTORY=r.records;}).catch(function(){}),
           wsFbRead('/requisitions').then(function(r){if(r&&r.records&&r.records.length>=ALL.length)ALL=r.records;}).catch(function(){}),
-          wsFbRead('/storeIssuances').then(function(r){if(r&&r.records)STORE_ISSUANCES=r.records;}).catch(function(){})
+          wsFbRead('/storeIssuances').then(function(r){if(r&&r.records)STORE_ISSUANCES=r.records;}).catch(function(){}),
+          // Only update ISS_PENDING if Firebase has FEWER pending records than local
+          // (meaning Firebase has confirmed the approval)
+          wsFbRead('/pendingIssuances').then(function(r){
+            if(r&&r.records){
+              var fbPending = r.records.filter(function(x){ return (x.status||'').toUpperCase()==='PENDING'; });
+              var localPending = (ISS_PENDING||[]).filter(function(x){ return (x.status||'').toUpperCase()==='PENDING'; });
+              // Only update if Firebase shows the record is gone
+              if(!fbPending.some(function(x){ return x.id===id; })){
+                ISS_PENDING = r.records;
+              }
+            }
+          }).catch(function(){})
         ]).then(function(){ updateBadges(); applyFilters(); });
-      }, 3000); // wait 3 seconds for Firebase sync to complete
+      }, 3000);
 
       updateBadges();
       toast('✅ Issuance '+rec.issuanceNo+' approved by '+approvedBy,'ok');
@@ -13765,7 +13793,7 @@ async function saveIssueFromStore(){
       });
       closeModal('issmodal');
       toast('✅ '+lines.length+' request'+(lines.length>1?'s':'')+' submitted - awaiting approval','ok');
-      _wsFetchAndRender({'ISS_PENDING':'/pendingIssuances'}, function(){ if(currentView==='iss_pending') renderIssPending(); });
+      if(currentView==='iss_pending') renderIssPending(); setTimeout(function(){ _wsFetchAndRender({'ISS_PENDING':'/pendingIssuances'}, function(){ if(currentView==='iss_pending') renderIssPending(); }); }, 3000);
     }else{toast('Failed: '+(batchRes&&batchRes.error?batchRes.error:'Unknown error'),'er');}
   }catch(e){toast('Failed: '+(e.message||e),'er');}
   finally{if(btn){btn.disabled=false;btn.textContent='📤 Submit Issue Request';}}
