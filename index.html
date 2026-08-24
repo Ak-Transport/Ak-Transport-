@@ -5359,7 +5359,8 @@ async function deleteTyreInvSelected(){
     tyreInvClearSelection();
     if(deleted>0)toast(deleted+' tyre(s) deleted \u2713','ok');
     if(failed>0)toast(failed+' failed','er');
-    _wsFetchAndRender({'TYRES':'/tyres','TYRE_POS':'/tyrePOs'}, function(){ renderTyreInventory(); });
+    renderTyreInventory();
+    setTimeout(function(){ _wsFetchAndRender({'TYRES':'/tyres','TYRE_POS':'/tyrePOs'}, function(){ renderTyreInventory(); }); }, 3000);
   });
 }
 
@@ -6026,6 +6027,8 @@ async function _doDeleteFitReq(ids,rows){
   var locked=rows.filter(function(r){var s=(r.status||'').toUpperCase();return s==='ACTIVE'||s==='CLOSED';});
   if(locked.length){toast('Cannot delete approved records ('+locked.length+' blocked)','er');return;}
   if(!confirm('Delete '+ids.length+' request(s)?'))return;
+  var delBtn=document.getElementById('fitreq_del_btn');
+  if(delBtn){delBtn.disabled=true;delBtn.textContent='⏳ Deleting '+ids.length+'...';}
   var deleted=0, failed=0;
   for(var i=0;i<ids.length;i++){
     try{
@@ -6034,6 +6037,8 @@ async function _doDeleteFitReq(ids,rows){
       else{TYRE_FITS=TYRE_FITS.filter(function(r){return r.id!==ids[i];});deleted++;}
     }catch(e){failed++;}
   }
+  var delBtn2=document.getElementById('fitreq_del_btn');
+  if(delBtn2){delBtn2.disabled=false;delBtn2.innerHTML='&#128465; Delete Selected';}
   fitReqClearSelection();
   if(deleted>0)toast(deleted+' deleted','ok');
   if(failed>0)toast(failed+' failed to delete','er');
@@ -7144,7 +7149,8 @@ async function deleteBatInvSelected(){
     batInvClearSelection();
     if(deleted>0)toast(deleted+' battery/batteries deleted \u2713','ok');
     if(failed>0)toast(failed+' failed','er');
-    _wsFetchAndRender({'BATTERIES':'/batteries','BAT_POS':'/batteryPOs'}, function(){ renderBatInventory(); });
+    renderBatInventory();
+    setTimeout(function(){ _wsFetchAndRender({'BATTERIES':'/batteries','BAT_POS':'/batteryPOs'}, function(){ renderBatInventory(); }); }, 3000);
   });
 }
 
@@ -7579,7 +7585,8 @@ async function deleteBatFitReqSelected(){
     batFitReqClearSel();
     if(deleted>0)toast(deleted+' deleted ✓','ok');
     if(failed>0)toast(failed+' failed','er');
-    _wsFetchAndRender({'BAT_FITS':'/batteryFitments','BATTERIES':'/batteries'}, function(){ renderBatFitRequests(); });
+    renderBatFitRequests();
+    setTimeout(function(){ _wsFetchAndRender({'BAT_FITS':'/batteryFitments','BATTERIES':'/batteries'}, function(){ renderBatFitRequests(); }); }, 3000);
   };
   if(hasLocked)askPassword(doDelete);else doDelete();
 }
@@ -13143,11 +13150,17 @@ function deleteSReq(el) {
   var s = (r.status||'').toUpperCase();
   if (s === 'RECEIVED' || s === 'PAID NOT RECEIVED') { toast('Cannot delete records with status '+r.status,'er'); return; }
   if (!confirm('Delete store requisition '+(r.reqNo||id)+'?')) return;
+  var btn = typeof el === 'string' ? null : el;
+  if (btn) { btn.disabled=true; btn.textContent='⏳'; btn.title='Deleting...'; }
   callAPI('deleteRecord',{sheetName:'STORE_REQUISITIONS',id:id}).then(function(){
     STORE_REQS = STORE_REQS.filter(function(x){ return x.id!==id; });
     toast('Deleted ✓','ok');
-    _wsFetchAndRender({'STORE_REQS':'/storeReqs'}, function(){ renderStoreRequisition(_sreqCurrentFilter); });
-  }).catch(function(){ toast('Delete failed','er'); });
+    renderStoreRequisition(_sreqCurrentFilter);
+    setTimeout(function(){ _wsFetchAndRender({'STORE_REQS':'/storeReqs'}, function(){ renderStoreRequisition(_sreqCurrentFilter); }); }, 2000);
+  }).catch(function(){
+    toast('Delete failed','er');
+    if (btn) { btn.disabled=false; btn.textContent='🗑'; btn.title='Delete'; }
+  });
 }
 
 function deleteSReqProtected(el) {
@@ -13163,6 +13176,8 @@ function deleteSReqProtected(el) {
   }
   askPassword(async function(){
     if (!confirm(msg)) return;
+    var btn = typeof el === 'string' ? null : el;
+    if (btn) { btn.disabled=true; btn.textContent='⏳'; btn.title='Deleting...'; }
     try {
       await callAPI('deleteRecord',{sheetName:'STORE_REQUISITIONS',id:id});
       STORE_REQS = STORE_REQS.filter(function(x){ return x.id!==id; });
@@ -13205,6 +13220,9 @@ async function deleteSReqSelected() {
       msg += '\n\nThis cannot be undone.';
     }
     if (!confirm(msg)) return;
+
+    var delBtn = document.getElementById('sreq_del_btn');
+    if (delBtn) { delBtn.disabled=true; delBtn.textContent='⏳ Deleting '+ids.length+'...'; }
 
     var deleted = 0, failed = 0;
 
@@ -13249,9 +13267,12 @@ async function deleteSReqSelected() {
     }
 
     sreqClearSelection();
+    var delBtn2 = document.getElementById('sreq_del_btn');
+    if (delBtn2) { delBtn2.disabled=false; delBtn2.textContent='🗑 Delete Selected'; }
     if (deleted>0) toast('Deleted ' + deleted + ' record'+(deleted>1?'s':'')+' and related inventory/workshop data ✓','ok');
     if (failed>0)  toast(failed + ' failed to delete','er');
-    _wsFetchAndRender({'STORE_REQS':'/storeReqs','STORE_INVENTORY':'/storeInventory','ALL':'/requisitions'}, function(){ renderStoreRequisition(_sreqCurrentFilter); });
+    renderStoreRequisition(_sreqCurrentFilter);
+    setTimeout(function(){ _wsFetchAndRender({'STORE_REQS':'/storeReqs','STORE_INVENTORY':'/storeInventory','ALL':'/requisitions'}, function(){ renderStoreRequisition(_sreqCurrentFilter); }); }, 2000);
   };
 
   if (rcvRows.length > 0) {
@@ -13486,39 +13507,63 @@ async function saveStoreRequisition(){
   var saved=0,failed=0;
 
   if (editId) {
-    // UPDATE existing record
+    // UPDATE existing record — optimistic local update first for instant UI
+    var _editOrig = (STORE_REQS||[]).find(function(r){ return r.id === editId; });
+    var ix0 = (STORE_REQS||[]).findIndex(function(r){ return r.id === editId; });
+    if (ix0 !== -1) STORE_REQS[ix0] = Object.assign({}, STORE_REQS[ix0], lines[0]);
+    renderStoreRequisition(_sreqCurrentFilter||'all'); // show immediately
     try {
       var res = await callAPI('updateStoreReq', {record: lines[0]});
       if (res && res.error) {
         toast(res.error, 'er');
+        // Roll back optimistic update
+        if (_editOrig && ix0 !== -1) STORE_REQS[ix0] = _editOrig;
+        renderStoreRequisition(_sreqCurrentFilter||'all');
         failed = 1;
       } else if (res && res.success !== false) {
-        // For PNR records, restore original locked field values
-        // to prevent format differences from being written
-        var _sreqOrig = (STORE_REQS||[]).find(function(r){ return r.id === editId; });
+        var _sreqOrig = _editOrig;
         if (_sreqOrig && (_sreqOrig.status||'').toUpperCase() === 'PAID NOT RECEIVED') {
           ['dateRequested','description','qty','unitPrice','cost',
            'supplier','lpoNo','paymentMode'].forEach(function(f) {
             if (_sreqOrig[f] !== undefined) lines[0][f] = _sreqOrig[f];
           });
+          if (ix0 !== -1) STORE_REQS[ix0] = Object.assign({}, STORE_REQS[ix0], lines[0]);
         }
-        var ix = (STORE_REQS||[]).findIndex(function(r){ return r.id === editId; });
-        if (ix !== -1) STORE_REQS[ix] = Object.assign({}, STORE_REQS[ix], lines[0]);
         saved = 1;
-      } else failed = 1;
-    } catch(e) { failed = 1; }
+      } else {
+        if (_editOrig && ix0 !== -1) STORE_REQS[ix0] = _editOrig;
+        renderStoreRequisition(_sreqCurrentFilter||'all');
+        failed = 1;
+      }
+    } catch(e) {
+      if (_editOrig && ix0 !== -1) STORE_REQS[ix0] = _editOrig;
+      renderStoreRequisition(_sreqCurrentFilter||'all');
+      failed = 1;
+    }
   } else {
-    // ADD new records - fire all in parallel
+    // ADD new records — optimistic push first for instant UI
     if(btn)btn.textContent='Saving '+lines.length+' record'+(lines.length>1?'s':'')+'...';
+    var tempIds = lines.map(function(line,li){
+      var tid='temp_'+Date.now()+'_'+li;
+      STORE_REQS.unshift(Object.assign({id:tid,_temp:true},line));
+      return tid;
+    });
+    renderStoreRequisition(_sreqCurrentFilter||'all'); // show immediately
     var addResults = await Promise.all(lines.map(function(line,li){
       return callAPI('addStoreReq',{record:line}).then(function(res){
         if(res&&res.success!==false){
-          var newRec=Object.assign({id:res.id||(Date.now()+'_'+li)},line);
-          STORE_REQS.push(newRec);
-          if (res.inventoryWarning) toast('⚠️ '+line.reqNo+': '+res.inventoryWarning, 'er');
+          var tidx=STORE_REQS.findIndex(function(r){return r.id===tempIds[li];});
+          var realRec=Object.assign({id:res.id||(Date.now()+'_'+li)},line);
+          if(tidx!==-1)STORE_REQS[tidx]=realRec; else STORE_REQS.push(realRec);
+          if(res.inventoryWarning)toast('\u26a0\ufe0f '+line.reqNo+': '+res.inventoryWarning,'er');
           return {ok:true};
-        } return {ok:false};
-      }).catch(function(){return {ok:false};});
+        }
+        STORE_REQS=STORE_REQS.filter(function(r){return r.id!==tempIds[li];});
+        return {ok:false};
+      }).catch(function(){
+        STORE_REQS=STORE_REQS.filter(function(r){return r.id!==tempIds[li];});
+        return {ok:false};
+      });
     }));
     addResults.forEach(function(r){if(r.ok)saved++;else failed++;});
   }
@@ -13529,14 +13574,15 @@ async function saveStoreRequisition(){
   closeModal('sreqmodal');
   if(saved>0)toast(editId ? 'Updated ✓' : 'Saved '+saved+' store requisition'+(saved>1?'s':'')+' ✓','ok');
   if(failed>0)toast(failed+' line(s) failed','er');
-  // Re-fetch STORE_REQS from Firebase to ensure new records appear
-  // (optimistic push can be overwritten by the timestamp listener race condition)
-  wsFbRead('/storeReqs').then(function(r){
-    if(r&&r.records) STORE_REQS=r.records;
-    renderStoreRequisition(_sreqCurrentFilter||'all');
-  }).catch(function(){
-    renderStoreRequisition(_sreqCurrentFilter||'all');
-  });
+  // Render immediately from local array — data already updated above
+  renderStoreRequisition(_sreqCurrentFilter||'all');
+  updateBadges();
+  // Background Firebase re-fetch after delay to confirm sync
+  setTimeout(function(){
+    wsFbRead('/storeReqs').then(function(r){
+      if(r&&r.records&&r.records.length>=STORE_REQS.length){ STORE_REQS=r.records; renderStoreRequisition(_sreqCurrentFilter||'all'); }
+    }).catch(function(){});
+  }, 3000);
   // Refresh inventory too
   wsFbRead('/storeInventory').then(function(r){if(r&&r.records)STORE_INVENTORY=r.records;}).catch(function(){});
 }
