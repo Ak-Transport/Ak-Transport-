@@ -4447,8 +4447,11 @@ async function doDelete(id){
     if(res&&res.error&&!res.alreadyGone){
       toast('Delete failed: '+res.error,'er');
       if(bk){ALL.push(bk);updateBadges();applyFilters();}
+    } else if(res&&res.alreadyGone){
+      toast('⚠️ Record removed from view but may still exist in sheet — contact admin','er');
+      Logger.log && Logger.log('doDelete alreadyGone for id='+id);
     } else {
-      toast('Deleted ✓','in');
+      toast('Deleted ✓','ok');
     }
   }).catch(function(){toast('Delete failed','er');if(bk){ALL.push(bk);updateBadges();applyFilters();}});
 }
@@ -5571,10 +5574,10 @@ function renderTyrePOs(statusFilter) {
   var html = '';
   if (statusFilter === 'all') {
     var _tpoActive=(TYRE_POS||[]).filter(function(p){return (p.status||'').toUpperCase()!=='DELETED';});
-    var fullyRcv  = _tpoActive.filter(function(p){ var s=(p.status||'').toUpperCase(); return s==='FULLY RECEIVED'||s==='FULLY DELIVERED'||s==='RECEIVED'; }).length;
-    var partRcv   = TYRE_POS.filter(function(p){ var s=(p.status||'').toUpperCase(); return s==='PARTIALLY RECEIVED'||s==='PARTIALLY DELIVERED'; }).length;
-    var pnr       = TYRE_POS.filter(function(p){ return (p.status||'').toUpperCase()==='PAID NOT RECEIVED'; }).length;
-    var notPaid   = TYRE_POS.filter(function(p){ return (p.status||'').toUpperCase()==='NOT PAID'; }).length;
+    var fullyRcv  = _tpoActive.filter(function(p){ var qo=Number(p.qtyOrdered||0),qr=Number(p.qtyReceived||0); return qo>0?qr>=qo:(p.status||'').toUpperCase()==='FULLY RECEIVED'||(p.status||'').toUpperCase()==='FULLY DELIVERED'||(p.status||'').toUpperCase()==='RECEIVED'; }).length;
+    var partRcv   = _tpoActive.filter(function(p){ var qo=Number(p.qtyOrdered||0),qr=Number(p.qtyReceived||0); return qo>0?qr>0&&qr<qo:(p.status||'').toUpperCase()==='PARTIALLY RECEIVED'||(p.status||'').toUpperCase()==='PARTIALLY DELIVERED'; }).length;
+    var pnr       = _tpoActive.filter(function(p){ return (p.status||'').toUpperCase()==='PAID NOT RECEIVED'; }).length;
+    var notPaid   = _tpoActive.filter(function(p){ return (p.status||'').toUpperCase()==='NOT PAID'; }).length;
     html += '<div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap">'
       + '<div class="statcard statcard-sm" style="background:#059669;color:#fff"><div class="scl">Fully Received</div><div class="scv">'+fullyRcv+'</div></div>'
       + '<div class="statcard statcard-sm" style="background:#0a2d6e;color:#fff"><div class="scl">Partially Received</div><div class="scv">'+partRcv+'</div></div>'
@@ -5601,9 +5604,18 @@ function renderTyrePOs(statusFilter) {
     var filteredRows = _applyTyreFilter(filtered.slice(),'TPF',function(p){return{poNo:p.poNo||'',poDate:toISODate(p.poDate),brand:p.brand||'',size:p.size||'',supplier:p.supplier||'',lpoNo:p.lpoNo||'',requestedBy:p.requestedBy||'',status:p.status||''};}).sort(function(a,b){ return (b.poDate||'').localeCompare(a.poDate||''); });
     filteredRows.forEach(function(p){
       var s = (p.status||'NOT PAID').toUpperCase();
-      var isFull = s==='FULLY RECEIVED'||s==='FULLY DELIVERED'||s==='RECEIVED';
-      var isPart = s==='PARTIALLY RECEIVED'||s==='PARTIALLY DELIVERED';
-      var isPNR  = s==='PAID NOT RECEIVED';
+      // Recalculate status from actual quantities — overrides stale stored status
+      var qtyOrd2 = Number(p.qtyOrdered||0);
+      var qtyRcv2 = Number(p.qtyReceived||0);
+      var isFull, isPart;
+      if (qtyOrd2 > 0) {
+        isFull = qtyRcv2 >= qtyOrd2;
+        isPart = qtyRcv2 > 0 && qtyRcv2 < qtyOrd2;
+      } else {
+        isFull = s==='FULLY RECEIVED'||s==='FULLY DELIVERED'||s==='RECEIVED';
+        isPart = s==='PARTIALLY RECEIVED'||s==='PARTIALLY DELIVERED';
+      }
+      var isPNR  = !isFull && !isPart && (s==='PAID NOT RECEIVED');
       var sc = isFull?'sR': isPart?'sOH': isPNR?'sPNR': 'sNR';
       var statusLabel = isFull?'FULLY RECEIVED': isPart?'PARTIALLY RECEIVED': p.status||'NOT PAID';
       var statCell = '';
@@ -6076,7 +6088,6 @@ async function approveFitment(fitId, serial) {
       // Update TYRES local array
       var fit=idx>=0?TYRE_FITS[idx]:null;
       if(fit){var tidx=TYRES.findIndex(function(t){return t.serialNo===fit.tyreSerial;});if(tidx>=0){TYRES[tidx].status='FITTED';TYRES[tidx].currentVehicle=fit.vehicle||'';TYRES[tidx].currentPosition=fit.position||'';}}
-      ['TRFSTATUS','TRQSTATUS'].forEach(function(id){var e=document.getElementById(id);if(e)e.value='';});
       toast('Fitment approved \u2014 tyre '+serial+' is now FITTED \u2713','ok');
       renderTyreFitRequests(); setTimeout(function(){ _wsFetchAndRender({'TYRES':'/tyres','TYRE_FITS':'/tyreFitments'}, function(){
         if(currentView==='tyre_rem_hold')renderTyreRemHold();else if(currentView==='tyre_fit_requests')renderTyreFitRequests();
@@ -6098,7 +6109,6 @@ async function approveRemoval(fitId, serial) {
         var tidx=TYRES.findIndex(function(t){return t.serialNo===fit.tyreSerial;});
         if(tidx>=0){TYRES[tidx].status='IN STORE';TYRES[tidx].currentVehicle='';TYRES[tidx].currentPosition='';}
       }
-      ['TRFSTATUS','TRQSTATUS'].forEach(function(id){var e=document.getElementById(id);if(e)e.value='';});
       toast('Removal approved \u2014 tyre '+serial+' back in store \u2713','ok');
       renderTyreFitRequests(); setTimeout(function(){ _wsFetchAndRender({'TYRES':'/tyres','TYRE_FITS':'/tyreFitments'}, function(){
         if(currentView==='tyre_rem_hold')renderTyreRemHold();else if(currentView==='tyre_fit_requests')renderTyreFitRequests();
@@ -6247,21 +6257,22 @@ async function bulkApproveScrapSales(){
   var _sa=document.getElementById("scrap_approve_btn"),_sr=document.getElementById("scrap_reject_btn");
   if(_sa){_sa.disabled=true;_sa.textContent="Approving "+pending.length+" sale"+(pending.length>1?"s":"")+"...";}
   if(_sr)_sr.disabled=true;
-  var results=await Promise.all(pending.map(function(r){
-    return callAPI("approveScrapSale",{id:r.id,approvedBy:approvedBy}).then(function(res){
+  var done=0;
+  for(var i=0;i<pending.length;i++){
+    var r=pending[i];
+    if(_sa){_sa.textContent='Approving '+(i+1)+'/'+pending.length+'...';}
+    try{
+      var res=await callAPI("approveScrapSale",{id:r.id,approvedBy:approvedBy});
       if(res&&res.success){
         var idx=TYRE_SCRAPS.findIndex(function(x){return x.id===r.id;});
         if(idx>=0){TYRE_SCRAPS[idx].status="APPROVED";TYRE_SCRAPS[idx].approvedBy=approvedBy;}
-        // Update tyre status to SCRAPPED in local TYRES array
         var serial=r.tyreSerial;
         var tidx=(TYRES||[]).findIndex(function(t){return String(t.serialNo||"").trim()===String(serial||"").trim();});
         if(tidx>=0) TYRES[tidx].status="SOLD";
-        return {ok:true};
+        done++;
       }
-      return {ok:false};
-    }).catch(function(){return {ok:false};});
-  }));
-  var done=results.filter(function(r){return r.ok;}).length;
+    }catch(e){}
+  }
   var _sa2=document.getElementById("scrap_approve_btn"),_sr2=document.getElementById("scrap_reject_btn");
   if(_sa2){_sa2.disabled=false;_sa2.textContent="✓ Approve Selected";}
   if(_sr2){_sr2.disabled=false;_sr2.textContent="✕ Reject Selected";}
@@ -6279,16 +6290,19 @@ async function bulkRejectScrapSales(){
   var _sa3=document.getElementById("scrap_approve_btn"),_sr3=document.getElementById("scrap_reject_btn");
   if(_sr3){_sr3.disabled=true;_sr3.textContent="Rejecting "+pending.length+" sale"+(pending.length>1?"s":"")+"...";}
   if(_sa3)_sa3.disabled=true;
-  var results=await Promise.all(pending.map(function(r){
-    return callAPI("rejectScrapSale",{id:r.id,rejectedBy:rejectedBy}).then(function(res){
+  var done=0;
+  for(var i=0;i<pending.length;i++){
+    var r=pending[i];
+    if(_sr3){_sr3.textContent='Rejecting '+(i+1)+'/'+pending.length+'...';}
+    try{
+      var res=await callAPI("rejectScrapSale",{id:r.id,rejectedBy:rejectedBy});
       if(res&&res.success){
         var idx=TYRE_SCRAPS.findIndex(function(x){return x.id===r.id;});
         if(idx>=0){TYRE_SCRAPS[idx].status="REJECTED";TYRE_SCRAPS[idx].approvedBy=rejectedBy;}
-        return {ok:true};
-      } return {ok:false};
-    }).catch(function(){return {ok:false};});
-  }));
-  var done=results.filter(function(r){return r.ok;}).length;
+        done++;
+      }
+    }catch(e){}
+  }
   var _sa4=document.getElementById("scrap_approve_btn"),_sr4=document.getElementById("scrap_reject_btn");
   if(_sr4){_sr4.disabled=false;_sr4.textContent="✕ Reject Selected";}
   if(_sa4){_sa4.disabled=false;_sa4.textContent="✓ Approve Selected";}
@@ -6748,13 +6762,15 @@ async function _doDeleteBpoSelected(ids, rows) {
   var _bpoSelCnt=document.getElementById('bpo_selcount');
   if(_bpoDelBtn){_bpoDelBtn.disabled=true;_bpoDelBtn.textContent='Deleting '+ids.length+' request'+(ids.length>1?'s':'')+' ...';}
   if(_bpoSelCnt)_bpoSelCnt.textContent='Deleting...';
-  var results=await Promise.all(ids.map(function(id){
-    return callAPI('deleteBatteryPO',{id:id}).then(function(res){
-      if(res&&res.success!==false){BAT_POS=BAT_POS.filter(function(r){return r.id!==id;});return {ok:true};}
-      return {ok:false};
-    }).catch(function(){return {ok:false};});
-  }));
-  var deleted=results.filter(function(r){return r.ok;}).length;
+  var deleted=0;
+  for(var i=0;i<ids.length;i++){
+    var id=ids[i];
+    if(_bpoDelBtn){_bpoDelBtn.textContent='Deleting '+(i+1)+'/'+ids.length+'...';}
+    try{
+      var res=await callAPI('deleteBatteryPO',{id:id});
+      if(res&&res.success!==false){BAT_POS=BAT_POS.filter(function(r){return r.id!==id;});deleted++;}
+    }catch(e){}
+  }
   var _bpoDelBtn2=document.getElementById('bpo_delete_btn');
   if(_bpoDelBtn2){_bpoDelBtn2.disabled=false;_bpoDelBtn2.innerHTML='&#128465; Delete Selected';}
   bpoClearSelection();
@@ -7360,12 +7376,16 @@ async function bulkApproveBatFitReq(){
   if(!pending.length){toast('No pending records selected','er');return;}
   if(!confirm('Approve '+pending.length+' request'+(pending.length>1?'s':'')+' ?'))return;
   var approvedBy=CURRENT_USER?CURRENT_USER.name||CURRENT_USER.username:'';
-  toast('Approving '+pending.length+' request'+(pending.length>1?'s':'')+'...','ok');
-  // Fire all approvals in parallel
-  var results=await Promise.all(pending.map(function(f){
+  var done=0,failed=0;
+  var btn=document.getElementById('batfitreq_approve_btn');
+  if(btn){btn.disabled=true;}
+  for(var i=0;i<pending.length;i++){
+    var f=pending[i];
+    if(btn){btn.textContent='Approving '+(i+1)+'/'+pending.length+'...';}
     var isIss=(f.status||'').toUpperCase()==='PENDING ISSUANCE';
     var action=isIss?'approveBattFitment':'approveBattRemoval';
-    return callAPI(action,{fitmentId:f.id,approvedBy:approvedBy}).then(function(res){
+    try{
+      var res=await callAPI(action,{fitmentId:f.id,approvedBy:approvedBy});
       if(res&&res.success){
         var newStat=isIss?'ACTIVE':'CLOSED';
         var idx=BAT_FITS.findIndex(function(x){return x.id===f.id;});
@@ -7373,20 +7393,15 @@ async function bulkApproveBatFitReq(){
         var bref2=String(f.batteryRef||'').trim();
         var bidx2=BATTERIES.findIndex(function(b){return String(b.batteryRef||'').trim()===bref2;});
         if(bidx2>=0){
-          if(isIss){
-            BATTERIES[bidx2].status='FITTED';BATTERIES[bidx2].currentVehicle=f.vehicle||'';BATTERIES[bidx2].currentPosition=f.position||'';
-          } else {
-            BATTERIES[bidx2].status='IN STORE';BATTERIES[bidx2].currentVehicle='';BATTERIES[bidx2].currentPosition='';
-          }
+          if(isIss){BATTERIES[bidx2].status='FITTED';BATTERIES[bidx2].currentVehicle=f.vehicle||'';BATTERIES[bidx2].currentPosition=f.position||'';}
+          else{BATTERIES[bidx2].status='IN STORE';BATTERIES[bidx2].currentVehicle='';BATTERIES[bidx2].currentPosition='';}
         }
-        return {ok:true};
-      } return {ok:false};
-    }).catch(function(){return {ok:false};});
-  }));
-  var done=results.filter(function(r){return r.ok;}).length;
-  var failed=results.filter(function(r){return !r.ok;}).length;
+        done++;
+      } else { failed++; }
+    } catch(e){ failed++; }
+  }
+  if(btn){btn.disabled=false;btn.textContent='✓ Approve Selected';}
   _batRemHoldSelected.clear();_batFitReqSelected.clear();
-  // Clear status filters so history stays visible after approval
   ['BQFSTATUS','BHFSTATUS'].forEach(function(id){var e=document.getElementById(id);if(e)e.value='';});
   if(done>0)toast(done+' approved ✓','ok');
   if(failed>0)toast(failed+' failed','er');
@@ -7477,25 +7492,29 @@ async function bulkRejectBatFitReq(){
   if(!pending.length){toast('No pending records selected','er');return;}
   if(!confirm('Reject '+pending.length+' request'+(pending.length>1?'s':'')+' ?'))return;
   var rejectedBy=CURRENT_USER?CURRENT_USER.name||CURRENT_USER.username:'Admin';
-  toast('Rejecting '+pending.length+' request'+(pending.length>1?'s':'')+'...','er');
-  var results=await Promise.all(pending.map(function(f){
-    return callAPI('rejectBattFitment',{fitmentId:f.id,rejectedBy:rejectedBy,comment:'Bulk rejected'}).then(function(res){
+  var done=0,failed=0;
+  var btn=document.getElementById('batfitreq_reject_btn');
+  if(btn){btn.disabled=true;}
+  for(var i=0;i<pending.length;i++){
+    var f=pending[i];
+    if(btn){btn.textContent='Rejecting '+(i+1)+'/'+pending.length+'...';}
+    try{
+      var res=await callAPI('rejectBattFitment',{fitmentId:f.id,rejectedBy:rejectedBy,comment:'Bulk rejected'});
       if(res&&res.success){
         var idx=BAT_FITS.findIndex(function(x){return x.id===f.id;});
         if(idx>=0){BAT_FITS[idx].status='REJECTED';BAT_FITS[idx].rejectedBy=rejectedBy;}
-        return {ok:true};
-      } return {ok:false};
-    }).catch(function(){return {ok:false};});
-  }));
-  var done=results.filter(function(r){return r.ok;}).length;
-  var failed=results.filter(function(r){return !r.ok;}).length;
+        done++;
+      } else { failed++; }
+    } catch(e){ failed++; }
+  }
+  if(btn){btn.disabled=false;btn.textContent='✕ Reject Selected';}
   _batRemHoldSelected.clear();_batFitReqSelected.clear();
   ['BQFSTATUS','BHFSTATUS'].forEach(function(id){var e=document.getElementById(id);if(e)e.value='';});
   if(done>0)toast(done+' rejected','in');
   if(failed>0)toast(failed+' failed','er');
-  _wsFetchAndRender({'BAT_FITS':'/batteryFitments','BATTERIES':'/batteries'}, function(){
+  renderBatFitRequests(); setTimeout(function(){ _wsFetchAndRender({'BAT_FITS':'/batteryFitments','BATTERIES':'/batteries'}, function(){
     if(currentView==='bat_rem_hold')renderBatRemHold();else renderBatFitRequests();
-  });
+  }); }, 3000);
 }
 
 async function bulkApproveTyreFitReq(){
@@ -7505,29 +7524,46 @@ async function bulkApproveTyreFitReq(){
   if(!pending.length){toast('No pending records selected','er');return;}
   if(!confirm('Approve '+pending.length+' request'+(pending.length>1?'s':'')+' ?'))return;
   var approvedBy=CURRENT_USER?CURRENT_USER.name||CURRENT_USER.username:'Admin';
-  toast('Approving '+pending.length+' request'+(pending.length>1?'s':'')+'...','ok');
-  var results=await Promise.all(pending.map(function(f){
+  var done=0, failed=0;
+  var btn=document.getElementById('fitreq_approve_btn')||document.getElementById('tyrfitreq_approve_btn');
+  if(btn){btn.disabled=true; btn.textContent='Approving 0/'+pending.length+'...';}
+  toast('Approving '+pending.length+' tyre fitment request'+(pending.length>1?'s':'')+'...','ok');
+  for(var i=0;i<pending.length;i++){
+    var f=pending[i];
+    if(btn){btn.textContent='Approving '+(i+1)+'/'+pending.length+'...';}
     var isIss=(f.status||'').toUpperCase()==='PENDING ISSUANCE';
     var action=isIss?'approveFitment':'approveRemoval';
-    return callAPI(action,{fitmentId:f.id,approvedBy:approvedBy}).then(function(res){
+    try{
+      var res=await callAPI(action,{fitmentId:f.id,approvedBy:approvedBy});
       if(res&&res.success){
         var newStat=isIss?'ACTIVE':'CLOSED';
         var idx=TYRE_FITS.findIndex(function(x){return x.id===f.id;});
         if(idx>=0){TYRE_FITS[idx].status=newStat;TYRE_FITS[idx].approvedBy=approvedBy;TYRE_FITS[idx].approvedAt=new Date().toISOString();}
-        return {ok:true};
-      } return {ok:false};
-    }).catch(function(){return {ok:false};});
-  }));
-  var done=results.filter(function(r){return r.ok;}).length;
-  var failed=results.filter(function(r){return !r.ok;}).length;
-  // Clear whichever selection was used and re-render correct view
+        done++;
+      } else { failed++; }
+    } catch(e){ failed++; }
+  }
+  if(btn){btn.disabled=false;btn.textContent='✓ Approve Selected';}
   tyreRemHoldClearSel();fitReqClearSelection();
-  ['TRFSTATUS','TRQSTATUS'].forEach(function(id){var e=document.getElementById(id);if(e)e.value='';});
-  if(done>0)toast(done+' approved \u2713','ok');
+  if(done>0)toast(done+' approved ✓','ok');
   if(failed>0)toast(failed+' failed','er');
-  renderTyreFitRequests(); setTimeout(function(){ _wsFetchAndRender({'TYRES':'/tyres','TYRE_FITS':'/tyreFitments'}, function(){
-    if(currentView==='tyre_rem_hold') renderTyreRemHold(); else renderTyreFitRequests();
-  }); }, 3000);
+  renderTyreFitRequests();
+  // Delayed Firebase refresh — only update TYRE_FITS if Firebase confirms approvals
+  setTimeout(function(){
+    Promise.all([
+      wsFbRead('/tyreFitments').then(function(r){
+        if(r&&r.records){
+          // Only update if Firebase has at least the same count — prevents stale overwrite
+          var fbActive=r.records.filter(function(x){return (x.status||'').toUpperCase()==='ACTIVE';}).length;
+          var localActive=TYRE_FITS.filter(function(x){return (x.status||'').toUpperCase()==='ACTIVE';}).length;
+          if(fbActive>=localActive) TYRE_FITS=r.records;
+        }
+      }).catch(function(){}),
+      wsFbRead('/tyres').then(function(r){if(r&&r.records)TYRES=r.records;}).catch(function(){})
+    ]).then(function(){
+      if(currentView==='tyre_rem_hold') renderTyreRemHold(); else renderTyreFitRequests();
+    });
+  }, 5000);
 }
 
 async function bulkRejectTyreFitReq(){
@@ -7537,24 +7573,29 @@ async function bulkRejectTyreFitReq(){
   if(!pending.length){toast('No pending records selected','er');return;}
   if(!confirm('Reject '+pending.length+' request'+(pending.length>1?'s':'')+' ?'))return;
   var rejectedBy=CURRENT_USER?CURRENT_USER.name||CURRENT_USER.username:'Admin';
-  toast('Rejecting '+pending.length+' request'+(pending.length>1?'s':'')+'...','er');
-  var results=await Promise.all(pending.map(function(f){
-    return callAPI('rejectFitment',{fitmentId:f.id,rejectedBy:rejectedBy}).then(function(res){
+  var done=0, failed=0;
+  var btn=document.getElementById('fitreq_reject_btn')||document.getElementById('tyrfitreq_reject_btn');
+  if(btn){btn.disabled=true; btn.textContent='Rejecting 0/'+pending.length+'...';}
+  toast('Rejecting '+pending.length+' tyre fitment request'+(pending.length>1?'s':'')+'...','er');
+  for(var i=0;i<pending.length;i++){
+    var f=pending[i];
+    if(btn){btn.textContent='Rejecting '+(i+1)+'/'+pending.length+'...';}
+    try{
+      var res=await callAPI('rejectFitment',{fitmentId:f.id,rejectedBy:rejectedBy});
       if(res&&res.success){
         var idx=TYRE_FITS.findIndex(function(x){return x.id===f.id;});
         if(idx>=0){TYRE_FITS[idx].status='REJECTED';TYRE_FITS[idx].rejectedBy=rejectedBy;}
-        return {ok:true};
-      } return {ok:false};
-    }).catch(function(){return {ok:false};});
-  }));
-  var done=results.filter(function(r){return r.ok;}).length;
-  var failed=results.filter(function(r){return !r.ok;}).length;
+        done++;
+      } else { failed++; }
+    } catch(e){ failed++; }
+  }
+  if(btn){btn.disabled=false;btn.textContent='✕ Reject Selected';}
   tyreRemHoldClearSel();fitReqClearSelection();
   if(done>0)toast(done+' rejected','in');
   if(failed>0)toast(failed+' failed','er');
-  _wsFetchAndRender({'TYRE_FITS':'/tyreFitments','TYRES':'/tyres'}, function(){
+  renderTyreFitRequests(); setTimeout(function(){ _wsFetchAndRender({'TYRE_FITS':'/tyreFitments','TYRES':'/tyres'}, function(){
     if(currentView==='tyre_rem_hold') renderTyreRemHold(); else renderTyreFitRequests();
-  });
+  }); }, 3000);
 }
 
 function batFitReqClearSel(){_batFitReqSelected.clear();document.querySelectorAll('.batfitreq-chk').forEach(function(cb){cb.checked=false;});batFitReqUpdateSelBar();}
@@ -7570,14 +7611,17 @@ async function deleteBatFitReqSelected(){
     var delBtn=document.getElementById('batfitreq_del_btn');
     if(delBtn){delBtn.disabled=true;delBtn.textContent='Deleting '+ids.length+' request'+(ids.length>1?'s':'')+'...';}
     var selCnt=document.getElementById('batfitreq_selcount');if(selCnt)selCnt.textContent='Deleting...';
-    // Parallel deletes
-    var results=await Promise.all(ids.map(function(id){
-      return callAPI('deleteBattFitment',{id:id}).then(function(res){
-        if(res&&res.error&&!res.alreadyGone){ return {ok:false}; }
-        BAT_FITS=BAT_FITS.filter(function(r){return r.id!==id;});
-        return {ok:true};
-      }).catch(function(){return {ok:false};});
-    }));
+    // Sequential deletes — prevents race conditions
+    var results=[];
+    for(var di=0;di<ids.length;di++){
+      var did=ids[di];
+      if(delBtn){delBtn.textContent='Deleting '+(di+1)+'/'+ids.length+'...';}
+      try{
+        var dres=await callAPI('deleteBattFitment',{id:did});
+        if(dres&&dres.error&&!dres.alreadyGone){results.push({ok:false});}
+        else{BAT_FITS=BAT_FITS.filter(function(r){return r.id!==did;});results.push({ok:true});}
+      }catch(e){results.push({ok:false});}
+    }
     var deleted=results.filter(function(r){return r.ok;}).length;
     var failed=results.filter(function(r){return !r.ok;}).length;
     var delBtnR=document.getElementById('batfitreq_del_btn');
@@ -7827,19 +7871,21 @@ async function bulkApproveBatSales(){
   var _ba=document.getElementById('batsale_approve_btn'),_br=document.getElementById('batsale_reject_btn');
   if(_ba){_ba.disabled=true;_ba.textContent='Approving '+pending.length+' sale'+(pending.length>1?'s':'')+' ...';}
   if(_br)_br.disabled=true;
-  var results=await Promise.all(pending.map(function(s){
-    return callAPI('approveBatterySale',{id:s.id,approvedBy:approvedBy}).then(function(res){
+  var done=0;
+  for(var i=0;i<pending.length;i++){
+    var s=pending[i];
+    if(_ba){_ba.textContent='Approving '+(i+1)+'/'+pending.length+'...';}
+    try{
+      var res=await callAPI('approveBatterySale',{id:s.id,approvedBy:approvedBy});
       if(res&&res.success){
         var idx=BAT_SALES.findIndex(function(x){return x.id===s.id;});
         if(idx>=0){BAT_SALES[idx].status='APPROVED';BAT_SALES[idx].approvedBy=approvedBy;BAT_SALES[idx].approvedAt=new Date().toISOString();}
         var bidx=(BATTERIES||[]).findIndex(function(b){return b.batteryRef===s.batteryRef;});
         if(bidx>=0) BATTERIES[bidx].status='SOLD';
-        return {ok:true};
+        done++;
       }
-      return {ok:false};
-    }).catch(function(){return {ok:false};});
-  }));
-  var done=results.filter(function(r){return r.ok;}).length;
+    }catch(e){}
+  }
   var _ba2=document.getElementById('batsale_approve_btn'),_br2=document.getElementById('batsale_reject_btn');
   if(_ba2){_ba2.disabled=false;_ba2.textContent='✓ Approve Selected';}
   if(_br2){_br2.disabled=false;_br2.textContent='✕ Reject Selected';}
@@ -7857,16 +7903,19 @@ async function bulkRejectBatSales(){
   var _ba3=document.getElementById('batsale_approve_btn'),_br3=document.getElementById('batsale_reject_btn');
   if(_br3){_br3.disabled=true;_br3.textContent='Rejecting '+pending.length+' sale'+(pending.length>1?'s':'')+' ...';}
   if(_ba3)_ba3.disabled=true;
-  var results=await Promise.all(pending.map(function(s){
-    return callAPI('rejectBatterySale',{id:s.id,rejectedBy:rejectedBy}).then(function(res){
+  var done=0;
+  for(var i=0;i<pending.length;i++){
+    var s=pending[i];
+    if(_br3){_br3.textContent='Rejecting '+(i+1)+'/'+pending.length+'...';}
+    try{
+      var res=await callAPI('rejectBatterySale',{id:s.id,rejectedBy:rejectedBy});
       if(res&&res.success){
         var idx=BAT_SALES.findIndex(function(x){return x.id===s.id;});
         if(idx>=0){BAT_SALES[idx].status='REJECTED';BAT_SALES[idx].approvedBy=rejectedBy;}
-        return {ok:true};
-      } return {ok:false};
-    }).catch(function(){return {ok:false};});
-  }));
-  var done=results.filter(function(r){return r.ok;}).length;
+        done++;
+      }
+    }catch(e){}
+  }
   var _ba4=document.getElementById('batsale_approve_btn'),_br4=document.getElementById('batsale_reject_btn');
   if(_br4){_br4.disabled=false;_br4.textContent='✕ Reject Selected';}
   if(_ba4){_ba4.disabled=false;_ba4.textContent='✓ Approve Selected';}
@@ -9058,15 +9107,17 @@ async function saveFitBattery(){
   if(btn){btn.disabled=true;btn.textContent='Saving...';}
   var batFitMax=0;
   (BAT_FITS||[]).forEach(function(f){var n=parseInt((f.reqNo||'').replace(/[^0-9]/g,''),10);if(!isNaN(n)&&n>batFitMax)batFitMax=n;});
-  // Fire all fitment requests in parallel with unique reqNo
-  var fitPromises=batLines.map(function(line,j){
-    var reqNo='BFIT-'+String(batFitMax+j+1).padStart(6,'0');
-    return callAPI('fitBattery',{reqNo:reqNo,batteryRef:line.batRef,vehicle:vehicle,position:line.position,dateFitted:dateFitted,jobCardNo:jcNo,driverName:driver,requestedBy:reqBy,status:'PENDING ISSUANCE'}).catch(function(e){return{error:e.message};});
-  });
-  var fitResults=await Promise.all(fitPromises);
-  var saved=fitResults.filter(function(r){return r&&r.success;}).length;
-  var failed=fitResults.filter(function(r){return !r||!r.success;}).length;
-  fitResults.forEach(function(r,j){if(!r||!r.success)toast('Line '+(j+1)+': '+(r&&r.error?r.error:'Failed'),'er');});
+  // Submit sequentially — prevents race conditions on reqNo generation
+  var saved=0,failed=0;
+  for(var j=0;j<batLines.length;j++){
+    var line=batLines[j];
+    if(btn){btn.textContent='Saving '+(j+1)+'/'+batLines.length+'...';}
+    try{
+      var res=await callAPI('fitBattery',{batteryRef:line.batRef,vehicle:vehicle,position:line.position,dateFitted:dateFitted,jobCardNo:jcNo,driverName:driver,requestedBy:reqBy,status:'PENDING ISSUANCE'});
+      if(res&&res.success){saved++;}
+      else{failed++;toast('Line '+(j+1)+': '+(res&&res.error?res.error:'Failed'),'er');}
+    }catch(e){failed++;toast('Line '+(j+1)+': '+(e.message||e),'er');}
+  }
   if(btn){btn.disabled=false;btn.textContent='🔧 Submit Fitment Requests';}
   closeModal('fitBatmodal');
   if(saved>0){
@@ -9118,14 +9169,15 @@ async function saveRemoveBattery(){
   var btn=document.getElementById('bat_rem_save_btn');
   if(btn){btn.disabled=true;btn.textContent='Saving '+remBatLines.length+' line'+(remBatLines.length>1?'s':'')+'...';}
   var saved=0,failed=0;
-  var remResults=await Promise.all(remBatLines.map(function(line,j){
-    var reqNo='BREM-'+String(batRemMax+j+1).padStart(6,'0');
-    return callAPI('removeBattery',{reqNo:reqNo,batteryRef:line.batRef,dateRemoved:dateRemoved,condition:line.cond,reason:line.rsn,requestedBy:reqBy,status:'PENDING REMOVAL',category:'REMOVAL'}).then(function(res){
-      if(res&&res.success)return {ok:true};
-      return {ok:false,err:res&&res.error?res.error:'Failed'};
-    }).catch(function(e){return {ok:false,err:e.message||e};});
-  }));
-  remResults.forEach(function(r,j){if(r.ok)saved++;else{failed++;toast('Line '+(j+1)+': '+r.err,'er');}});
+  for(var j=0;j<remBatLines.length;j++){
+    var line=remBatLines[j];
+    if(btn){btn.textContent='Saving '+(j+1)+'/'+remBatLines.length+'...';}
+    try{
+      var res=await callAPI('removeBattery',{batteryRef:line.batRef,dateRemoved:dateRemoved,condition:line.cond,reason:line.rsn,requestedBy:reqBy,status:'PENDING REMOVAL',category:'REMOVAL'});
+      if(res&&res.success){saved++;}
+      else{failed++;toast('Line '+(j+1)+': '+(res&&res.error?res.error:'Failed'),'er');}
+    }catch(e){failed++;toast('Line '+(j+1)+': '+(e.message||e),'er');}
+  }
   if(btn){btn.disabled=false;btn.textContent='🔄 Submit Removal Requests';}
   closeModal('removeBatmodal');
   if(saved>0){
@@ -9178,13 +9230,15 @@ async function saveBatSale(){
   var btn=document.getElementById('bat_sale_save_btn');
   if(btn){btn.disabled=true;btn.textContent='Saving...';}
   var saved=0,failed=0;
-  var saleResults=await Promise.all(saleLines.map(function(line){
-    return callAPI('sellBattery',{batteryRef:line.batRef,salePrice:line.price,bookValue:line.purchasePrice,saleDate:saleDate,buyer:buyer,paymentMode:payMode,receivedBy:rcvBy}).then(function(res){
-      if(res&&res.success)return {ok:true};
-      return {ok:false,err:res&&res.error?res.error:'Failed'};
-    }).catch(function(e){return {ok:false,err:e.message};});
-  }));
-  saleResults.forEach(function(r,j){if(r.ok)saved++;else{failed++;toast('Line '+(j+1)+': '+r.err,'er');}});
+  for(var j=0;j<saleLines.length;j++){
+    var line=saleLines[j];
+    if(btn){btn.textContent='Saving '+(j+1)+'/'+saleLines.length+'...';}
+    try{
+      var res=await callAPI('sellBattery',{batteryRef:line.batRef,salePrice:line.price,bookValue:line.purchasePrice,saleDate:saleDate,buyer:buyer,paymentMode:payMode,receivedBy:rcvBy});
+      if(res&&res.success){saved++;}
+      else{failed++;toast('Line '+(j+1)+': '+(res&&res.error?res.error:'Failed'),'er');}
+    }catch(e){failed++;toast('Line '+(j+1)+': '+(e.message||e),'er');}
+  }
   if(btn){btn.disabled=false;btn.textContent='Record Sales';}
   closeModal('batSalemodal');
   if(saved>0){
@@ -9788,17 +9842,17 @@ async function saveTyreGRN() {
         wsFbRead('/tyrePOs')
       ]);
       TYRES=grnRefresh[0].records||[]; TYRE_GRNS=grnRefresh[1].records||[]; TYRE_POS=grnRefresh[2].records||[];
-      // Auto-update PO status based on qty received vs ordered
+      // Auto-update PO status based on qty received vs ordered — always recalculate
       var lpoVal = document.getElementById('grn_lpo').value;
       var matchPOs = TYRE_POS.filter(function(po){ return (po.lpoNo||'').toUpperCase()===(lpoVal||'').toUpperCase(); });
       for (var mi=0; mi<matchPOs.length; mi++) {
         var mpo = matchPOs[mi];
         var qtyOrd = Number(mpo.qtyOrdered||0);
         var qtyRcv = Number(mpo.qtyReceived||0);
-        var autoStatus = qtyRcv >= qtyOrd ? 'FULLY RECEIVED' : 'PARTIALLY RECEIVED';
-        var prevStat = (mpo.status||'').toUpperCase();
-        if (prevStat!=='FULLY RECEIVED' && prevStat!==autoStatus) {
-          try { await callAPI('updateTyrePO',{record:Object.assign({},mpo,{status:autoStatus})}); mpo.status=autoStatus; } catch(e){}
+        var qtyOut = Math.max(0, qtyOrd - qtyRcv);
+        var autoStatus = qtyRcv >= qtyOrd ? 'FULLY RECEIVED' : qtyRcv > 0 ? 'PARTIALLY RECEIVED' : (mpo.status||'').toUpperCase().includes('PAID') ? 'PAID NOT RECEIVED' : 'NOT PAID';
+        if ((mpo.status||'').toUpperCase() !== autoStatus) {
+          try { await callAPI('updateTyrePO',{record:Object.assign({},mpo,{status:autoStatus,qtyOutstanding:qtyOut})}); mpo.status=autoStatus; mpo.qtyOutstanding=qtyOut; } catch(e){}
         }
       }
       closeModal('tyreGRNmodal');
@@ -10064,18 +10118,22 @@ async function saveFitTyre() {
   var btn=document.getElementById('fit_save_btn');
   if(btn){btn.disabled=true;btn.textContent='Saving '+fitLines.length+' line'+(fitLines.length>1?'s':'')+'...';}
   var saved=0,failed=0;
-  var fitResults=await Promise.all(fitLines.map(function(line,j){
-    var reqNo=pregenReqNos[j];
-    return callAPI('fitTyre',{reqNo:reqNo,serialNo:line.serial,vehicle:vehicle,vehicleType:vtype,position:line.position,dateFitted:dateFit,kmAtFitting:kmFit,jobCardNo:jcNo,driverName:driver,category:category,status:'PENDING ISSUANCE',requestedBy:reqBy}).then(function(res){
-      if(res&&res.success)return {ok:true};
-      return {ok:false,err:res&&res.error?res.error:'unknown error'};
-    }).catch(function(e){return {ok:false,err:e.message||e};});
-  }));
-  fitResults.forEach(function(r,j){if(r.ok)saved++;else{failed++;toast('Line '+(j+1)+': '+r.err,'er');}});
+  for (var j=0; j<fitLines.length; j++) {
+    var line = fitLines[j];
+    var reqNo = pregenReqNos[j];
+    if(btn){btn.textContent='Saving '+(j+1)+'/'+fitLines.length+'...';}
+    try {
+      var res = await callAPI('fitTyre',{reqNo:reqNo,serialNo:line.serial,vehicle:vehicle,vehicleType:vtype,position:line.position,dateFitted:dateFit,kmAtFitting:kmFit,jobCardNo:jcNo,driverName:driver,category:category,status:'PENDING ISSUANCE',requestedBy:reqBy});
+      if(res&&res.success){ saved++; }
+      else { failed++; toast('Line '+(j+1)+': '+(res&&res.error?res.error:'unknown error'),'er'); }
+    } catch(e) {
+      failed++;
+      toast('Line '+(j+1)+': '+(e.message||e),'er');
+    }
+  }
   if(btn){btn.disabled=false;btn.textContent='🔧 Submit Fitment Requests';}
   closeModal('tyreFitmodal');updateBadges();
   if(saved>0){
-    ['TRFSTATUS','TRQSTATUS'].forEach(function(id){var e=document.getElementById(id);if(e)e.value='';});
     toast(saved+' fitment request'+(saved>1?'s':'')+' submitted ✓','ok');
     _wsFetchAndRender({'TYRE_FITS':'/tyreFitments','TYRES':'/tyres'}, function(){ if(currentView==='tyre_rem_hold')renderTyreRemHold();else if(currentView==='tyre_fit_requests')renderTyreFitRequests(); });
   }
@@ -10114,19 +10172,20 @@ async function saveRemoveTyre() {
   var btn=document.getElementById('rem_save_btn');
   if(btn){btn.disabled=true;btn.textContent='Saving '+remLines.length+' line'+(remLines.length>1?'s':'')+'...';}
   var saved=0,failed=0;
-  var remResults=await Promise.all(remLines.map(function(line,j){
-    var reqNo=pregenRemReqNos[j];
-    return callAPI('removeTyre',{reqNo:reqNo,serialNo:line.serial,dateRemoved:dateRem,kmAtRemoval:kmRem,reason:line.reason,nextStatus:line.nextSt,status:'PENDING REMOVAL',requestedBy:reqBy,category:'REMOVAL',removalNotes:line.notes}).then(function(res){
-      if(res&&res.success)return {ok:true};
-      return {ok:false,err:res&&res.error?res.error:'Failed'};
-    }).catch(function(e){return {ok:false,err:e.message||e};});
-  }));
-  remResults.forEach(function(r,j){if(r.ok)saved++;else{failed++;toast('Line '+(j+1)+': '+r.err,'er');}});
+  for (var j=0; j<remLines.length; j++) {
+    var line = remLines[j];
+    var reqNo = pregenRemReqNos[j];
+    if(btn){btn.textContent='Saving '+(j+1)+'/'+remLines.length+'...';}
+    try {
+      var res = await callAPI('removeTyre',{reqNo:reqNo,serialNo:line.serial,dateRemoved:dateRem,kmAtRemoval:kmRem,reason:line.reason,nextStatus:line.nextSt,status:'PENDING REMOVAL',requestedBy:reqBy,category:'REMOVAL',removalNotes:line.notes});
+      if(res&&res.success){ saved++; }
+      else { failed++; toast('Line '+(j+1)+': '+(res&&res.error?res.error:'Failed'),'er'); }
+    } catch(e) { failed++; toast('Line '+(j+1)+': '+(e.message||e),'er'); }
+  }
   if(btn){btn.disabled=false;btn.textContent='🔄 Submit Removal Requests';}
   closeModal('tyreRemovemodal');
   if(saved>0){
     _wsFetchAndRender({'TYRE_FITS':'/tyreFitments','TYRES':'/tyres'}, function(){ if(currentView==='tyre_rem_hold')renderTyreRemHold();else renderTyreFitRequests(); });
-    ['TRFSTATUS','TRQSTATUS'].forEach(function(id){var e=document.getElementById(id);if(e)e.value='';});
     toast(saved+' removal request'+(saved>1?'s':'')+' submitted ✓','ok');
 // Firebase refetch already handled by _wsFetchAndRender above
   }
@@ -10158,14 +10217,15 @@ async function saveScrapSale() {
   var btn=document.getElementById('scrap_save_btn');
   if(btn){btn.disabled=true;btn.textContent='Saving...';}
   var saved=0,failed=0;
-  // Fire all in parallel
-  var scrapRes=await Promise.all(scrapLines.map(function(line){
-    return callAPI('scrapTyre',{serialNo:line.serial,salePrice:line.price,buyer:buyer,paymentMode:payMode,paymentRef:payRef,receivedBy:rcvBy,notes:'',scrapDate:scrapDate}).then(function(res){
-      if(res&&res.success)return {ok:true};
-      return {ok:false,err:res&&res.error?res.error:'Failed'};
-    }).catch(function(e){return {ok:false,err:e.message||e};});
-  }));
-  scrapRes.forEach(function(r,j){if(r.ok)saved++;else{failed++;toast('Line '+(j+1)+': '+r.err,'er');}});
+  for (var j=0; j<scrapLines.length; j++) {
+    var line = scrapLines[j];
+    if(btn){btn.textContent='Saving '+(j+1)+'/'+scrapLines.length+'...';}
+    try {
+      var res = await callAPI('scrapTyre',{serialNo:line.serial,salePrice:line.price,buyer:buyer,paymentMode:payMode,paymentRef:payRef,receivedBy:rcvBy,notes:'',scrapDate:scrapDate});
+      if(res&&res.success){ saved++; }
+      else { failed++; toast('Line '+(j+1)+': '+(res&&res.error?res.error:'Failed'),'er'); }
+    } catch(e) { failed++; toast('Line '+(j+1)+': '+(e.message||e),'er'); }
+  }
   if(btn){btn.disabled=false;btn.textContent='🗑 Record Sales';}
   closeModal('tyreScrapmodal');
   if(saved>0){
@@ -12205,11 +12265,14 @@ async function deleteIssReqSelected(){
   var _dBtn=document.getElementById('iss_req_delete_btn');
   if(_dBtn){_dBtn.disabled=true;_dBtn.textContent='Deleting '+ids.length+' request'+(ids.length>1?'s':'')+' ...';}
   var deleted=0;
-  await Promise.all(ids.map(function(id){
-    return callAPI('rejectPendingIssuance',{id:id,rejectedBy:'ADMIN'}).then(function(res){
+  for(var i=0;i<ids.length;i++){
+    var id=ids[i];
+    if(_dBtn){_dBtn.textContent='Deleting '+(i+1)+'/'+ids.length+'...';}
+    try{
+      var res=await callAPI('rejectPendingIssuance',{id:id,rejectedBy:'ADMIN'});
       if(res&&res.success!==false){var ix=ISS_PENDING.findIndex(function(r){return r.id===id;});if(ix>=0)ISS_PENDING.splice(ix,1);deleted++;}
-    }).catch(function(){});
-  }));
+    }catch(e){}
+  }
   var _dBtn2=document.getElementById('iss_req_delete_btn');
   if(_dBtn2){_dBtn2.disabled=false;_dBtn2.textContent='\U0001f5d1 Delete';}
   issReqClearSelection();
@@ -12285,16 +12348,19 @@ async function bulkRejectIssPending(){
   var iphAppBtn3=document.getElementById("iph_approve_btn");
   if(iphRejBtn3){iphRejBtn3.disabled=true;iphRejBtn3.textContent="Rejecting "+recs.length+" request"+(recs.length>1?"s":"")+"...";}
   if(iphAppBtn3)iphAppBtn3.disabled=true;
-  var results=await Promise.all(recs.map(function(r){
-    return callAPI("rejectPendingIssuance",{id:r.id,rejectedBy:rejectedBy}).then(function(res){
+  var done=0;
+  for(var i=0;i<recs.length;i++){
+    var r=recs[i];
+    if(iphRejBtn3){iphRejBtn3.textContent='Rejecting '+(i+1)+'/'+recs.length+'...';}
+    try{
+      var res=await callAPI("rejectPendingIssuance",{id:r.id,rejectedBy:rejectedBy});
       if(res&&res.success!==false){
         var idx=ISS_PENDING.findIndex(function(x){return x.id===r.id;});
-        if(idx>=0) ISS_PENDING.splice(idx,1); // remove immediately
-        return {ok:true};
-      } return {ok:false};
-    }).catch(function(){return {ok:false};});
-  }));
-  var done=results.filter(function(r){return r.ok;}).length;
+        if(idx>=0) ISS_PENDING.splice(idx,1);
+        done++;
+      }
+    }catch(e){}
+  }
   var iphRejBtn4=document.getElementById("iph_reject_btn");
   var iphAppBtn4=document.getElementById("iph_approve_btn");
   if(iphRejBtn4){iphRejBtn4.disabled=false;iphRejBtn4.textContent="✕ Reject Selected";}
@@ -12870,16 +12936,18 @@ async function saveTpoBulkEdit() {
   var btn = document.getElementById('tpo_bulk_save_btn');
   if(btn){btn.disabled=true;btn.textContent='Saving '+updates.length+' record'+(updates.length>1?'s':'')+'...';}
   var saved=0,failed=0;
-  var res2 = await Promise.all(updates.map(function(rec){
-    return callAPI('updateTyrePO',{record:rec}).then(function(res){
-      if(res&&res.success!==false){
+  for(var ti=0;ti<updates.length;ti++){
+    var rec=updates[ti];
+    if(btn){btn.textContent='Saving '+(ti+1)+'/'+updates.length+'...';}
+    try{
+      var tres=await callAPI('updateTyrePO',{record:rec});
+      if(tres&&tres.success!==false){
         var ix=(TYRE_POS||[]).findIndex(function(t){return t.id===rec.id;});
         if(ix>=0)TYRE_POS[ix]=Object.assign({},TYRE_POS[ix],rec);
-        return {ok:true};
-      } return {ok:false};
-    }).catch(function(){return {ok:false};});
-  }));
-  res2.forEach(function(r){if(r.ok)saved++;else failed++;});
+        saved++;
+      } else { failed++; }
+    }catch(e){failed++;}
+  }
   if(btn){btn.disabled=false;btn.textContent='\uD83D\uDCBE Save Changes';}
   document.getElementById('tpobulkmodal').classList.add('hidden');
   tpoClearSelection();
@@ -13225,15 +13293,15 @@ async function deleteSReqSelected() {
     if (delBtn) { delBtn.disabled=true; delBtn.textContent='⏳ Deleting '+ids.length+'...'; }
 
     var deleted = 0, failed = 0;
-
-    // Delete all store req records in parallel
-    var delResults = await Promise.all(ids.map(function(id){
-      return callAPI('deleteRecord',{sheetName:'STORE_REQUISITIONS',id:id}).catch(function(){return {error:true};});
-    }));
-    delResults.forEach(function(r,i){
-      if(r && r.error && !r.alreadyGone){failed++;}
-      else{STORE_REQS=STORE_REQS.filter(function(x){return x.id!==ids[i];});deleted++;}
-    });
+    for(var di=0;di<ids.length;di++){
+      var did=ids[di];
+      if(delBtn){delBtn.textContent='⏳ Deleting '+(di+1)+'/'+ids.length+'...';}
+      try{
+        var dres=await callAPI('deleteRecord',{sheetName:'STORE_REQUISITIONS',id:did});
+        if(dres&&dres.error&&!dres.alreadyGone){failed++;}
+        else{STORE_REQS=STORE_REQS.filter(function(x){return x.id!==did;});deleted++;}
+      }catch(e){failed++;}
+    }
 
     // Cascade: for each RECEIVED row, delete inventory batches + workshop reqs with same LPO
     for (var j = 0; j < rcvRows.length; j++) {
@@ -13549,22 +13617,27 @@ async function saveStoreRequisition(){
       return tid;
     });
     renderStoreRequisition(_sreqCurrentFilter||'all'); // show immediately
-    var addResults = await Promise.all(lines.map(function(line,li){
-      return callAPI('addStoreReq',{record:line}).then(function(res){
-        if(res&&res.success!==false){
+    var addResults = [];
+    for(var li=0;li<lines.length;li++){
+      var line=lines[li];
+      if(btn)btn.textContent='Saving '+(li+1)+'/'+lines.length+'...';
+      try{
+        var ares=await callAPI('addStoreReq',{record:line});
+        if(ares&&ares.success!==false){
           var tidx=STORE_REQS.findIndex(function(r){return r.id===tempIds[li];});
-          var realRec=Object.assign({id:res.id||(Date.now()+'_'+li)},line);
+          var realRec=Object.assign({id:ares.id||(Date.now()+'_'+li)},line);
           if(tidx!==-1)STORE_REQS[tidx]=realRec; else STORE_REQS.push(realRec);
-          if(res.inventoryWarning)toast('\u26a0\ufe0f '+line.reqNo+': '+res.inventoryWarning,'er');
-          return {ok:true};
+          if(ares.inventoryWarning)toast('\u26a0\ufe0f '+line.reqNo+': '+ares.inventoryWarning,'er');
+          addResults.push({ok:true});
+        } else {
+          STORE_REQS=STORE_REQS.filter(function(r){return r.id!==tempIds[li];});
+          addResults.push({ok:false});
         }
+      }catch(e){
         STORE_REQS=STORE_REQS.filter(function(r){return r.id!==tempIds[li];});
-        return {ok:false};
-      }).catch(function(){
-        STORE_REQS=STORE_REQS.filter(function(r){return r.id!==tempIds[li];});
-        return {ok:false};
-      });
-    }));
+        addResults.push({ok:false});
+      }
+    }
     addResults.forEach(function(r){if(r.ok)saved++;else failed++;});
   }
 
@@ -14143,21 +14216,19 @@ async function saveSReqBulkEdit() {
   if (!updates.length){toast('Nothing to save','er');return;}
   if(btn){btn.disabled=true;btn.textContent='Saving '+updates.length+' record'+(updates.length>1?'s':'')+'...';}
   var saved=0,failed=0;
-  // Parallel - all records fired at once, no 600ms delays
-  var bulkRes=await Promise.all(updates.map(function(rec){
-    return callAPI('updateStoreReq',{record:upperRecord(rec)}).then(function(res){
-      if(res&&res.error){
-        toast(rec.reqNo+': '+res.error,'er');
-        return {ok:false};
+  for(var bi=0;bi<updates.length;bi++){
+    var rec=updates[bi];
+    if(btn){btn.textContent='Saving '+(bi+1)+'/'+updates.length+'...';}
+    try{
+      var bres=await callAPI('updateStoreReq',{record:upperRecord(rec)});
+      if(bres&&bres.error){toast(rec.reqNo+': '+bres.error,'er');failed++;}
+      else{
+        var ix=(STORE_REQS||[]).findIndex(function(x){return x.id===rec.id;});
+        if(ix>=0)STORE_REQS[ix]=Object.assign({},STORE_REQS[ix],rec);
+        saved++;
       }
-      if(res&&res.success!==false){
-        var ix2=(STORE_REQS||[]).findIndex(function(r){return r.id===rec.id;});
-        if(ix2!==-1)STORE_REQS[ix2]=upperRecord(rec);
-        return {ok:true};
-      } return {ok:false};
-    }).catch(function(){return {ok:false};});
-  }));
-  bulkRes.forEach(function(r){if(r.ok)saved++;else failed++;});
+    }catch(e){toast(rec.reqNo+': '+(e.message||e),'er');failed++;}
+  }
   wsFbRead('/storeInventory').then(function(r){if(r&&r.records)STORE_INVENTORY=r.records;}).catch(function(){});
   if(btn){btn.disabled=false;btn.textContent='💾 Save All Changes';}
   document.getElementById('sreqbulkmodal').classList.add('hidden');
@@ -16544,7 +16615,7 @@ var TRIP_MODULES_META = [
   {key:'trip',      perms:['create','edit','delete','approve']},
   {key:'shortage',  perms:['payment','approve']},
   {key:'deduction', perms:['create','edit','delete','payment','approve']},
-  {key:'permit',    perms:['create','edit','delete','approve']},
+  {key:'permit',    perms:['create','edit','delete','approve','record']},
   {key:'expense',   perms:['create','edit','delete','approve']}
 ];
 var PNL_TABS_META = ['trips','tplsummary','horseperf','trailerperf'];
@@ -17962,6 +18033,7 @@ history.pushState(null, '', window.location.href);
           <label class="perm-item"><input type="checkbox" id="p_permit_edit"><span>Edit</span></label>
           <label class="perm-item"><input type="checkbox" id="p_permit_delete"><span>Delete</span></label>
           <label class="perm-item"><input type="checkbox" id="p_permit_approve"><span>Approve</span></label>
+          <label class="perm-item"><input type="checkbox" id="p_permit_record"><span>Record Permit</span></label>
         </div>
 
         <div style="margin-top:10px;font-size:11px;font-weight:700;color:var(--t2);text-transform:uppercase;letter-spacing:.08em;padding-bottom:4px;border-bottom:1px solid var(--br)">&#128221; Additional Expenses</div>
@@ -18414,7 +18486,7 @@ history.pushState(null, '', window.location.href);
       </div>
     </div>
     <div style="padding:12px 24px;border-top:1px solid #e2e2e7;display:flex;gap:10px;justify-content:flex-end;flex-shrink:0;background:#f5f5f7">
-      <button class="btn bg" onclick="closeModal()">Cancel</button>
+      <button class="btn bg" onclick="closeModal('batPOmodal')">Cancel</button>
       <button class="btn bp" id="bpo_save_btn" onclick="saveBatPO()">&#128203; Create Requisition</button>
     </div>
   </div>
@@ -18454,7 +18526,7 @@ history.pushState(null, '', window.location.href);
     </div>
     <div style="padding:12px 24px;border-top:1px solid #e2e2e7;display:flex;gap:10px;justify-content:flex-end;flex-shrink:0;background:#f5f5f7">
       <div id="bat_grn_summary" style="flex:1;font-size:12px;color:var(--t2);align-self:center"></div>
-      <button class="btn bg" onclick="closeModal()">Cancel</button>
+      <button class="btn bg" onclick="closeModal('batGRNmodal')">Cancel</button>
       <button class="btn bp" id="bat_grn_save_btn" onclick="saveBatGRN()">&#128267; Confirm Inward</button>
     </div>
   </div>
@@ -18564,7 +18636,7 @@ history.pushState(null, '', window.location.href);
     </div>
     <div style="flex:1;overflow-y:auto;padding:0 24px 8px"><div id="bat_sale_lines_wrap" style="display:flex;flex-direction:column;gap:6px"></div></div>
     <div style="padding:12px 24px;border-top:1px solid #e2e2e7;display:flex;gap:10px;justify-content:flex-end;flex-shrink:0;background:#f5f5f7">
-      <button class="btn bg" onclick="closeModal()">Cancel</button>
+      <button class="btn bg" onclick="closeModal('batSalemodal')">Cancel</button>
       <button class="btn bp" id="bat_sale_save_btn" onclick="saveBatSale()">&#128190; Record Sales</button>
     </div>
   </div>
@@ -18633,7 +18705,7 @@ history.pushState(null, '', window.location.href);
 
     <!-- Footer -->
     <div style="padding:12px 24px;border-top:1px solid #e2e2e7;display:flex;gap:10px;justify-content:flex-end;flex-shrink:0;background:#f5f5f7">
-      <button class="btn bg" onclick="closeModal()">Cancel</button>
+      <button class="btn bg" onclick="closeModal('tyrePOmodal')">Cancel</button>
       <button class="btn bp" id="tpo_save_btn" onclick="saveTyrePO()">📋 Create Requisition</button>
     </div>
 
@@ -18679,7 +18751,7 @@ history.pushState(null, '', window.location.href);
     <!-- Footer -->
     <div style="padding:12px 24px;border-top:1px solid #e2e2e7;display:flex;gap:10px;justify-content:flex-end;flex-shrink:0;background:#f5f5f7">
       <div id="grn_summary" style="flex:1;font-size:12px;color:var(--t2);align-self:center"></div>
-      <button class="btn bg" onclick="closeModal()">Cancel</button>
+      <button class="btn bg" onclick="closeModal('tyreGRNmodal')">Cancel</button>
       <button class="btn bp" id="grn_save_btn" onclick="saveTyreGRN()">💾 Confirm Inward</button>
     </div>
   </div>
@@ -18717,7 +18789,7 @@ history.pushState(null, '', window.location.href);
     </div>
     <div style="flex:1;overflow-y:auto;padding:0 24px 8px"><div id="fit_lines_wrap" style="display:flex;flex-direction:column;gap:6px"></div></div>
     <div style="padding:12px 24px;border-top:1px solid #e2e2e7;display:flex;gap:10px;justify-content:flex-end;flex-shrink:0;background:#f5f5f7">
-      <button class="btn bg" onclick="closeModal()">Cancel</button>
+      <button class="btn bg" onclick="closeModal('tyreFitmodal')">Cancel</button>
       <button class="btn bp" id="fit_save_btn" onclick="saveFitTyre()" style="background:#0a2d6e">&#128295; Submit Fitment Requests</button>
     </div>
   </div>
@@ -18753,7 +18825,7 @@ history.pushState(null, '', window.location.href);
     </div>
     <div style="flex:1;overflow-y:auto;padding:0 24px 8px"><div id="rem_lines_wrap" style="display:flex;flex-direction:column;gap:6px"></div></div>
     <div style="padding:12px 24px;border-top:1px solid #e2e2e7;display:flex;gap:10px;justify-content:flex-end;flex-shrink:0;background:#f5f5f7">
-      <button class="btn bg" onclick="closeModal()">Cancel</button>
+      <button class="btn bg" onclick="closeModal('tyreRemovemodal')">Cancel</button>
       <button class="btn bp" id="rem_save_btn" onclick="saveRemoveTyre()">&#128260; Submit Removal Requests</button>
     </div>
   </div>
@@ -18790,7 +18862,7 @@ history.pushState(null, '', window.location.href);
     </div>
     <div style="flex:1;overflow-y:auto;padding:0 24px 8px"><div id="scrap_lines_wrap" style="display:flex;flex-direction:column;gap:6px"></div></div>
     <div style="padding:12px 24px;border-top:1px solid #e2e2e7;display:flex;gap:10px;justify-content:flex-end;flex-shrink:0;background:#f5f5f7">
-      <button class="btn bg" onclick="closeModal()">Cancel</button>
+      <button class="btn bg" onclick="closeModal('tyreScrapmodal')">Cancel</button>
       <button class="btn bp" id="scrap_save_btn" onclick="saveScrapSale()">&#128190; Record Sales</button>
     </div>
   </div>
@@ -18832,7 +18904,7 @@ history.pushState(null, '', window.location.href);
       Sign In
     </button>
     <!-- Status -->
-    <div id="aklgstatus" style="margin-top:14px;font-size:11.5px;color:#86868b;text-align:center;letter-spacing:.01em">Verifying access...</div>
+    <div id="aklgstatus" style="margin-top:14px;font-size:11.5px;color:#86868b;text-align:center;letter-spacing:.01em">Enter your credentials to continue</div>
     <!-- Footer -->
     <div style="margin-top:24px;padding-top:18px;border-top:1px solid #e8e8ed;font-size:11px;color:#86868b">
       &copy; 2026 AK Transport &mdash; All rights reserved
@@ -18841,10 +18913,23 @@ history.pushState(null, '', window.location.href);
 </div>
 
 <script>
-// Ensure default admin is always available
-if (typeof USERS !== 'undefined') {
-  // No hardcoded credentials - users loaded from Google Sheets only
-}
+// Pre-load users from Firebase in background so sign-in is instant
+(function() {
+  var status = document.getElementById('aklgstatus');
+  _wsFbInit().then(function() {
+    if (!_wsFbDb) return;
+    _wsFbDb.ref('/ak_trips/users').once('value').then(function(snap) {
+      var val = snap.val();
+      if (val) {
+        USERS = Object.values(val);
+        if (status && USERS.length > 0) {
+          status.textContent = '✅ Ready — sign in to continue';
+          status.style.color = '#4ade80';
+        }
+      }
+    }).catch(function(){});
+  }).catch(function(){});
+})();
 
 function doSignIn() {
   var u = (document.getElementById('aklgu').value || '').trim();
@@ -19278,8 +19363,8 @@ function doSignIn() {
 <div id="tyre_remhold_selbar" style="display:none;position:fixed;bottom:28px;left:50%;transform:translateX(-50%);background:#0a2d6e;color:#fff;border-radius:12px;padding:11px 20px;align-items:center;gap:12px;box-shadow:0 8px 32px rgba(10,45,110,.4);z-index:5000;white-space:nowrap">
   <span id="tyre_remhold_selcount" style="font-size:13px;font-weight:600">0 selected</span>
   <div style="width:1px;background:rgba(255,255,255,.3);height:18px;flex-shrink:0"></div>
-  <button onclick="bulkApproveTyreFitReq()" style="background:rgba(5,150,105,.8);border:1px solid rgba(255,255,255,.3);color:#fff;padding:6px 14px;border-radius:7px;cursor:pointer;font-size:12px;font-weight:600">✓ Approve Selected</button>
-  <button onclick="bulkRejectTyreFitReq()" style="background:rgba(185,28,28,.7);border:1px solid rgba(255,255,255,.3);color:#fff;padding:6px 14px;border-radius:7px;cursor:pointer;font-size:12px;font-weight:600">✕ Reject Selected</button>
+  <button id="tyrfitreq_approve_btn" onclick="bulkApproveTyreFitReq()" style="background:rgba(5,150,105,.8);border:1px solid rgba(255,255,255,.3);color:#fff;padding:6px 14px;border-radius:7px;cursor:pointer;font-size:12px;font-weight:600">✓ Approve Selected</button>
+  <button id="fitreq_reject_btn" onclick="bulkRejectTyreFitReq()" style="background:rgba(185,28,28,.7);border:1px solid rgba(255,255,255,.3);color:#fff;padding:6px 14px;border-radius:7px;cursor:pointer;font-size:12px;font-weight:600">✕ Reject Selected</button>
   <button onclick="tyreRemHoldClearSel()" style="background:none;border:none;color:rgba(255,255,255,.7);cursor:pointer;font-size:20px;line-height:1;padding:0 4px">&times;</button>
 </div>
 
