@@ -263,7 +263,7 @@ select,input[type=text],input[type=password],input[type=date],textarea{
 select:focus,input:focus,textarea:focus{border-color:var(--hi);box-shadow:0 0 0 3px rgba(0,113,227,.1)}
 
 /* TABLE */
-#tablearea{flex:1;overflow:auto;padding:0 22px 20px;width:100%}
+#tablearea{flex:1;overflow:auto;padding:0 22px 20px;width:100%;min-height:0;height:0}
 table{width:100%;border-collapse:separate;border-spacing:0;font-size:12.5px}
 #tablearea table{border-radius:12px;border:1px solid var(--br);box-shadow:0 2px 8px rgba(0,0,0,.05)}
 th{background:var(--ac);color:#ffffff;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;padding:10px 13px;white-space:nowrap;cursor:pointer;user-select:none;position:sticky;top:0;z-index:2}
@@ -275,7 +275,7 @@ tr:hover td{background:#f0f4ff}
 #storecontent td{max-width:none;padding:11px 13px;overflow:visible;}
 #tyreInventoryTable td,#tyreFittedTable td,#tyreFitReqTable td,#tyreRemHoldTable td{max-width:none;overflow:visible;white-space:nowrap;}
 #tyreInventoryTable,#tyreFittedTable,#tyreFitReqTable,#tyreRemHoldTable{width:max-content;min-width:100%;}
-.tyre-scroll-wrap{display:contents;}
+.tyre-scroll-wrap{display:block;width:100%;}
 #storecontent table{border-collapse:collapse;}
 
 /* STATUS BADGES */
@@ -1781,7 +1781,7 @@ body.no-delete .actbtn.d:not(.ws-action):not(.jc-action):not(.fleet-action):not(
     </div>
 
 
-    <div id="tablearea" style="flex:1;overflow:auto;padding:0 20px 20px">
+    <div id="tablearea" style="flex:1;overflow:auto;padding:0 20px 20px;min-height:0;height:0">
       <div id="maintable_wrap"><table><thead id="tablehead"></thead><tbody id="TBODY"></tbody></table></div>
       <div id="storecontent" style="display:none;"></div>
       <div id="loadmorediv" style="text-align:center;padding:14px;display:none"><button class="btn bg" onclick="loadMore()">Load more</button><span id="morelabel" style="font-size:12px;color:var(--t3);margin-left:8px"></span></div>
@@ -5601,7 +5601,7 @@ function renderTyrePOs(statusFilter) {
       + '<div class="statcard statcard-sm" style="background:#dc2626;color:#fff"><div class="scl">Not Paid</div><div class="scv">'+notPaid+'</div></div>'
       + '</div>';
   }
-  html += '<div style="overflow-x:auto"><table><thead><tr>'
+  html += '<div><table><thead><tr>'
     + '<th style="width:36px"><input type="checkbox" id="tpo_chk_all" onclick="toggleAllTpo(this)" style="cursor:pointer;width:14px;height:14px;accent-color:var(--ac)"></th>'
     + '<th>Req No</th><th>Date Requested</th><th>Brand</th><th>Size</th><th>Type</th>'
     + '<th>Qty Ordered</th><th>Qty Received</th><th>Qty Outstanding</th>'
@@ -6166,7 +6166,7 @@ async function rejectFitment(fitId, status, serial) {
 function renderTyreGRNs() {
   document.getElementById('viewtitle').textContent = 'Goods Received Notes';
   document.getElementById('viewsub').textContent = '';
-  var html = '<div style="overflow-x:auto"><table><thead><tr>'
+  var html = '<div style="overflow-x:auto"><table style="min-width:max-content"><thead><tr>'
     + '<th>GRN No</th><th>Date</th><th>PO No</th><th>Supplier</th><th>Received By</th><th>Serial No</th><th>Notes</th>'
     + '</tr></thead><tbody>';
   if (!TYRE_GRNS.length) {
@@ -6392,7 +6392,7 @@ function renderTyreScrap() {
     if(ap&&!bp)return -1; if(!ap&&bp)return 1;
     return (b.scrapDate||'').localeCompare(a.scrapDate||'');
   });
-  html += '<div style="overflow-x:auto"><table><thead><tr>'
+  html += '<div style="overflow-x:auto"><table style="min-width:max-content"><thead><tr>'
     + '<th style="width:36px;text-align:center"><input type="checkbox" id="tyre_scrap_chk_all" onclick="toggleAllTyreScrap(this)" style="cursor:pointer;width:14px;height:14px"></th>'
     + '<th>Scrap No</th><th>Date</th><th>Serial No</th><th>Brand</th><th>Size</th>'
     + '<th>KM Run</th><th>Book Value</th><th>Sale Price</th><th>Profit/Loss</th>'
@@ -6861,7 +6861,7 @@ function renderBatInventory() {
     +'<div class="statcard statcard-sm" style="background:#2563eb;color:#fff"><div class="scl">Fitted</div><div class="scv">'+fitted+'</div></div>'
     +'<div class="statcard statcard-sm" style="background:#dc2626;color:#fff"><div class="scl">Sold</div><div class="scv">'+sold+'</div></div>'
     +'</div>';
-  html+='<div style="overflow-x:auto"><table><thead><tr>'
+  html+='<div style="overflow-x:auto"><table style="min-width:max-content"><thead><tr>'
     +'<th style="width:36px;text-align:center"><input type="checkbox" id="binv_chk_all" onclick="toggleAllBatInv(this)" style="cursor:pointer;width:14px;height:14px;accent-color:var(--ac)"></th>'
     +'<th>Battery Ref</th><th>Brand</th><th>Size</th><th>Supplier</th><th>Req No</th><th>LPO No</th><th>Date Received</th><th>Purchase Price</th><th>Months in Service</th><th>Status</th><th>Vehicle</th><th>Position</th>'
     +'</tr></thead><tbody>';
@@ -7215,7 +7215,7 @@ function renderBatPOs(statusFilter) {
   });
   var _bpfIds=new Set(_applyBattFilter(filtered,'BPF',function(r){return{poNo:r.poNo||r.reqNo||'',poDate:r.poDate||r.date||'',brand:r.brand||'',size:r.size||r.capacity||'',capacity:r.capacity||r.size||'',voltage:r.voltage||'',supplier:r.supplier||'',lpoNo:r.lpoNo||'',requestedBy:r.requestedBy||'',status:r.status||''};}).map(function(r){return r.poNo;}));
   filtered=filtered.filter(function(r){return _bpfIds.has(r.poNo||r.reqNo||'');});
-  html+='<div style="overflow-x:auto"><table><thead><tr>'
+  html+='<div><table><thead><tr>'
     +'<th style="width:36px"><input type="checkbox" id="bpo_chk_all" onclick="toggleAllBpo(this)" style="cursor:pointer;width:14px;height:14px;accent-color:var(--ac)"></th>'
     +'<th>Req No</th><th>Date</th><th>Brand</th><th>Size</th><th>Qty Ordered</th><th>Qty Received</th><th>Qty Outstanding</th><th>Unit Price</th><th>Total</th><th>Supplier</th><th>LPO No</th><th>Status</th><th>Requested By</th>'
     +'</tr></thead><tbody>';
@@ -7253,7 +7253,7 @@ function renderBatPOs(statusFilter) {
 function renderBatGRNs() {
   document.getElementById('viewtitle').textContent='Battery Inward (GRNs)';
   var filtered=_applyBattFilter(BAT_GRNS||[],'BGF',function(r){return{grnNo:r.grnNo||'',grnDate:fmtDate(r.grnDate)||'',poNo:r.poNo||'',supplier:r.supplier||'',receivedBy:r.receivedBy||'',brand:r.brand||'',status:''};});
-  var html='<div style="overflow-x:auto"><table><thead><tr>'
+  var html='<div style="overflow-x:auto"><table style="min-width:max-content"><thead><tr>'
     +'<th>GRN No</th><th>Date</th><th>PO No</th><th>Brand</th><th>Size</th><th>Qty Received</th><th>Unit Price</th><th>Supplier</th><th>Received By</th>'
     +'</tr></thead><tbody>';
   if(!filtered.length){
@@ -7286,7 +7286,7 @@ function renderBatFitted() {
   var _bffIds=new Set(_applyBattFilter(allFits,'BFF',function(r){var _b=(BATTERIES||[]).find(function(b){return b.batteryRef===r.batteryRef;})||{};return{id:r.id||'',batteryRef:r.batteryRef||'',brand:r.brand||_b.brand||'',vehicle:r.vehicle||'',position:r.position||'',driverName:r.driverName||'',jobCardNo:r.jobCardNo||'',removedReason:r.conditionAtRemoval||r.removedReason||'',dateFitted:toISODate(r.dateFitted),dateRemoved:toISODate(r.dateRemoved),status:r.status||''};}).map(function(r){return r.id;}));
   var filtered=allFits.filter(function(r){return _bffIds.has(r.id||'');});
   var _vs=document.getElementById('viewsub');if(_vs)_vs.textContent=filtered.length+' record'+(filtered.length!==1?'s':'');
-  var html='<div style="overflow-x:auto"><table><thead><tr>'
+  var html='<div style="overflow-x:auto"><table style="min-width:max-content"><thead><tr>'
     +'<th>Battery Ref</th><th>Brand</th><th>Size</th><th>Vehicle</th><th>Position</th><th>Date Fitted</th><th>Months Served</th><th>Date Removed</th><th>Condition</th><th>Reason Removed</th><th>Job Card</th><th>Driver</th><th>Status</th>'
     +'</tr></thead><tbody>';
   if(!filtered.length){
@@ -7339,7 +7339,7 @@ function renderBatFitRequests() {
     return{id:r.id||'',reqNo:r.reqNo||'',batteryRef:r.batteryRef||'',brand:r.brand||_b.brand||'',vehicle:r.vehicle||'',position:r.position||'',requestedBy:r.requestedBy||'',requestDate:toISODate(r.requestDate),removedReason:r.removedReason||'',status:statusLabel};
   }).map(function(r,i){return r.id||('__idx'+i);}));
   var filtered = all.filter(function(r,i){return _bqfIds.has(r.id||('__idx'+i));});
-  html+='<div style="overflow-x:auto"><table><thead><tr>'
+  html+='<div style="overflow-x:auto"><table style="min-width:max-content"><thead><tr>'
     +'<th style="width:36px"><input type="checkbox" id="batfitreq_chk_all" onclick="toggleAllBatFitReq(this)" style="cursor:pointer;width:14px;height:14px;accent-color:var(--ac)"></th>'
     +'<th>Req No</th><th>Type</th><th>Battery Ref</th><th>Brand</th><th>Vehicle</th><th>Position</th><th>Reason</th><th>Date</th><th>Requested By</th><th>Status</th><th>Processed By</th><th>Processed At</th>'
     +'</tr></thead><tbody>';
@@ -7752,7 +7752,7 @@ function renderBatRemHold() {
     +'</div>';
   var _bhfIds = new Set(_applyBattFilter(all,'BHF',function(r){var _b=(BATTERIES||[]).find(function(b){return b.batteryRef===r.batteryRef;})||{};return{id:r.id||'',batteryRef:r.batteryRef||'',brand:r.brand||_b.brand||'',vehicle:r.vehicle||'',position:r.position||'',requestedBy:r.requestedBy||'',requestDate:toISODate(r.requestDate),removedReason:r.removedReason||'',status:r.status||''};}).map(function(r,i){return r.id||('__idx'+i);}));
   var filtered = all.filter(function(r,i){return _bhfIds.has(r.id||('__idx'+i));});
-  html+='<div style="overflow-x:auto"><table><thead><tr>'
+  html+='<div style="overflow-x:auto"><table style="min-width:max-content"><thead><tr>'
     +'<th style="width:36px;text-align:center"><input type="checkbox" id="bat_rh_chk_all" onclick="toggleAllBatRH(this)" style="cursor:pointer;width:14px;height:14px"></th>'+'<th>Type</th><th>Req No</th><th>Battery Ref</th><th>Brand</th><th>Vehicle</th><th>Position</th><th>Reason</th><th>Date</th><th>Requested By</th><th>Status</th><th>Processed By</th><th>Processed At</th>'
     +(isAdmin?'<th>Action</th>':'')
     +'</tr></thead><tbody>';
@@ -7969,7 +7969,7 @@ function renderBatSales() {
     if(ap&&!bp)return -1; if(!ap&&bp)return 1;
     return (b.saleDate||'').localeCompare(a.saleDate||'');
   });
-  html+='<div style="overflow-x:auto"><table><thead><tr>'
+  html+='<div style="overflow-x:auto"><table style="min-width:max-content"><thead><tr>'
     +'<th style="width:36px;text-align:center"><input type="checkbox" id="batsale_chk_all" onclick="toggleAllBatSales(this)" style="cursor:pointer;width:14px;height:14px"></th>'
     +'<th>Sale No</th><th>Date</th><th>Battery Ref</th><th>Brand</th><th>Size</th>'
     +'<th>Months</th><th>Purchase Price</th><th>Sale Price</th><th>P&L</th>'
@@ -12021,7 +12021,7 @@ function renderStoreReceipts() {
   var html = '<div style="display:flex;gap:8px;margin-bottom:12px">';
   if (can('req')) html += '<button class="btn bp" onclick="openReceiveStock()">📥 Receive Stock</button>';
   html += '</div>';
-  html += '<div style="overflow-x:auto"><table><thead><tr>'
+  html += '<div><table><thead><tr>'
     + '<th>Receipt No</th><th>Date</th><th>Part Name</th><th>Supplier</th>'
     + '<th>Qty Received</th><th>Unit Price</th><th>Total Cost</th><th>Received By</th><th>LPO No</th>'
     + '</tr></thead><tbody>';
@@ -12156,7 +12156,7 @@ function renderStoreIssuances() {
   });
 
   var cols = 13;
-  var table = '<div style="overflow-x:auto"><table><thead><tr>'
+  var table = '<div style="overflow-x:auto"><table style="min-width:max-content"><thead><tr>'
     + '<th style="width:36px;text-align:center"><input type="checkbox" id="iss_req_chk_all" onclick="toggleAllIssReq(this)" style="cursor:pointer;width:14px;height:14px;accent-color:var(--ac)"></th>'
     + '<th>Issue No</th><th>Date Issued</th><th>Issued By</th><th>Parts</th><th>LPO No</th><th>Qty</th><th>Truck</th><th>Job Card</th><th>Driver</th><th>Status</th><th>Date Processed</th><th>Processed By</th>'
     + '</tr></thead><tbody>';
@@ -12487,7 +12487,7 @@ function renderIssPending() {
   });
   var sorted = data.slice().sort(function(a,b){ return (b.dateIssued||'').localeCompare(a.dateIssued||''); });
   var cols = 14 + (isAdmin ? 1 : 0);
-  var html = '<div style="overflow-x:auto"><table><thead><tr>'
+  var html = '<div><table><thead><tr>'
     + '<th style="width:36px;text-align:center"><input type="checkbox" id="iph_chk_all" onclick="toggleAllIssPending(this)" style="cursor:pointer;width:14px;height:14px;accent-color:var(--ac)"></th>'
     + '<th>Issue No</th><th>Date Issued</th><th>Issued By</th><th>Parts</th><th>LPO No</th><th>Qty</th><th>Truck</th><th>Job Card</th><th>Driver</th><th>Status</th><th>Date Approved</th><th>Approved By</th>'
     + (isAdmin ? '<th>Actions</th>' : '')
@@ -13147,7 +13147,7 @@ function renderStoreRequisition(statusFilter) {
 
   var canEdit = canModify();
   var html = '';
-  html += '<div style="overflow-x:auto"><table><thead><tr>'
+  html += '<div><table><thead><tr>'
     + '<th style="width:36px"><input type="checkbox" id="sreq_chk_all" onclick="toggleAllSReq(this)" style="cursor:pointer;width:14px;height:14px;accent-color:var(--ac)"></th>'
     + '<th>Req No</th><th>Date</th><th>Description</th><th>Qty</th><th>Unit Price</th>'
     + '<th>Total</th><th>Supplier</th><th>LPO No</th><th>Status</th><th>Payment</th>'
