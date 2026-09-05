@@ -1753,6 +1753,7 @@ body.no-delete .actbtn.d:not(.ws-action):not(.jc-action):not(.fleet-action):not(
         <div style="display:flex;gap:6px">
           <select id="SINV_STATUS" style="flex:1;background:var(--s1);border:1.5px solid var(--br);border-radius:8px;padding:8px 10px;color:var(--tx);font-size:12px;outline:none;cursor:pointer" onchange="renderStoreInventory('__filter__')">
             <option value="">All Status</option>
+            <option value="OUT OF STOCK">OUT OF STOCK</option>
             <option value="LOW STOCK">LOW STOCK</option>
             <option value="OK">OK</option>
           </select>
@@ -1895,7 +1896,7 @@ function applyFilters() {
   ].forEach(s => {
     if (!s.f || !s.v) return;
     data = data.filter(function(r) {
-      var val = (r[s.f]||'').toLowerCase();
+      var val = String(r[s.f]===null||r[s.f]===undefined?'':r[s.f]).toLowerCase();
       // For date fields, also compare the normalized YYYY-MM-DD version
       // so searching "2026-07-21" finds records stored as "21/07/2026"
       if (_dateFields.includes(s.f)) {
@@ -4209,6 +4210,18 @@ async function saveRecord(){
   const truck = (()=>{const c=document.getElementById('f_truck_custom');if(c&&c.value)return c.value;const s=document.getElementById('f_truck');return s?s.value:'';})();
   const driver = document.getElementById('f_driver').value;
   const jobcard = document.getElementById('f_jobcard').value;
+  // Validate job card belongs to selected truck
+  if (jobcard && jobcard !== 'OTHER' && jobcard !== 'N/A') {
+    var truckVal = document.getElementById('f_truck').tomselect ?
+      document.getElementById('f_truck').tomselect.getValue() :
+      document.getElementById('f_truck').value;
+    var jcRecord = (JOBCARDS||[]).find(function(j){ return j.code === jobcard; });
+    if (jcRecord && truckVal && (jcRecord.vehicle||'').toUpperCase() !== truckVal.toUpperCase()) {
+      toast('⚠️ Job Card '+jobcard+' belongs to '+jcRecord.vehicle+', not '+truckVal+'. Please select the correct job card.','er');
+      btn.disabled=false; btn.textContent='Save';
+      return;
+    }
+  }
   const desc = document.getElementById('f_desc').value;
   const qty = document.getElementById('f_qty').value;
   const cost = document.getElementById('f_cost').value;
@@ -4668,21 +4681,16 @@ async function populateFormDropdowns() {
     // No setValue call needed — initTomSelect reads the pre-selected HTML option
   }
 
-  // 5. JOB CARD dropdown - exclude COMPLETED
+  // 5. JOB CARD dropdown - exclude COMPLETED — will be filtered by truck when onTruckSelect fires
+  // Do NOT restore old job card value here — populateJobCardDropdown(truck) called separately
   const jcSel = document.getElementById('f_jobcard');
   if (jcSel) {
-    const cur = jcSel.value;
+    if (jcSel.tomselect) jcSel.tomselect.destroy();
     jcSel.innerHTML = '<option value="">Select job card...</option>';
-    (JOBCARDS||[]).filter(j => j.workStatus !== 'COMPLETED').forEach(j => {
-      const o = document.createElement('option');
-      o.value = j.code;
-      o.textContent = j.code + (j.vehicle ? ' - ' + j.vehicle : '');
-      jcSel.appendChild(o);
-    });
     const oc = document.createElement('option');
     oc.value = 'OTHER'; oc.textContent = 'Other';
     jcSel.appendChild(oc);
-    if (cur) jcSel.value = cur;
+    new TomSelect(jcSel, { allowEmptyOption:true, placeholder:'Select job card...', maxOptions:500, highlight:true, onChange:function(val){onJobCardSelect(val);} });
   }
 }
 
@@ -4772,8 +4780,8 @@ function onTruckSelect() {
     if (jcFgReset) jcFgReset.style.display = '';
   }
 
-  if (!isWorkshop && !isMotorcycle) populateJobCardDropdown(plate);
-  else populateJobCardDropdown('');
+  if (!isWorkshop && !isMotorcycle) populateJobCardDropdown(plate, true); // true = clear JC on truck change
+  else populateJobCardDropdown('', true);
 }
 
 function muteReqFields(mute) {
@@ -4800,7 +4808,7 @@ function muteReqFields(mute) {
   });
 }
 
-async function populateJobCardDropdown(plate) {
+async function populateJobCardDropdown(plate, clearOnChange) {
   var _loads=[];
   if(!JOBCARDS.length) _loads.push(wsFbRead('/jobCards').then(function(r){if(r.records.length)JOBCARDS=r.records;else return callAPI('getJobCards').then(function(r2){if(r2&&r2.records)JOBCARDS=r2.records;});}).catch(function(){}));
   if(_loads.length) await Promise.all(_loads);
@@ -4850,12 +4858,20 @@ async function populateJobCardDropdown(plate) {
     }
   });
 
-  // Restore previous value
-  if (cur && jcSel.tomselect) {
-    if (!jcSel.tomselect.options[cur]) {
-      jcSel.tomselect.addOption({value: cur, text: cur});
+  // Restore previous value ONLY if it belongs to the current truck
+  // If clearOnChange=true (truck was changed by user), always clear
+  if (!clearOnChange && cur && jcSel.tomselect) {
+    // Check if this job card actually belongs to the selected truck
+    var jcBelongsToTruck = !plate || JOBCARDS.some(function(j){
+      return j.code === cur && (j.vehicle||'').toUpperCase() === (plate||'').toUpperCase();
+    });
+    if (jcBelongsToTruck) {
+      if (!jcSel.tomselect.options[cur]) {
+        jcSel.tomselect.addOption({value: cur, text: cur});
+      }
+      jcSel.tomselect.setValue(cur, true);
     }
-    jcSel.tomselect.setValue(cur, true);
+    // If job card doesn't belong to this truck — leave blank (user must select correct one)
   }
 }
 
@@ -11781,33 +11797,81 @@ function _applySINVFilters(rows){
                  : r[fld];
       if(String(rawVal||"").toLowerCase().indexOf(fs[i].val)<0)return false;
     }
-    if(st){var isLow=r.qtyOnHand<=r.minStockLevel;var rSt=isLow?"LOW STOCK":"OK";if(rSt!==st)return false;}
+    if(st){
+      var minLvl = STORE_MIN_LEVELS[(r.partName||'').toUpperCase()]||r.minStockLevel||0;
+      var stObj = _invStatus(r.qtyOnHand, minLvl);
+      if(stObj.label !== st) return false;
+    }
     if(df&&(r._dateReceived||r.dateReceived||"")&&(r._dateReceived||r.dateReceived||"")<df)return false;
     if(dt&&(r._dateReceived||r.dateReceived||"")&&(r._dateReceived||r.dateReceived||"")>dt)return false;
     return true;
   });
 }
+// Store min levels — keyed by partName.toUpperCase()
+var STORE_MIN_LEVELS = {};
+
+function _invStatus(qtyOnHand, minLevel) {
+  var qty = Number(qtyOnHand||0);
+  var min = Number(minLevel||0);
+  if (qty <= 0) return {label:'OUT OF STOCK', color:'#7f1d1d', bg:'#fee2e2', dot:'#dc2626'};
+  if (min > 0 && qty < min) return {label:'LOW STOCK', color:'#92400e', bg:'#fef3c7', dot:'#d97706'};
+  return {label:'OK', color:'#065f46', bg:'#d1fae5', dot:'#059669'};
+}
+
+async function _loadStoreMinLevels() {
+  try {
+    var r = await callAPI('getMinLevels', {});
+    if (r && r.minLevels) {
+      STORE_MIN_LEVELS = {};
+      Object.keys(r.minLevels).forEach(function(k){
+        STORE_MIN_LEVELS[k.toUpperCase()] = Number(r.minLevels[k]||0);
+      });
+    }
+  } catch(e) {}
+}
+
+async function saveStoreMinLevel(partName, minLevel) {
+  var key = partName.toUpperCase();
+  var oldVal = STORE_MIN_LEVELS[key] || 0;
+  STORE_MIN_LEVELS[key] = Number(minLevel)||0;
+  try {
+    await callAPI('saveMinLevel', { partName: partName, minLevel: Number(minLevel)||0 });
+    toast('Min level updated ✓','ok');
+    renderStoreInventory(_invTab);
+  } catch(e) {
+    STORE_MIN_LEVELS[key] = oldVal;
+    toast('Failed to save min level: '+e.message,'er');
+  }
+}
+
 function renderStoreInventory(tab) {
   if (tab && tab !== '__filter__') _invTab = tab;
+  // Load min levels in background if not yet attempted — render immediately with what we have
+  if (!window._storeMinLevelsLoaded) {
+    window._storeMinLevelsLoaded = true;
+    _loadStoreMinLevels().then(function(){ renderStoreInventory(_invTab); });
+  }
+  try {
   // Show F2/F3 for summary only
   document.querySelectorAll('.sinv-det-only').forEach(function(e){e.style.display=_invTab==='detailed'?'flex':'none';});
   document.getElementById('viewtitle').textContent = 'Store Inventory';
   document.getElementById('viewsub').textContent = '';
 
-  // Stat cards - count unique part names and low stock
+  // Stat cards - count unique part names and low/out stock
   var _invGroups = {};
   STORE_INVENTORY.forEach(function(r){
     var name = (r.partName||'').toUpperCase();
-    if (!_invGroups[name]) _invGroups[name] = { qty: 0, min: Number(r.minStockLevel||0) };
+    if (!_invGroups[name]) _invGroups[name] = { qty: 0, min: STORE_MIN_LEVELS[name]||0 };
     _invGroups[name].qty += Number(r.qtyOnHand||0);
-    _invGroups[name].min = Math.max(_invGroups[name].min, Number(r.minStockLevel||0));
   });
   var _invGroupVals = Object.values(_invGroups);
-  var low = _invGroupVals.filter(function(g){ return g.qty <= g.min && g.qty >= 0; });
+  var outOfStock = _invGroupVals.filter(function(g){ return g.qty <= 0; });
+  var lowStock   = _invGroupVals.filter(function(g){ return g.qty > 0 && g.min > 0 && g.qty < g.min; });
 
   var html = '<div style="display:flex;gap:10px;margin-bottom:14px;flex-wrap:wrap">'
     + '<div class="statcard statcard-sm" style="background:#0a2d6e;color:#fff"><div class="scl">Total Parts</div><div class="scv">'+_invGroupVals.length+'</div></div>'
-    + '<div class="statcard statcard-sm" style="background:#b91c1c;color:#fff"><div class="scl">Low Stock</div><div class="scv">'+low.length+'</div></div>'
+    + '<div class="statcard statcard-sm" style="background:#b91c1c;color:#fff"><div class="scl">Out of Stock</div><div class="scv">'+outOfStock.length+'</div></div>'
+    + '<div class="statcard statcard-sm" style="background:#d97706;color:#fff"><div class="scl">Low Stock</div><div class="scv">'+lowStock.length+'</div></div>'
     + '</div>';
 
   // Only show Issue from Store button (Receive Stock removed from nav)
@@ -11828,13 +11892,12 @@ function renderStoreInventory(tab) {
   var tdS = 'padding:9px 12px;border-bottom:1px solid #f0f0f4;vertical-align:middle';
 
   if (_invTab === 'summary') {
-    // Group by part name
+    // Group by part name — use STORE_MIN_LEVELS for min level (not per-batch value)
     var grouped = {};
     STORE_INVENTORY.forEach(function(r){
       var name = (r.partName||'').toUpperCase();
-      if (!grouped[name]) grouped[name] = { partName: name, qtyOnHand: 0, minStockLevel: Number(r.minStockLevel||0) };
+      if (!grouped[name]) grouped[name] = { partName: name, qtyOnHand: 0, minStockLevel: STORE_MIN_LEVELS[name]||0 };
       grouped[name].qtyOnHand += Number(r.qtyOnHand||0);
-      grouped[name].minStockLevel = Math.max(grouped[name].minStockLevel, Number(r.minStockLevel||0));
     });
     var rows = _applySINVFilters(Object.values(grouped)).sort(function(a,b){ return a.partName.localeCompare(b.partName); });
 
@@ -11842,19 +11905,30 @@ function renderStoreInventory(tab) {
       + '<thead><tr>'
       + '<th style="'+thS+';text-align:left">Part Name</th>'
       + '<th style="'+thS+';text-align:center">Total Qty On Hand</th>'
-      + '<th style="'+thS+';text-align:center">Min Level</th>'
+      + '<th style="'+thS+';text-align:center">Min Level'+(CURRENT_USER&&CURRENT_USER.role==='admin'?' <span style="font-size:10px;font-weight:400;color:#888">(click to edit)</span>':'')+'</th>'
       + '<th style="'+thS+';text-align:center">Status</th>'
       + '</tr></thead><tbody>';
     if (!rows.length) {
       html += '<tr><td colspan="4" style="text-align:center;color:var(--t3);padding:28px">No records match filter</td></tr>';
     } else {
       rows.forEach(function(r){
-        var isLow = r.qtyOnHand <= r.minStockLevel;
-        html += '<tr style="'+(isLow?'background:#fff5f5':'')+'">'
-          + '<td style="'+tdS+';font-weight:600">'+r.partName+'</td>'
-          + '<td style="'+tdS+';text-align:center;font-weight:700;color:'+(isLow?'#b91c1c':'#059669')+'">'+r.qtyOnHand+'</td>'
-          + '<td style="'+tdS+';text-align:center">'+r.minStockLevel+'</td>'
-          + '<td style="'+tdS+';text-align:center"><span style="font-size:11px;font-weight:700;padding:2px 10px;border-radius:12px;background:'+(isLow?'#fee2e2':'#d1fae5')+';color:'+(isLow?'#b91c1c':'#059669')+'">'+(isLow?'LOW STOCK':'OK')+'</span></td>'
+        var st = _invStatus(r.qtyOnHand, r.minStockLevel);
+        var safePartName = String(r.partName||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+        var safePartNameJs = String(r.partName||'').replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+        html += '<tr style="'+(st.label!=='OK'?'background:'+st.bg:'')+'">'
+          + '<td style="'+tdS+';font-weight:600">'+safePartName+'</td>'
+          + '<td style="'+tdS+';text-align:center;font-weight:700;color:'+st.dot+'">'+r.qtyOnHand+'</td>'
+          + '<td style="'+tdS+';text-align:center">'
+          +   (CURRENT_USER && CURRENT_USER.role==='admin'
+              ? '<input type="number" min="0" value="'+r.minStockLevel+'" '
+              +   'style="width:70px;text-align:center;border:1.5px solid #d2d2d7;border-radius:6px;padding:3px 6px;font-size:12px" '
+              +   'onchange="saveStoreMinLevel(\''+safePartNameJs+'\',this.value)" '
+              +   'title="Set minimum stock level for '+safePartName+'">'
+              : '<span style="font-size:13px;font-weight:600">'+r.minStockLevel+'</span>')
+          + '</td>'
+          + '<td style="'+tdS+';text-align:center">'
+          +   '<span style="font-size:11px;font-weight:700;padding:2px 10px;border-radius:12px;background:'+st.bg+';color:'+st.color+'">'+st.label+'</span>'
+          + '</td>'
           + '</tr>';
       });
     }
@@ -11916,9 +11990,9 @@ function renderStoreInventory(tab) {
     } else {
       rows.forEach(function(r){
         var qtyOnHand = Number(r.qtyOnHand||0);
-        var min       = Number(r.minStockLevel||0);
-        var isLow     = qtyOnHand <= min;
-        html += '<tr style="'+(isLow?'background:#fff5f5':'')+'">'
+        var min       = STORE_MIN_LEVELS[(r.partName||'').toUpperCase()]||0;
+        var st        = _invStatus(qtyOnHand, min);
+        html += '<tr style="'+(st.label!=='OK'?'background:'+st.bg:'')+'">'
           + '<td style="'+tdS+';font-family:monospace;font-weight:600;color:var(--ac)">'+(r._reqNo||'-')+'</td>'
           + '<td style="'+tdS+'">'+fmtDate(r._dateReceived||'')+'</td>'
           + '<td style="'+tdS+';font-weight:600">'+(r.partName||'')+'</td>'
@@ -11926,15 +12000,20 @@ function renderStoreInventory(tab) {
           + '<td style="'+tdS+';text-align:right;font-family:monospace">'+(r.unitPrice?Number(r.unitPrice).toLocaleString('en-US',{minimumFractionDigits:2}):'-')+'</td>'
           + '<td style="'+tdS+'">'+(r._supplierDisplay||'')+'</td>'
           + '<td style="'+tdS+';font-family:monospace;font-weight:600">'+(r._lpoDisplay||'-')+'</td>'
-          + '<td style="'+tdS+';text-align:center;font-weight:700;color:'+(isLow?'#b91c1c':'#059669')+'">'+qtyOnHand+'</td>'
+          + '<td style="'+tdS+';text-align:center;font-weight:700;color:'+st.dot+'">'+qtyOnHand+'</td>'
           + '<td style="'+tdS+';text-align:center">'+min+'</td>'
-          + '<td style="'+tdS+';text-align:center"><span style="font-size:11px;font-weight:700;padding:2px 10px;border-radius:12px;background:'+(isLow?'#fee2e2':'#d1fae5')+';color:'+(isLow?'#b91c1c':'#059669')+'">'+(isLow?'LOW STOCK':'OK')+'</span></td>'
+          + '<td style="'+tdS+';text-align:center"><span style="font-size:11px;font-weight:700;padding:2px 8px;border-radius:12px;background:'+st.bg+';color:'+st.color+'">'+st.label+'</span></td>'
           + '</tr>';
       });
     }
     html += '</tbody></table></div>';
   }
   document.getElementById('storecontent').innerHTML = html;
+  } catch(e) {
+    var el = document.getElementById('storecontent');
+    if (el) el.innerHTML = '<div style="padding:20px;color:#b91c1c;font-size:13px">⚠️ Error loading inventory: '+e.message+'</div>';
+    console.error('renderStoreInventory error:', e);
+  }
 }
 function renderStoreReceipts() {
   document.getElementById('viewtitle').textContent = 'Stock Receipts';
@@ -17606,35 +17685,70 @@ function _finishLoad(ok) {
         if (_init) { _init=false; return; }
         clearTimeout(_wsDebounceTimers[collectionName]);
         _wsDebounceTimers[collectionName] = setTimeout(function() {
+          // Always refresh if current view uses this collection
           if (currentView && _wsViewSyncConfig[currentView] &&
               _wsViewSyncConfig[currentView].collections.indexOf(collectionName) !== -1) {
             _wsDoViewRefresh(currentView);
           }
-        }, 400);
+          // Also update the local array even if not current view — keeps data fresh
+          // so when user navigates to that view it's already up to date
+          else {
+            var colFetchMap = {
+              requisitions:    function(){ return wsFbRead('/requisitions').then(function(r){ if(r&&r.records) ALL=r.records; }); },
+              jobCards:        function(){ return wsFbRead('/jobCards').then(function(r){ if(r&&r.records) JOBCARDS=r.records; }); },
+              suppliers:       function(){ return wsFbRead('/suppliers').then(function(r){ if(r&&r.records) SUPPLIERS=r.records; }); },
+              spareParts:      function(){ return wsFbRead('/spareParts').then(function(r){ if(r&&r.records) SPAREPARTS=r.records; }); },
+              tyres:           function(){ return wsFbRead('/tyres').then(function(r){ if(r&&r.records) TYRES=r.records; }); },
+              tyreFitments:    function(){ return wsFbRead('/tyreFitments').then(function(r){ if(r&&r.records) TYRE_FITS=r.records; }); },
+              tyreScrapSales:  function(){ return wsFbRead('/tyreScrapSales').then(function(r){ if(r&&r.records) TYRE_SCRAPS=r.records; }); },
+              batteries:       function(){ return wsFbRead('/batteries').then(function(r){ if(r&&r.records) BATTERIES=r.records; }); },
+              batteryFitments: function(){ return wsFbRead('/batteryFitments').then(function(r){ if(r&&r.records) BAT_FITS=r.records; }); },
+              batterySales:    function(){ return wsFbRead('/batterySales').then(function(r){ if(r&&r.records) BAT_SALES=r.records; }); },
+              storeInventory:  function(){ return wsFbRead('/storeInventory').then(function(r){ if(r&&r.records) STORE_INVENTORY=r.records; }); },
+              storeReqs:       function(){ return wsFbRead('/storeReqs').then(function(r){ if(r&&r.records) STORE_REQS=r.records; }); },
+              storeIssuances:  function(){ return wsFbRead('/storeIssuances').then(function(r){ if(r&&r.records) STORE_ISSUANCES=r.records; }); },
+              storeReceipts:   function(){ return wsFbRead('/storeReceipts').then(function(r){ if(r&&r.records) STORE_RECEIPTS=r.records; }); },
+              pendingIssuances:function(){ return wsFbRead('/pendingIssuances').then(function(r){ if(r&&r.records) ISS_PENDING=_parseIssPending(r.records); }); },
+              spareMoves:      function(){ return wsFbRead('/spareMoves').then(function(r){ if(r&&r.records) SPARE_MOVES=r.records; }); },
+              drivers:         function(){ return wsFbRead('/drivers','/ak_trips').then(function(r){ if(r&&r.records) DRIVERS=r.records; }); },
+              vehicles:        function(){ return wsFbRead('/vehicles','/ak_trips').then(function(r){ if(r&&r.records) VEHICLES=r.records; }); },
+            };
+            var fn = colFetchMap[collectionName];
+            if (fn) fn().catch(function(){});
+          }
+          updateBadges();
+          // Flash sync indicator so user knows data updated automatically
+          setSyncStatus('on');
+          var syncEl = document.getElementById('sync-status');
+          if (syncEl) {
+            syncEl.title = 'Live update received · ' + new Date().toLocaleTimeString();
+          }
+        }, 600);
       }, function(){ _wasOffline=true; setSyncStatus('er'); });
       _wsActiveListeners[path] = ref;
     }
 
     function _wsDetachUnusedListeners(neededCollections) {
-      Object.keys(_wsActiveListeners).forEach(function(path) {
-        var colName = path.split('/').pop().replace('_updatedAt','');
-        if (neededCollections.indexOf(colName) === -1) {
-          _wsActiveListeners[path].off('value');
-          delete _wsActiveListeners[path];
-        }
-      });
+      // No longer detach — keep ALL listeners active for background updates
+      // This ensures data stays fresh across all views at all times
     }
 
-    // Called on every view navigation
+    // Attach listeners for ALL known collections immediately — not just current view
     window._wsSyncListenersForView = function(view) {
       if (!_wsFbDb) return;
-      var config = _wsViewSyncConfig[view];
-      var needed = config ? config.collections : [];
-      _wsDetachUnusedListeners(needed);
-      // drivers/vehicles live in /ak_trips
-      needed.forEach(function(col) {
-        var root = (col==='drivers'||col==='vehicles') ? '/ak_trips' : '/ak_workshop';
-        _wsAttachCollectionListener(col, root);
+      var allCollections = [
+        'requisitions','jobCards','suppliers','spareParts',
+        'tyres','tyreFitments','tyreScrapSales','tyreGRNs','tyrePOs',
+        'batteries','batteryFitments','batterySales','batteryGRNs','batteryPOs',
+        'storeInventory','storeReqs','storeIssuances','storeReceipts','pendingIssuances',
+        'spareMoves',
+      ];
+      var tripCollections = ['drivers','vehicles'];
+      allCollections.forEach(function(col) {
+        _wsAttachCollectionListener(col, '/ak_workshop');
+      });
+      tripCollections.forEach(function(col) {
+        _wsAttachCollectionListener(col, '/ak_trips');
       });
     };
 
