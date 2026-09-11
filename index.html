@@ -4599,7 +4599,7 @@ async function populateFormDropdowns() {
   var loads = [];
   if (!SUPPLIERS.length)  loads.push(wsFbRead('/suppliers').then(function(r){ if(r.records.length) SUPPLIERS=r.records; else return callAPI('getSuppliers').then(function(r2){if(r2&&r2.records)SUPPLIERS=r2.records;}); }).catch(function(){}));
   if (!SPAREPARTS.length) loads.push(wsFbRead('/spareParts').then(function(r){ if(r.records.length) SPAREPARTS=r.records; else return callAPI('getSpareParts').then(function(r2){if(r2&&r2.records)SPAREPARTS=r2.records;}); }).catch(function(){}));
-  if (!DRIVERS.length)    loads.push(wsFbRead('/drivers','/ak_trips').then(function(r){ if(r.records.length) DRIVERS=r.records; else return callAPI('getDrivers').then(function(r2){if(r2&&r2.records)DRIVERS=r2.records;}); }).catch(function(){}));
+  if (!DRIVERS.length)    loads.push(_loadAllDrivers());
   if (!VEHICLES.length)   loads.push(wsFbRead('/vehicles','/ak_trips').then(function(r){ if(r.records.length) VEHICLES=r.records; else return callAPI('getVehicles').then(function(r2){if(r2&&r2.records)VEHICLES=r2.records;}); }).catch(function(){}));
   if (!JOBCARDS.length)   loads.push(wsFbRead('/jobCards').then(function(r){ if(r.records.length) JOBCARDS=r.records; else return callAPI('getJobCards').then(function(r2){if(r2&&r2.records)JOBCARDS=r2.records;}); }).catch(function(){}));
   if (loads.length) await Promise.all(loads);
@@ -15013,8 +15013,24 @@ function deleteDriver(id) {
   }).catch(()=>{toast('Delete failed','er');if(bk){DRIVERS.push(bk);updateBadges();renderDrivers();}});
 }
 
+// Load drivers from BOTH Workshop and Trips Firebase paths and merge
+function _loadAllDrivers() {
+  return Promise.all([
+    wsFbRead('/drivers', '/ak_workshop').catch(function(){ return {records:[]}; }),
+    wsFbRead('/drivers', '/ak_trips').catch(function(){ return {records:[]}; })
+  ]).then(function(results) {
+    var wsDrivers   = (results[0]&&results[0].records) ? results[0].records : [];
+    var tripDrivers = (results[1]&&results[1].records) ? results[1].records : [];
+    var merged = {};
+    tripDrivers.forEach(function(d){ if(d.id) merged[d.id] = d; });
+    wsDrivers.forEach(function(d){ if(d.id) merged[d.id] = d; });
+    var all = Object.values(merged);
+    if (all.length) { DRIVERS = all; return {records: DRIVERS}; }
+    return callAPI('getDrivers').then(function(r){ if(r&&r.records) DRIVERS=r.records; return {records:DRIVERS}; }).catch(function(){ return {records:[]}; });
+  });
+}
+
 function renderDrivers() {
-  document.getElementById('viewsub').textContent = DRIVERS.length+' driver'+(DRIVERS.length!==1?'s':'');
   document.getElementById('loadmorediv').style.display='none';
   document.getElementById('tablehead').innerHTML=`<tr>
     <th>Code</th><th>Full Name</th><th>Phone</th><th>Emergency</th>
@@ -15241,7 +15257,7 @@ function renderVehicles() {
 
 async function populateJCFormDropdowns() {
   var _loads=[];
-  if(!DRIVERS.length) _loads.push(wsFbRead('/drivers','/ak_trips').then(function(r){if(r.records.length)DRIVERS=r.records;else return callAPI('getDrivers').then(function(r2){if(r2&&r2.records)DRIVERS=r2.records;});}).catch(function(){}));
+  if(!DRIVERS.length) _loads.push(_loadAllDrivers());
   if(!VEHICLES.length) _loads.push(wsFbRead('/vehicles','/ak_trips').then(function(r){if(r.records.length)VEHICLES=r.records;else return callAPI('getVehicles').then(function(r2){if(r2&&r2.records)VEHICLES=r2.records;});}).catch(function(){}));
   if(_loads.length) await Promise.all(_loads);
 
@@ -17373,7 +17389,7 @@ async function loadAppData(){
     try {
       var all = await Promise.all([
         wsFbRead('/suppliers'),      wsFbRead('/spareParts'),
-        wsFbRead('/jobCards'),       wsFbRead('/drivers',   '/ak_trips'),
+        wsFbRead('/jobCards'),       _loadAllDrivers().then(function(){ return {records:[]}; }),
         wsFbRead('/vehicles',  '/ak_trips'),
         wsFbRead('/storeInventory'), wsFbRead('/storeReqs'),
         wsFbRead('/storeIssuances'), wsFbRead('/pendingIssuances'),
@@ -17506,7 +17522,7 @@ function _finishLoad(ok) {
       spareparts:        { collections: ['spareParts'],    fetch: function(){ return wsFbRead('/spareParts');   }, apply: function(r){ SPAREPARTS=r.records; } },
       jobcards:          { collections: ['jobCards'],      fetch: function(){ return wsFbRead('/jobCards');     }, apply: function(r){ JOBCARDS=r.records; } },
       jcsummary:         { collections: ['jobCards'],      fetch: function(){ return wsFbRead('/jobCards');     }, apply: function(r){ JOBCARDS=r.records; } },
-      drivers:           { collections: ['drivers'],       fetch: function(){ return wsFbRead('/drivers','/ak_trips'); }, apply: function(r){ DRIVERS=r.records; } },
+      drivers:           { collections: ['drivers'],       fetch: function(){ return _loadAllDrivers(); }, apply: function(r){ } },
       vehicles:          { collections: ['vehicles'],      fetch: function(){ return wsFbRead('/vehicles','/ak_trips'); }, apply: function(r){ VEHICLES=r.records; } },
       tyre_inventory:    { collections: ['tyres'],         fetch: function(){ return wsFbRead('/tyres');        }, apply: function(r){ TYRES=r.records; } },
       tyre_fit_requests: { collections: ['tyreFitments','tyres'],
@@ -17710,7 +17726,7 @@ function _finishLoad(ok) {
               storeReceipts:   function(){ return wsFbRead('/storeReceipts').then(function(r){ if(r&&r.records) STORE_RECEIPTS=r.records; }); },
               pendingIssuances:function(){ return wsFbRead('/pendingIssuances').then(function(r){ if(r&&r.records) ISS_PENDING=_parseIssPending(r.records); }); },
               spareMoves:      function(){ return wsFbRead('/spareMoves').then(function(r){ if(r&&r.records) SPARE_MOVES=r.records; }); },
-              drivers:         function(){ return wsFbRead('/drivers','/ak_trips').then(function(r){ if(r&&r.records) DRIVERS=r.records; }); },
+              drivers:         function(){ return _loadAllDrivers(); },
               vehicles:        function(){ return wsFbRead('/vehicles','/ak_trips').then(function(r){ if(r&&r.records) VEHICLES=r.records; }); },
             };
             var fn = colFetchMap[collectionName];
@@ -17741,9 +17757,9 @@ function _finishLoad(ok) {
         'tyres','tyreFitments','tyreScrapSales','tyreGRNs','tyrePOs',
         'batteries','batteryFitments','batterySales','batteryGRNs','batteryPOs',
         'storeInventory','storeReqs','storeIssuances','storeReceipts','pendingIssuances',
-        'spareMoves',
+        'spareMoves','drivers',
       ];
-      var tripCollections = ['drivers','vehicles'];
+      var tripCollections = ['vehicles'];
       allCollections.forEach(function(col) {
         _wsAttachCollectionListener(col, '/ak_workshop');
       });
