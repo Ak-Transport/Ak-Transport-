@@ -3635,7 +3635,7 @@ const READ_ACTIONS=['getAll','getSuppliers','getSpareParts','getJobCards','getDr
 async function callAPI(action, data={}) {
   if (action==='getAll') setSyncStatus('sy');
   // Large batch operations get more time
-  var batchActions = ['saveTyreGRN','saveBatteryGRN','savePendingIssuances'];
+  var batchActions = ['saveTyreGRN','saveBatteryGRN','savePendingIssuances','issueFromStore','approvePendingIssuance'];
   var timeoutMs = batchActions.includes(action) ? 120000 : 45000;
   var controller = new AbortController();
   var timer = setTimeout(function(){ controller.abort(); }, timeoutMs);
@@ -12445,11 +12445,14 @@ async function bulkApproveIssPending(){
   var done=0,failed=0;
   var iphAppBtn=document.getElementById("iph_approve_btn");
   var iphRejBtn=document.getElementById("iph_reject_btn");
-  if(iphAppBtn){iphAppBtn.disabled=true;iphAppBtn.textContent="Approving "+recs.length+" request"+(recs.length>1?"s":"")+"...";}
+  if(iphAppBtn){iphAppBtn.disabled=true;iphAppBtn.textContent="Approving 0/"+recs.length+"...";}
   if(iphRejBtn)iphRejBtn.disabled=true;
   // Process one at a time to avoid inventory conflicts
   for(var ri=0;ri<recs.length;ri++){
     var r=recs[ri];
+    // Update progress BEFORE each call so user sees it moving
+    if(iphAppBtn) iphAppBtn.textContent="Approving "+(ri+1)+"/"+recs.length+"...";
+    toast("Approving "+(ri+1)+" of "+recs.length+": "+(r.issuanceNo||r.id),"ok");
     try{
       // Step 1: issue from store (deducts inventory)
       var res=await callAPI("issueFromStore",{
@@ -12462,6 +12465,7 @@ async function bulkApproveIssPending(){
         var idx=ISS_PENDING.findIndex(function(x){return x.id===r.id;});
         if(idx>=0) ISS_PENDING.splice(idx,1); // remove immediately
         done++;
+        if(iphAppBtn) iphAppBtn.textContent="Approved "+done+"/"+recs.length+"...";
       } else {
         failed++;
         toast("Failed: "+(r.issuanceNo||r.id)+(res&&res.error?" - "+res.error:""),"er");
