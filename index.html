@@ -2150,7 +2150,14 @@ function switchView(v){
   if(v==='dashboard')       { renderDashboard();   return; }
   if(v==='suppliers')       { renderSuppliers();   return; }
   if(v==='spareparts')      { renderSpareParts();  return; }
-  if(v==='drivers')         { renderDrivers();     return; }
+  if(v==='drivers') {
+    if(!DRIVERS.length) {
+      _loadAllDrivers().then(function(){ updateBadges(); renderDrivers(); });
+    } else {
+      renderDrivers();
+    }
+    return;
+  }
   if(v==='vehicles')        { renderVehicles();    return; }
   if(v==='usermgmt')        { openUserMgmt();      return; }
   if(v==='jobcards')        { if(v==='jobcards'||v==='jcsummary') renderJCStats(JOBCARDS); renderJobCards(); return; }
@@ -4657,7 +4664,22 @@ async function populateFormDropdowns() {
       o.value = d.name; o.textContent = d.name;
       drvSel.appendChild(o);
     });
-    if (cur) drvSel.value = cur;
+    // Add Other option for manual entry
+    const oDrv = document.createElement('option');
+    oDrv.value = '__other__'; oDrv.textContent = '✏ Type manually...';
+    drvSel.appendChild(oDrv);
+    new TomSelect(drvSel, {
+      allowEmptyOption: true,
+      placeholder: 'Select driver...',
+      maxOptions: 500,
+      highlight: true,
+      create: true,
+      dropdownParent: 'body'
+    });
+    if (cur && drvSel.tomselect) {
+      if (!drvSel.tomselect.options[cur]) drvSel.tomselect.addOption({value:cur,text:cur});
+      drvSel.tomselect.setValue(cur, true);
+    }
   }
 
   // 4. TRUCK/VEHICLE dropdown
@@ -4890,6 +4912,8 @@ function onJobCardSelect(jcCode) {
       }
       drvSel.tomselect.setValue(j.driverName, true);
     } else if (drvSel) {
+      var ex=Array.from(drvSel.options).some(function(o){return o.value===j.driverName;});
+      if(!ex){var oa=document.createElement('option');oa.value=j.driverName;oa.textContent=j.driverName;drvSel.appendChild(oa);}
       drvSel.value = j.driverName;
     }
   }
@@ -10650,9 +10674,26 @@ function onMRTruckSelect(plate) {
   // Drivers
   var drvSel=document.getElementById('mr_driver');
   if(drvSel){
-    drvSel.innerHTML='<option value="">Select...</option>';
-    DRIVERS.filter(function(d){ return d.status!=='INACTIVE'; })
-      .forEach(function(d){ var o=document.createElement('option'); o.value=d.name; o.textContent=d.name; drvSel.appendChild(o); });
+    var _populateMrDriver = function() {
+      var curVal = drvSel.value; // preserve current selection
+      drvSel.innerHTML='<option value="">Select...</option>';
+      DRIVERS.filter(function(d){ return d.status!=='INACTIVE'; })
+        .forEach(function(d){ var o=document.createElement('option'); o.value=d.name; o.textContent=d.name; drvSel.appendChild(o); });
+      if (curVal) {
+        // Restore previous value, adding as option if not in list
+        var exists = Array.from(drvSel.options).some(function(o){ return o.value===curVal; });
+        if (!exists) {
+          var oa=document.createElement('option'); oa.value=curVal; oa.textContent=curVal;
+          drvSel.appendChild(oa);
+        }
+        drvSel.value = curVal;
+      }
+    };
+    if (!DRIVERS.length) {
+      _loadAllDrivers().then(function(){ _populateMrDriver(); });
+    } else {
+      _populateMrDriver();
+    }
   }
 }
 
@@ -10660,7 +10701,17 @@ function onMRJCSelect() {
   var jcEl=document.getElementById('mr_jobcard');
   var j=JOBCARDS.find(function(x){ return x.code===(jcEl?jcEl.value:''); });
   if(!j) return;
-  var drvSel=document.getElementById('mr_driver'); if(drvSel&&j.driverName) drvSel.value=j.driverName;
+  var drvSel=document.getElementById('mr_driver');
+  if(drvSel && j.driverName) {
+    // Add option if not already in list
+    var exists = Array.from(drvSel.options).some(function(o){ return o.value===j.driverName; });
+    if (!exists) {
+      var o = document.createElement('option');
+      o.value = j.driverName; o.textContent = j.driverName;
+      drvSel.appendChild(o);
+    }
+    drvSel.value = j.driverName;
+  }
   var catEl=document.getElementById('mr_category'); if(catEl&&j.category) catEl.value=j.category;
 }
 
@@ -11031,8 +11082,13 @@ function onSSRLineTruckChange(n, plate) {
   // Drivers
   var drvSel = document.getElementById('ssr_driver_' + n);
   if(drvSel && !isWS){
-    drvSel.innerHTML = '<option value="">Select...</option>';
-    DRIVERS.filter(function(d){ return d.status!=='INACTIVE'; }).forEach(function(d){ var o=document.createElement('option'); o.value=d.name; o.textContent=d.name; drvSel.appendChild(o); });
+    var _populateSSRDriver = function() {
+      var curVal = drvSel.value;
+      drvSel.innerHTML = '<option value="">Select...</option>';
+      DRIVERS.filter(function(d){ return d.status!=='INACTIVE'; }).forEach(function(d){ var o=document.createElement('option'); o.value=d.name; o.textContent=d.name; drvSel.appendChild(o); });
+      if(curVal){ var ex=Array.from(drvSel.options).some(function(o){return o.value===curVal;}); if(!ex){var oa=document.createElement('option');oa.value=curVal;oa.textContent=curVal;drvSel.appendChild(oa);} drvSel.value=curVal; }
+    };
+    if(!DRIVERS.length){ _loadAllDrivers().then(function(){ _populateSSRDriver(); }); } else { _populateSSRDriver(); }
   }
 }
 
@@ -11041,10 +11097,12 @@ function onSSRJCLineSelect(n){
   if (!jcEl) return;
   var j = JOBCARDS.find(function(x){ return x.code === jcEl.value; });
   if (!j) return;
-  // Auto-fill driver
   var drvEl = document.getElementById('ssr_driver_'+n);
-  if (drvEl && j.driverName) drvEl.value = j.driverName;
-  // Auto-fill category
+  if (drvEl && j.driverName) {
+    var ex=Array.from(drvEl.options).some(function(o){return o.value===j.driverName;});
+    if(!ex){var oa=document.createElement('option');oa.value=j.driverName;oa.textContent=j.driverName;drvEl.appendChild(oa);}
+    drvEl.value=j.driverName;
+  }
   var catEl = document.getElementById('ssr_category_'+n);
   if (catEl && j.category) catEl.value = j.category;
 }
@@ -11653,8 +11711,18 @@ function onFRTruckChange(n, plate) {
   }
   var drvSel=document.getElementById('fr_driver_'+n);
   if(drvSel){
-    drvSel.innerHTML='<option value="">Select...</option>';
-    DRIVERS.filter(function(d){return d.status!=='INACTIVE';}).forEach(function(d){ var o=document.createElement('option'); o.value=d.name; o.textContent=d.name; drvSel.appendChild(o); });
+    var _populateFRDriver = function() {
+      var curVal = drvSel.value;
+      drvSel.innerHTML='<option value="">Select...</option>';
+      DRIVERS.filter(function(d){return d.status!=='INACTIVE';}).forEach(function(d){ var o=document.createElement('option'); o.value=d.name; o.textContent=d.name; drvSel.appendChild(o); });
+      if(curVal){
+        var exists=Array.from(drvSel.options).some(function(o){return o.value===curVal;});
+        if(!exists){var oa=document.createElement('option');oa.value=curVal;oa.textContent=curVal;drvSel.appendChild(oa);}
+        drvSel.value=curVal;
+      }
+    };
+    if(!DRIVERS.length){ _loadAllDrivers().then(function(){ _populateFRDriver(); }); }
+    else { _populateFRDriver(); }
   }
 }
 
@@ -11662,7 +11730,12 @@ function onFRJCSelect(n){
   var jcEl=document.getElementById('fr_jobcard_'+n);
   var j=JOBCARDS.find(function(x){ return x.code===(jcEl?jcEl.value:''); });
   if(!j) return;
-  var drvEl=document.getElementById('fr_driver_'+n); if(drvEl&&j.driverName) drvEl.value=j.driverName;
+  var drvEl=document.getElementById('fr_driver_'+n);
+  if(drvEl&&j.driverName){
+    var exists=Array.from(drvEl.options).some(function(o){return o.value===j.driverName;});
+    if(!exists){var oa=document.createElement('option');oa.value=j.driverName;oa.textContent=j.driverName;drvEl.appendChild(oa);}
+    drvEl.value=j.driverName;
+  }
   var catEl=document.getElementById('fr_category_'+n); if(catEl&&j.category) catEl.value=j.category;
 }
 
@@ -14989,7 +15062,7 @@ function saveDriver() {
     closeModal('drvmodal'); toast('Saving...','in');
     callAPI('updateDriver',{record:data}).then(function(){
       toast('Driver updated ✓','ok');
-      _wsFetchAndRender({'DRIVERS':'/drivers'}, function(){ renderDrivers(); });
+      _loadAllDrivers().then(function(){ renderDrivers(); });
     }).catch(()=>toast('Sync failed','er'));
   } else {
     data.id = Date.now().toString(36)+Math.random().toString(36).slice(2);
@@ -15009,28 +15082,21 @@ function deleteDriver(id) {
   DRIVERS = DRIVERS.filter(d=>d.id!==id); updateBadges(); renderDrivers(); toast('Deleting...','in');
   callAPI('deleteDriver',{id}).then(function(){
     toast('Driver deleted ✓','in');
-    _wsFetchAndRender({'DRIVERS':'/drivers'}, function(){ renderDrivers(); });
+    _loadAllDrivers().then(function(){ renderDrivers(); });
   }).catch(()=>{toast('Delete failed','er');if(bk){DRIVERS.push(bk);updateBadges();renderDrivers();}});
 }
 
-// Load drivers from BOTH Workshop and Trips Firebase paths and merge
+// Load drivers from Firebase — always merges with sheet to catch any not yet synced
 function _loadAllDrivers() {
-  return Promise.all([
-    wsFbRead('/drivers', '/ak_workshop').catch(function(){ return {records:[]}; }),
-    wsFbRead('/drivers', '/ak_trips').catch(function(){ return {records:[]}; })
-  ]).then(function(results) {
-    var wsDrivers   = (results[0]&&results[0].records) ? results[0].records : [];
-    var tripDrivers = (results[1]&&results[1].records) ? results[1].records : [];
-    var merged = {};
-    tripDrivers.forEach(function(d){ if(d.id) merged[d.id] = d; });
-    wsDrivers.forEach(function(d){ if(d.id) merged[d.id] = d; });
-    var all = Object.values(merged);
-    if (all.length) { DRIVERS = all; return {records: DRIVERS}; }
-    return callAPI('getDrivers').then(function(r){ if(r&&r.records) DRIVERS=r.records; return {records:DRIVERS}; }).catch(function(){ return {records:[]}; });
-  });
+  return wsFbRead('/drivers', '/ak_trips').then(function(r){
+    if(r && r.records && r.records.length) { DRIVERS = r.records; }
+    return { records: DRIVERS };
+  }).catch(function(){ return { records: DRIVERS }; });
 }
 
 function renderDrivers() {
+  document.getElementById('viewtitle').textContent = 'Drivers';
+  document.getElementById('viewsub').textContent = DRIVERS.length + ' driver' + (DRIVERS.length!==1?'s':'');
   document.getElementById('loadmorediv').style.display='none';
   document.getElementById('tablehead').innerHTML=`<tr>
     <th>Code</th><th>Full Name</th><th>Phone</th><th>Emergency</th>
@@ -17364,7 +17430,7 @@ async function loadAppData(){
     SUPPLIERS       = d.SUPPLIERS       || [];
     SPAREPARTS      = d.SPAREPARTS      || [];
     JOBCARDS        = d.JOBCARDS        || [];
-    DRIVERS         = d.DRIVERS         || [];
+    if (d.DRIVERS && d.DRIVERS.length)  DRIVERS = d.DRIVERS; // don't overwrite if already loaded
     VEHICLES        = d.VEHICLES        || [];
     STORE_INVENTORY = d.STORE_INVENTORY || [];
     STORE_REQS      = d.STORE_REQS      || [];
@@ -17389,7 +17455,7 @@ async function loadAppData(){
     try {
       var all = await Promise.all([
         wsFbRead('/suppliers'),      wsFbRead('/spareParts'),
-        wsFbRead('/jobCards'),       _loadAllDrivers().then(function(){ return {records:[]}; }),
+        wsFbRead('/jobCards'),       _loadAllDrivers(),
         wsFbRead('/vehicles',  '/ak_trips'),
         wsFbRead('/storeInventory'), wsFbRead('/storeReqs'),
         wsFbRead('/storeIssuances'), wsFbRead('/pendingIssuances'),
