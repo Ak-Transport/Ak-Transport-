@@ -4475,12 +4475,9 @@ async function doDelete(id){
   if(!confirm('Delete this record? Cannot be undone.'))return;
   const bk=ALL.find(r=>r.id===id);ALL=ALL.filter(r=>r.id!==id);updateBadges();applyFilters();toast('Deleting...','in');
   callAPI('delete',{id}).then(function(res){
-    if(res&&res.error&&!res.alreadyGone){
+    if(res&&res.error){
       toast('Delete failed: '+res.error,'er');
       if(bk){ALL.push(bk);updateBadges();applyFilters();}
-    } else if(res&&res.alreadyGone){
-      toast('⚠️ Record removed from view but may still exist in sheet — contact admin','er');
-      Logger.log && Logger.log('doDelete alreadyGone for id='+id);
     } else {
       toast('Deleted ✓','ok');
     }
