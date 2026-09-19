@@ -11518,6 +11518,10 @@ async function saveBulkEdit() {
 
     if (stat==='RECEIVED NOT ISSUED'){
       if (!(document.getElementById('be_datercvd_'+n)||{}).value) { toast('Record '+(n+1)+': Date Received is required when status is RECEIVED NOT ISSUED','er'); return; }
+      if (!lpo) { toast('Record '+(n+1)+': LPO No is required when status is RECEIVED NOT ISSUED','er'); return; }
+    }
+    if (stat==='PAID NOT RECEIVED'){
+      if (!lpo) { toast('Record '+(n+1)+': LPO No is required when status is PAID NOT RECEIVED','er'); return; }
     }
     if (stat==='RECEIVED'){
       if (!(document.getElementById('be_datercvd_'+n)||{}).value)  { toast('Record '+(n+1)+': Date Received is required when status is RECEIVED','er'); return; }
