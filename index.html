@@ -1922,9 +1922,11 @@ function applyFilters() {
       return true;
     });
   }
+  var _sortDateCols = ['dateRequested','dateReceived','dateIssued'];
   data.sort((a,b) => {
     let va=a[sortColumn]||'',vb=b[sortColumn]||'';
     if(sortColumn==='qty'||sortColumn==='cost'){va=parseFloat(va)||0;vb=parseFloat(vb)||0;}
+    else if(_sortDateCols.indexOf(sortColumn)>=0){va=_normDateVal(va);vb=_normDateVal(vb);}
     return va<vb?-sortDir:va>vb?sortDir:0;
   });
   filtered=data; currentPage=0;
@@ -4356,6 +4358,10 @@ async function saveRecord(){
   // If status is RECEIVED, ALL fields are required
   if (status === 'RECEIVED NOT ISSUED') {
     if (!document.getElementById('f_datercvd').value) missing.push('Date Received (required for RECEIVED NOT ISSUED)');
+    if (!document.getElementById('f_lpo').value) missing.push('LPO No (required for RECEIVED NOT ISSUED)');
+  }
+  if (status === 'PAID NOT RECEIVED') {
+    if (!document.getElementById('f_lpo').value) missing.push('LPO No (required for PAID NOT RECEIVED)');
   }
   if (status === 'RECEIVED') {
     if (!document.getElementById('f_date').value) missing.push('Date Requested');
@@ -4396,6 +4402,11 @@ async function saveRecord(){
       return document.getElementById('f_supplier').value;
     })()),dateReceived:document.getElementById('f_datercvd').value,status:document.getElementById('f_status').value,paymentMode:document.getElementById('f_payment').value,category:U(document.getElementById('f_category').value),requestedBy:U(document.getElementById('f_reqby').value),dateIssued:document.getElementById('f_dateissued').value,remarks:U(document.getElementById('f_remarks').value)};
 
+
+  // Sanitize date fields to YYYY-MM-DD before saving
+  ['dateRequested','dateReceived','dateIssued'].forEach(function(f){
+    if(data[f]) data[f] = _normDateVal(data[f]) || data[f];
+  });
 
   btn.disabled=true; btn.textContent='Saving...';
   try{
