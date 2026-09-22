@@ -10435,19 +10435,30 @@ function onRowCheck(chk) {
 }
 
 function updateSelectionBar() {
-  if(!can('workshop'))return;
   var bar = document.getElementById('selectionbar');
   var cnt = document.getElementById('sel_count');
-  if (_selectedIds.size > 0) {
+  var excelBtn = document.getElementById('btn_export_excel');
+  var pdfBtn = document.getElementById('btn_pdf_req');
+  var editBtn = document.getElementById('btn_bulk_edit');
+  var drvExcelBtn = document.getElementById('btn_export_drv_excel');
+  var vehExcelBtn = document.getElementById('btn_export_veh_excel');
+
+  // Determine which selection set is active
+  var activeCnt = 0;
+  if (currentView === 'drivers') activeCnt = _drvSelectedIds.size;
+  else if (currentView === 'vehicles') activeCnt = _vehSelectedIds.size;
+  else activeCnt = _selectedIds.size;
+
+  if (activeCnt > 0) {
     if (bar) bar.style.display = 'flex';
-    if (cnt) cnt.textContent = _selectedIds.size + ' row' + (_selectedIds.size > 1 ? 's' : '') + ' selected';
-    var pdfBtn = document.getElementById('btn_pdf_req');
-    // PDF print allowed for all roles including viewer
+    if (cnt) cnt.textContent = activeCnt + ' row' + (activeCnt > 1 ? 's' : '') + ' selected';
+    // Show/hide buttons based on current view
+    if (excelBtn) excelBtn.style.display = ['workshop','today','NOT PAID'].includes(currentView) ? 'block' : 'none';
     if (pdfBtn) pdfBtn.style.display = ['workshop','today','NOT PAID'].includes(currentView) ? 'block' : 'none';
-    var editBtn = document.getElementById('btn_bulk_edit');
-    // Only show edit button for roles that can edit (not viewer)
     var canEdit = CURRENT_USER && ['admin','manager','staff','staff_jc'].includes(CURRENT_USER.role);
     if (editBtn) editBtn.style.display = (canEdit && ['workshop','today'].includes(currentView)) ? 'block' : 'none';
+    if (drvExcelBtn) drvExcelBtn.style.display = currentView === 'drivers' ? 'block' : 'none';
+    if (vehExcelBtn) vehExcelBtn.style.display = currentView === 'vehicles' ? 'block' : 'none';
   } else {
     if (bar) bar.style.display = 'none';
   }
@@ -10457,6 +10468,8 @@ function clearSelection() {
   _selectedIds.clear();
   document.querySelectorAll('.row-chk').forEach(function(b){ b.checked = false; });
   var ca = document.getElementById('chk_all'); if (ca) ca.checked = false;
+  clearDrvSelection();
+  clearVehSelection();
   var bar = document.getElementById('selectionbar'); if (bar) bar.style.display = 'none';
 }
 
@@ -15115,11 +15128,47 @@ function _loadAllDrivers() {
   }).catch(function(){ return { records: DRIVERS }; });
 }
 
+var _drvSelectedIds = new Set();
+function toggleAllDrivers(chkAll) {
+  _drvSelectedIds.clear();
+  document.querySelectorAll('.drv-chk').forEach(function(b){ b.checked=chkAll.checked; if(chkAll.checked) _drvSelectedIds.add(b.getAttribute('data-id')); });
+  updateSelectionBar();
+}
+function onDrvCheck(chk) {
+  var id=chk?chk.getAttribute('data-id'):null;
+  if(id){ if(chk.checked) _drvSelectedIds.add(id); else _drvSelectedIds.delete(id); }
+  var all=document.querySelectorAll('.drv-chk');
+  var allC=all.length>0&&Array.from(all).every(function(b){return _drvSelectedIds.has(b.getAttribute('data-id'));});
+  var ca=document.getElementById('drv_chk_all'); if(ca) ca.checked=allC;
+  updateSelectionBar();
+}
+function clearDrvSelection() {
+  _drvSelectedIds.clear();
+  document.querySelectorAll('.drv-chk').forEach(function(b){b.checked=false;});
+  var ca=document.getElementById('drv_chk_all'); if(ca) ca.checked=false;
+}
+function exportDriversExcel() {
+  var rows=DRIVERS.filter(function(d){return _drvSelectedIds.has(d.id);});
+  if(!rows.length){toast('No rows selected','er');return;}
+  var hd=['Code','Full Name','Phone','Emergency Contact','License No','License Expiry','License Class','Passport No','Passport Expiry','National ID','Date of Birth','Nationality','Assigned Vehicle','Status'];
+  var ks=['code','name','phone','emergency','licenseNo','licenseExpiry','licenseClass','passportNo','passportExpiry','nationalId','dob','nationality','assignedVehicle','status'];
+  var wsData=[hd];
+  rows.forEach(function(r){wsData.push(ks.map(function(k){return r[k]||'';}));});
+  var wb=XLSX.utils.book_new();
+  var ws=XLSX.utils.aoa_to_sheet(wsData);
+  ws['!cols']=[{wch:10},{wch:22},{wch:14},{wch:16},{wch:16},{wch:14},{wch:14},{wch:16},{wch:14},{wch:16},{wch:13},{wch:14},{wch:14},{wch:10}];
+  XLSX.utils.book_append_sheet(wb,ws,'Drivers');
+  XLSX.writeFile(wb,'AK_Drivers_'+todayStr()+'.xlsx');
+  toast('Exported '+rows.length+' driver(s) to Excel ✓','ok');
+}
+
 function renderDrivers() {
   document.getElementById('viewtitle').textContent = 'Drivers';
   document.getElementById('viewsub').textContent = DRIVERS.length + ' driver' + (DRIVERS.length!==1?'s':'');
   document.getElementById('loadmorediv').style.display='none';
+  _drvSelectedIds.clear();
   document.getElementById('tablehead').innerHTML=`<tr>
+    <th style="width:36px;text-align:center"><input type="checkbox" id="drv_chk_all" onchange="toggleAllDrivers(this)" style="cursor:pointer;width:15px;height:15px;accent-color:var(--ac)"></th>
     <th>Code</th><th>Full Name</th><th>Phone</th><th>Emergency</th>
     <th>License No</th><th>License Expiry</th><th>License Class</th>
     <th>Passport No</th><th>Passport Expiry</th><th>National ID</th>
@@ -15148,6 +15197,7 @@ function renderDrivers() {
 
   const statusColors = {ACTIVE:'sR', INACTIVE:'sNR', SUSPENDED:'sOH'};
   document.getElementById('TBODY').innerHTML = DRIVERS.map(d=>`<tr>
+    <td style="text-align:center;width:36px"><input type="checkbox" class="drv-chk" data-id="${d.id}" onchange="onDrvCheck(this)" style="cursor:pointer;width:14px;height:14px;accent-color:var(--ac)"></td>
     <td><span class="reqbadge">${d.code||''}</span></td>
     <td><b>${d.name||''}</b></td>
     <td style="font-family:monospace;font-size:11px">${d.phone||''}</td>
@@ -15287,10 +15337,46 @@ function deleteVehicle(id) {
   }).catch(()=>{toast('Delete failed','er');if(bk){VEHICLES.push(bk);updateBadges();renderVehicles();}});
 }
 
+var _vehSelectedIds = new Set();
+function toggleAllVehicles(chkAll) {
+  _vehSelectedIds.clear();
+  document.querySelectorAll('.veh-chk').forEach(function(b){ b.checked=chkAll.checked; if(chkAll.checked) _vehSelectedIds.add(b.getAttribute('data-id')); });
+  updateSelectionBar();
+}
+function onVehCheck(chk) {
+  var id=chk?chk.getAttribute('data-id'):null;
+  if(id){ if(chk.checked) _vehSelectedIds.add(id); else _vehSelectedIds.delete(id); }
+  var all=document.querySelectorAll('.veh-chk');
+  var allC=all.length>0&&Array.from(all).every(function(b){return _vehSelectedIds.has(b.getAttribute('data-id'));});
+  var ca=document.getElementById('veh_chk_all'); if(ca) ca.checked=allC;
+  updateSelectionBar();
+}
+function clearVehSelection() {
+  _vehSelectedIds.clear();
+  document.querySelectorAll('.veh-chk').forEach(function(b){b.checked=false;});
+  var ca=document.getElementById('veh_chk_all'); if(ca) ca.checked=false;
+}
+function exportVehiclesExcel() {
+  var rows=VEHICLES.filter(function(v){return _vehSelectedIds.has(v.id);});
+  if(!rows.length){toast('No rows selected','er');return;}
+  var hd=['Code','Plate No','Type','Make','Model','Year','Engine No','Chassis No','Colour','Fuel','Odometer (km)','Assigned Driver','Road Lic Expiry','Insurance Expiry','Inspection Expiry','Ownership','Tyre Config','Status','Remarks'];
+  var ks=['code','plate','vehicleType','make','model','year','engineNo','chassisNo','colour','fuelType','odometer','assignedDriver','roadLicExpiry','insuranceExpiry','inspectionExpiry','ownership','tyreConfig','status','remarks'];
+  var wsData=[hd];
+  rows.forEach(function(r){wsData.push(ks.map(function(k){return r[k]||'';}));});
+  var wb=XLSX.utils.book_new();
+  var ws=XLSX.utils.aoa_to_sheet(wsData);
+  ws['!cols']=[{wch:10},{wch:12},{wch:10},{wch:12},{wch:12},{wch:7},{wch:16},{wch:16},{wch:10},{wch:8},{wch:12},{wch:20},{wch:14},{wch:16},{wch:16},{wch:12},{wch:12},{wch:10},{wch:20}];
+  XLSX.utils.book_append_sheet(wb,ws,'Vehicles');
+  XLSX.writeFile(wb,'AK_Vehicles_'+todayStr()+'.xlsx');
+  toast('Exported '+rows.length+' vehicle(s) to Excel ✓','ok');
+}
+
 function renderVehicles() {
   document.getElementById('viewsub').textContent = VEHICLES.length+' vehicle'+(VEHICLES.length!==1?'s':'');
   document.getElementById('loadmorediv').style.display='none';
+  _vehSelectedIds.clear();
   document.getElementById('tablehead').innerHTML=`<tr>
+    <th style="width:36px;text-align:center"><input type="checkbox" id="veh_chk_all" onchange="toggleAllVehicles(this)" style="cursor:pointer;width:15px;height:15px;accent-color:var(--ac)"></th>
     <th>Code</th><th>Plate No</th><th>Type</th><th>Make</th><th>Model</th>
     <th>Year</th><th>Engine No</th><th>Chassis No</th><th>Colour</th>
     <th>Fuel</th><th>Odometer</th><th>Driver</th>
@@ -15319,6 +15405,7 @@ function renderVehicles() {
 
   const statusColors = {'ACTIVE':'sR','IN WORKSHOP':'sPNR','BREAKDOWN':'sOH','INACTIVE':'sNR'};
   document.getElementById('TBODY').innerHTML = VEHICLES.map(v=>`<tr>
+    <td style="text-align:center;width:36px"><input type="checkbox" class="veh-chk" data-id="${v.id}" onchange="onVehCheck(this)" style="cursor:pointer;width:14px;height:14px;accent-color:var(--ac)"></td>
     <td><span class="reqbadge">${v.code||''}</span></td>
     <td><b style="color:var(--ac)">${v.plate||''}</b></td>
     <td style="color:var(--t2);font-size:10px">${v.vehicleType||''}</td>
@@ -18445,7 +18532,9 @@ history.pushState(null, '', window.location.href);
 <div id="selectionbar" style="display:none;position:fixed;bottom:28px;left:50%;transform:translateX(-50%);background:#0a2d6e;color:#fff;border-radius:12px;padding:11px 20px;align-items:center;gap:12px;box-shadow:0 8px 32px rgba(10,45,110,.4);z-index:5000;white-space:nowrap">
   <span id="sel_count" style="font-size:13px;font-weight:600">0 selected</span>
   <div style="width:1px;background:rgba(255,255,255,.3);height:18px;flex-shrink:0"></div>
-  <button onclick="exportSelectedExcel()" style="background:rgba(255,255,255,.18);border:1px solid rgba(255,255,255,.3);color:#fff;padding:6px 14px;border-radius:7px;cursor:pointer;font-size:12px;font-weight:600">⬇ Export Excel</button>
+  <button id="btn_export_excel" onclick="exportSelectedExcel()" style="background:rgba(255,255,255,.18);border:1px solid rgba(255,255,255,.3);color:#fff;padding:6px 14px;border-radius:7px;cursor:pointer;font-size:12px;font-weight:600">⬇ Export Excel</button>
+  <button id="btn_export_drv_excel" onclick="exportDriversExcel()" style="display:none;background:rgba(255,255,255,.18);border:1px solid rgba(255,255,255,.3);color:#fff;padding:6px 14px;border-radius:7px;cursor:pointer;font-size:12px;font-weight:600">⬇ Export Excel</button>
+  <button id="btn_export_veh_excel" onclick="exportVehiclesExcel()" style="display:none;background:rgba(255,255,255,.18);border:1px solid rgba(255,255,255,.3);color:#fff;padding:6px 14px;border-radius:7px;cursor:pointer;font-size:12px;font-weight:600">⬇ Export Excel</button>
   <button id="btn_pdf_req" onclick="exportSelectedPDF()" style="background:rgba(255,255,255,.18);border:1px solid rgba(255,255,255,.3);color:#fff;padding:6px 14px;border-radius:7px;cursor:pointer;font-size:12px;font-weight:600;display:none">🖨 Print Form</button>
   <button id="btn_bulk_edit" onclick="openBulkEdit()" style="background:rgba(255,255,255,.18);border:1px solid rgba(255,255,255,.3);color:#fff;padding:6px 14px;border-radius:7px;cursor:pointer;font-size:12px;font-weight:600;display:none">✏ Edit Selected</button>
   <button onclick="clearSelection()" style="background:none;border:none;color:rgba(255,255,255,.7);cursor:pointer;font-size:20px;line-height:1;padding:0 4px">✕</button>
