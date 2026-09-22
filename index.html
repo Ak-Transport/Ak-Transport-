@@ -9318,11 +9318,15 @@ function addFitTyreLine() {
   var curOpt2 = document.querySelector('#fit_vehicle option[value="'+curVeh2+'"]');
   var curCfg2 = curOpt2 ? (curOpt2.getAttribute('data-tyreconfig')||window._fitTyreConfig||'') : (window._fitTyreConfig||'');
   var cfgData2 = getTyrePositions(curCfg2);
-  // Check max tyres not exceeded
-  var currentFitted = (TYRES||[]).filter(function(t){return t.status==='FITTED'&&(t.currentVehicle||'').toUpperCase()===(curVeh2||'').toUpperCase();}).length;
+  // Check max tyres not exceeded (SPARE position excluded from road tyre limit)
+  var currentFitted = (TYRES||[]).filter(function(t){return t.status==='FITTED'&&(t.currentVehicle||'').toUpperCase()===(curVeh2||'').toUpperCase()&&(t.currentPosition||'').toUpperCase()!=='SPARE';}).length;
   var linesInForm = document.querySelectorAll('[id^="fit_line_"]').length;
-  if (cfgData2.max < 99 && (currentFitted + linesInForm) >= cfgData2.max) {
-    toast('Maximum '+cfgData2.max+' tyres allowed for this vehicle ('+curCfg2+'). Already has '+currentFitted+' fitted.','er');
+  // Count how many lines in the form are selecting SPARE position
+  var spareLines = 0;
+  for(var _si=1;_si<=linesInForm;_si++){var _sp=document.getElementById('fit_pos_'+_si);if(_sp&&(_sp.value||'').toUpperCase()==='SPARE')spareLines++;}
+  var roadLinesInForm = linesInForm - spareLines;
+  if (cfgData2.max < 99 && (currentFitted + roadLinesInForm) >= cfgData2.max) {
+    toast('Maximum '+cfgData2.max+' road tyres allowed for this vehicle ('+curCfg2+'). Already has '+currentFitted+' fitted. You can still add a spare tyre.','er');
     return;
   }
   var posOpts = _buildPosOpts(curCfg2, curVeh2);
@@ -10146,14 +10150,15 @@ async function saveFitTyre() {
     if(pendFit){toast('Line '+(i+1)+': Tyre '+serial+' already has a PENDING ISSUANCE request ('+( pendFit.reqNo||'')+'). Approve or reject it first.','er');return;}
     fitLines.push({serial:serial,position:position});
   }
-  // Check max tyre limit for this vehicle config
+  // Check max tyre limit for this vehicle config (SPARE position excluded from road tyre limit)
   var vehSel3=document.getElementById('fit_vehicle');
   var vehOpt3=vehSel3?vehSel3.querySelector('option[value="'+vehicle+'"]'):null;
   var vehCfg3=vehOpt3?(vehOpt3.getAttribute('data-tyreconfig')||window._fitTyreConfig||''):(window._fitTyreConfig||'');
   var cfgData3=getTyrePositions(vehCfg3);
-  var alreadyFit3=(TYRES||[]).filter(function(t){return t.status==="FITTED"&&(t.currentVehicle||"").toUpperCase()===(vehicle||"").toUpperCase();}).length;
-  if(cfgData3.max<99&&(alreadyFit3+fitLines.length)>cfgData3.max){
-    toast('Cannot fit '+fitLines.length+' tyre(s). Vehicle '+vehicle+' ('+vehCfg3+') allows max '+cfgData3.max+' tyres. Already has '+alreadyFit3+' fitted.','er');
+  var alreadyFit3=(TYRES||[]).filter(function(t){return t.status==="FITTED"&&(t.currentVehicle||"").toUpperCase()===(vehicle||"").toUpperCase()&&(t.currentPosition||'').toUpperCase()!=='SPARE';}).length;
+  var roadFitLines=fitLines.filter(function(l){return (l.position||'').toUpperCase()!=='SPARE';}).length;
+  if(cfgData3.max<99&&(alreadyFit3+roadFitLines)>cfgData3.max){
+    toast('Cannot fit '+roadFitLines+' road tyre(s). Vehicle '+vehicle+' ('+vehCfg3+') allows max '+cfgData3.max+' road tyres. Already has '+alreadyFit3+' fitted. Spare tyres are not counted toward this limit.','er');
     return;
   }
   if(!fitLines.length){toast('Add at least one tyre line','er');return;}
