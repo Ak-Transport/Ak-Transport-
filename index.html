@@ -8277,11 +8277,97 @@ function updateSpmSelBar() {
   if (!bar) return;
   if (_spmSelected.size > 0) {
     bar.style.display = 'flex';
-    if (cnt) cnt.textContent = _spmSelected.size + ' row' + (_spmSelected.size > 1 ? 's' : '') + ' selected';
+    if (cnt) cnt.textContent = _spmSelected.size + ' record' + (_spmSelected.size > 1 ? 's' : '') + ' selected';
+    var isHold = (currentView === 'spm_hold');
+    var canApprove = isHold && can('sparemove_approve');
+    var ab = document.getElementById('spm_bulk_approve_btn');
+    var rb = document.getElementById('spm_bulk_reject_btn');
+    if (ab) ab.style.display = canApprove ? 'block' : 'none';
+    if (rb) rb.style.display = canApprove ? 'block' : 'none';
   } else {
     bar.style.display = 'none';
   }
 }
+async function bulkApproveSpm() {
+  if (!can('sparemove_approve')) { toast('No permission to approve','er'); return; }
+  var ids = Array.from(_spmSelected).filter(function(id){
+    var r = (SPARE_MOVES||[]).find(function(x){return x.id===id;});
+    return r && (r.status||'').toUpperCase()==='PENDING';
+  });
+  if (!ids.length) { toast('No pending records selected','er'); return; }
+  if (!confirm('Approve ' + ids.length + ' spare movement request' + (ids.length>1?'s':'') + '?')) return;
+  var approvedBy = CURRENT_USER ? (CURRENT_USER.name||CURRENT_USER.username).toUpperCase() : 'ADMIN';
+  var ab = document.getElementById('spm_bulk_approve_btn');
+  var rb = document.getElementById('spm_bulk_reject_btn');
+  var done = 0; var failed = 0;
+  function updateProgress() {
+    var total = ids.length;
+    if (ab) ab.textContent = 'Approving ' + done + '/' + total + '...';
+    if (ab) ab.disabled = true;
+    if (rb) rb.disabled = true;
+  }
+  updateProgress();
+  for (var i = 0; i < ids.length; i++) {
+    try {
+      var res = await callAPI('approveSpareMovement', { id: ids[i], approvedBy: approvedBy });
+      if (res && res.success) {
+        var ix = SPARE_MOVES.findIndex(function(r){return r.id===ids[i];});
+        if (ix!==-1) { SPARE_MOVES[ix].status='APPROVED'; SPARE_MOVES[ix].approvedBy=approvedBy; SPARE_MOVES[ix].dateApproved=todayStr(); }
+        done++;
+      } else { failed++; }
+    } catch(e) { failed++; }
+    updateProgress();
+  }
+  if (ab) { ab.textContent='✅ Approve Selected'; ab.disabled=false; }
+  if (rb) { rb.disabled=false; }
+  spmClearSelection();
+  if (failed === 0) toast('✅ ' + done + ' record' + (done>1?'s':'') + ' approved','ok');
+  else toast('⚠ ' + done + ' approved, ' + failed + ' failed','er');
+  _wsFetchAndRender({'SPARE_MOVES':'/spareMoves','STORE_INVENTORY':'/storeInventory'}, function(){
+    if(currentView==='spm_requests'||currentView==='spm_hold') renderSpareMovements(_spmCurrentFilter);
+  });
+}
+
+async function bulkRejectSpm() {
+  if (!can('sparemove_approve')) { toast('No permission to reject','er'); return; }
+  var ids = Array.from(_spmSelected).filter(function(id){
+    var r = (SPARE_MOVES||[]).find(function(x){return x.id===id;});
+    return r && (r.status||'').toUpperCase()==='PENDING';
+  });
+  if (!ids.length) { toast('No pending records selected','er'); return; }
+  if (!confirm('Reject ' + ids.length + ' spare movement request' + (ids.length>1?'s':'') + '?')) return;
+  var rejectedBy = CURRENT_USER ? (CURRENT_USER.name||CURRENT_USER.username).toUpperCase() : 'ADMIN';
+  var ab = document.getElementById('spm_bulk_approve_btn');
+  var rb = document.getElementById('spm_bulk_reject_btn');
+  var done = 0; var failed = 0;
+  function updateProgress() {
+    var total = ids.length;
+    if (rb) rb.textContent = 'Rejecting ' + done + '/' + total + '...';
+    if (rb) rb.disabled = true;
+    if (ab) ab.disabled = true;
+  }
+  updateProgress();
+  for (var i = 0; i < ids.length; i++) {
+    try {
+      var res = await callAPI('rejectSpareMovement', { id: ids[i], rejectedBy: rejectedBy });
+      if (res && res.success) {
+        var ix = SPARE_MOVES.findIndex(function(r){return r.id===ids[i];});
+        if (ix!==-1) { SPARE_MOVES[ix].status='REJECTED'; SPARE_MOVES[ix].rejectedBy=rejectedBy; SPARE_MOVES[ix].dateRejected=todayStr(); }
+        done++;
+      } else { failed++; }
+    } catch(e) { failed++; }
+    updateProgress();
+  }
+  if (rb) { rb.textContent='❌ Reject Selected'; rb.disabled=false; }
+  if (ab) { ab.disabled=false; }
+  spmClearSelection();
+  if (failed === 0) toast('🚫 ' + done + ' record' + (done>1?'s':'') + ' rejected','ok');
+  else toast('⚠ ' + done + ' rejected, ' + failed + ' failed','er');
+  _wsFetchAndRender({'SPARE_MOVES':'/spareMoves'}, function(){
+    if(currentView==='spm_requests'||currentView==='spm_hold') renderSpareMovements(_spmCurrentFilter);
+  });
+}
+
 function spmExportExcel() {
   var ids = Array.from(_spmSelected);
   var rows = (SPARE_MOVES||[]).filter(function(r){ return ids.includes(r.id); });
@@ -18579,8 +18665,10 @@ history.pushState(null, '', window.location.href);
 <div id="spm_selbar" style="display:none;position:fixed;bottom:28px;left:50%;transform:translateX(-50%);background:#0a2d6e;color:#fff;border-radius:12px;padding:11px 20px;align-items:center;gap:12px;box-shadow:0 8px 32px rgba(10,45,110,.4);z-index:5000;white-space:nowrap">
   <span id="spm_selcount" style="font-size:13px;font-weight:600">0 selected</span>
   <div style="width:1px;background:rgba(255,255,255,.3);height:18px;flex-shrink:0"></div>
-  <button onclick="spmExportExcel()" style="background:rgba(255,255,255,.18);border:1px solid rgba(255,255,255,.3);color:#fff;padding:6px 14px;border-radius:7px;cursor:pointer;font-size:12px;font-weight:600">⬇ Export Excel</button>
-  <button onclick="spmExportPdf()" style="background:rgba(255,255,255,.18);border:1px solid rgba(255,255,255,.3);color:#fff;padding:6px 14px;border-radius:7px;cursor:pointer;font-size:12px;font-weight:600">🖨 Print Form</button>
+  <button id="spm_bulk_approve_btn" onclick="bulkApproveSpm()" style="display:none;background:rgba(34,197,94,.25);border:1px solid rgba(34,197,94,.5);color:#fff;padding:6px 14px;border-radius:7px;cursor:pointer;font-size:12px;font-weight:600">✅ Approve Selected</button>
+  <button id="spm_bulk_reject_btn" onclick="bulkRejectSpm()" style="display:none;background:rgba(239,68,68,.25);border:1px solid rgba(239,68,68,.5);color:#fff;padding:6px 14px;border-radius:7px;cursor:pointer;font-size:12px;font-weight:600">❌ Reject Selected</button>
+  <button id="spm_bulk_excel_btn" onclick="spmExportExcel()" style="background:rgba(255,255,255,.18);border:1px solid rgba(255,255,255,.3);color:#fff;padding:6px 14px;border-radius:7px;cursor:pointer;font-size:12px;font-weight:600">⬇ Export Excel</button>
+  <button id="spm_bulk_pdf_btn" onclick="spmExportPdf()" style="background:rgba(255,255,255,.18);border:1px solid rgba(255,255,255,.3);color:#fff;padding:6px 14px;border-radius:7px;cursor:pointer;font-size:12px;font-weight:600">🖨 Print Form</button>
   <button onclick="spmClearSelection()" style="background:none;border:none;color:rgba(255,255,255,.7);cursor:pointer;font-size:20px;line-height:1;padding:0 4px">✕</button>
 </div>
 
