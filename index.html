@@ -8069,6 +8069,14 @@ var _spmSelected = new Set();
 function renderSpareMovements(filter) {
   _spmCurrentFilter = filter || 'all';
   _spmSelected.clear();
+  // Preserve filter state across re-renders (e.g. after approve/reject)
+  var _savedF1 = (document.getElementById('SPMF1')||{}).value||'';
+  var _savedV1 = (document.getElementById('SPMV1')||{}).value||'';
+  var _savedF2 = (document.getElementById('SPMF2')||{}).value||'';
+  var _savedV2 = (document.getElementById('SPMV2')||{}).value||'';
+  var _savedStatus = (document.getElementById('spmStatusFilter')||{}).value||'';
+  var _savedDateFrom = (document.getElementById('SPM_DATE_FROM')||{}).value||'';
+  var _savedDateTo = (document.getElementById('SPM_DATE_TO')||{}).value||'';
   document.getElementById('viewtitle').textContent = filter==='PENDING' ? 'Spare Movement On Hold' : 'Spare Movement Requests';
   var isAdmin = (window.CURRENT_USER && (window.CURRENT_USER.role === 'admin' || can('store_approve')));
   var all = (SPARE_MOVES||[]).slice().sort(function(a,b){ return (b.dateRequested||'').localeCompare(a.dateRequested||''); });
@@ -8151,6 +8159,15 @@ function renderSpareMovements(filter) {
   html += '</tbody></table></div>';
   document.getElementById('storecontent').innerHTML = html;
   document.getElementById('storecontent').style.display = 'block';
+  // Restore filter state
+  if (_savedF1) { var _ef1=document.getElementById('SPMF1'); if(_ef1) _ef1.value=_savedF1; }
+  if (_savedV1) { var _ev1=document.getElementById('SPMV1'); if(_ev1) _ev1.value=_savedV1; }
+  if (_savedF2) { var _ef2=document.getElementById('SPMF2'); if(_ef2) _ef2.value=_savedF2; }
+  if (_savedV2) { var _ev2=document.getElementById('SPMV2'); if(_ev2) _ev2.value=_savedV2; }
+  if (_savedStatus) { var _ess=document.getElementById('spmStatusFilter'); if(_ess) _ess.value=_savedStatus; }
+  if (_savedDateFrom) { var _edf=document.getElementById('SPM_DATE_FROM'); if(_edf) _edf.value=_savedDateFrom; }
+  if (_savedDateTo) { var _edt=document.getElementById('SPM_DATE_TO'); if(_edt) _edt.value=_savedDateTo; }
+  if (_savedF1 || _savedF2 || _savedStatus || _savedV1 || _savedV2) { onSpmFieldChange(); } else { applySpmFilter(); }
   updateSpmSelBar();
 }
 
