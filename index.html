@@ -1126,9 +1126,32 @@ body.no-delete .actbtn.d:not(.ws-action):not(.jc-action):not(.fleet-action):not(
         <input type="text" id="SEARCH3" placeholder="Optional..." autocomplete="off" spellcheck="false" style="flex:1;min-width:0">
       </div>
       <div style="display:flex;gap:6px">
-        <select id="STATUSFILTER" style="flex:1;background:var(--s1);border:1.5px solid var(--br);border-radius:8px;padding:8px 10px;color:var(--tx);font-size:12px;outline:none;cursor:pointer">
-          <option value="">All Status</option><option>RECEIVED</option><option>RECEIVED NOT ISSUED</option><option>ON HOLD</option><option>PAID NOT RECEIVED</option><option>NOT PAID</option>
-        </select>
+        <div style="position:relative;flex:1" id="status_filter_wrap">
+          <button id="STATUSFILTER_BTN" onclick="toggleStatusDropdown(event)" style="width:100%;background:var(--s1);border:1.5px solid var(--br);border-radius:8px;padding:8px 10px;color:var(--tx);font-size:12px;outline:none;cursor:pointer;text-align:left;display:flex;align-items:center;justify-content:space-between;gap:6px">
+            <span id="STATUSFILTER_LABEL">All Status</span>
+            <span style="font-size:10px;color:var(--t2)">▾</span>
+          </button>
+          <div id="STATUSFILTER_PANEL" style="display:none;position:absolute;top:calc(100% + 4px);left:0;min-width:220px;background:var(--s1);border:1.5px solid var(--br);border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,.18);z-index:3000;padding:8px 0">
+            <label style="display:flex;align-items:center;gap:8px;padding:7px 14px;cursor:pointer;font-size:12px;border-bottom:1px solid var(--br);color:var(--t2)" onclick="clearStatusFilter()">
+              <span style="font-size:11px">✕</span> Clear / All Status
+            </label>
+            <label style="display:flex;align-items:center;gap:8px;padding:7px 14px;cursor:pointer;font-size:12px" onmouseenter="this.style.background='rgba(10,45,110,.06)'" onmouseleave="this.style.background=''">
+              <input type="checkbox" value="NOT PAID" class="sf-chk" onchange="onStatusFilterChange()" style="accent-color:var(--ac);width:14px;height:14px"> NOT PAID
+            </label>
+            <label style="display:flex;align-items:center;gap:8px;padding:7px 14px;cursor:pointer;font-size:12px" onmouseenter="this.style.background='rgba(10,45,110,.06)'" onmouseleave="this.style.background=''">
+              <input type="checkbox" value="RECEIVED" class="sf-chk" onchange="onStatusFilterChange()" style="accent-color:var(--ac);width:14px;height:14px"> RECEIVED
+            </label>
+            <label style="display:flex;align-items:center;gap:8px;padding:7px 14px;cursor:pointer;font-size:12px" onmouseenter="this.style.background='rgba(10,45,110,.06)'" onmouseleave="this.style.background=''">
+              <input type="checkbox" value="PAID NOT RECEIVED" class="sf-chk" onchange="onStatusFilterChange()" style="accent-color:var(--ac);width:14px;height:14px"> PAID NOT RECEIVED
+            </label>
+            <label style="display:flex;align-items:center;gap:8px;padding:7px 14px;cursor:pointer;font-size:12px" onmouseenter="this.style.background='rgba(10,45,110,.06)'" onmouseleave="this.style.background=''">
+              <input type="checkbox" value="RECEIVED NOT ISSUED" class="sf-chk" onchange="onStatusFilterChange()" style="accent-color:var(--ac);width:14px;height:14px"> RECEIVED NOT ISSUED
+            </label>
+            <label style="display:flex;align-items:center;gap:8px;padding:7px 14px;cursor:pointer;font-size:12px" onmouseenter="this.style.background='rgba(10,45,110,.06)'" onmouseleave="this.style.background=''">
+              <input type="checkbox" value="ON HOLD" class="sf-chk" onchange="onStatusFilterChange()" style="accent-color:var(--ac);width:14px;height:14px"> ON HOLD
+            </label>
+          </div>
+        </div>
         <button class="btn bg" onclick="clearSearch()" style="padding:8px 14px;font-size:12px;white-space:nowrap">✕ Clear</button>
       </div>
       <!-- Date range row - shown when a date field is selected -->
@@ -1853,7 +1876,7 @@ const PH = {truck:'e.g. T843DEE',reqNo:'e.g. REQ-001234',description:'e.g. BRAKE
   document.getElementById(id).addEventListener('input', applyFilters);
   document.getElementById(id).addEventListener('keydown', function(e){ if(e.key==='Escape'){this.value='';applyFilters();} });
 });
-var _sf = document.getElementById('STATUSFILTER'); if(_sf) _sf.addEventListener('change', applyFilters);
+// Status filter now uses custom checkbox dropdown — see _statusFilters, onStatusFilterChange()
 ['SEARCHFIELD1','SEARCHFIELD2','SEARCHFIELD3'].forEach((id,i) => {
   document.getElementById(id).addEventListener('change', function(){
     const inp = document.getElementById('SEARCH'+(i+1));
@@ -1864,6 +1887,50 @@ var _sf = document.getElementById('STATUSFILTER'); if(_sf) _sf.addEventListener(
 });
 
 // -- APPLY FILTERS --
+var _statusFilters = new Set();
+function toggleStatusDropdown(e) {
+  e.stopPropagation();
+  var panel = document.getElementById('STATUSFILTER_PANEL');
+  if (!panel) return;
+  var isOpen = panel.style.display !== 'none';
+  panel.style.display = isOpen ? 'none' : 'block';
+  if (!isOpen) {
+    // Close when clicking outside
+    setTimeout(function(){
+      document.addEventListener('click', function _closeStatusPanel(ev){
+        var wrap = document.getElementById('status_filter_wrap');
+        if (wrap && !wrap.contains(ev.target)) {
+          panel.style.display = 'none';
+          document.removeEventListener('click', _closeStatusPanel);
+        }
+      });
+    }, 0);
+  }
+}
+function onStatusFilterChange() {
+  _statusFilters.clear();
+  document.querySelectorAll('.sf-chk').forEach(function(cb){ if(cb.checked) _statusFilters.add(cb.value); });
+  var lbl = document.getElementById('STATUSFILTER_LABEL');
+  if (lbl) {
+    if (_statusFilters.size === 0) lbl.textContent = 'All Status';
+    else if (_statusFilters.size === 1) lbl.textContent = Array.from(_statusFilters)[0];
+    else lbl.textContent = _statusFilters.size + ' statuses selected';
+  }
+  var btn = document.getElementById('STATUSFILTER_BTN');
+  if (btn) btn.style.borderColor = _statusFilters.size > 0 ? 'var(--ac)' : 'var(--br)';
+  applyFilters();
+}
+function clearStatusFilter() {
+  _statusFilters.clear();
+  document.querySelectorAll('.sf-chk').forEach(function(cb){ cb.checked = false; });
+  var lbl = document.getElementById('STATUSFILTER_LABEL');
+  if (lbl) lbl.textContent = 'All Status';
+  var btn = document.getElementById('STATUSFILTER_BTN');
+  if (btn) btn.style.borderColor = 'var(--br)';
+  var panel = document.getElementById('STATUSFILTER_PANEL');
+  if (panel) panel.style.display = 'none';
+}
+
 function applyFilters() {
   // Don't run for non-table views
   if (['dashboard','suppliers','spareparts','jobcards','jcsummary','drivers','vehicles',
@@ -1883,11 +1950,10 @@ function applyFilters() {
       r.clientName=jci.clientName;
     }
   });
-  const fs = document.getElementById('STATUSFILTER').value;
   let data = ALL.slice();
   if (currentView === 'today') data = data.filter(r => r.priority === 'HIGH PRIORITY' && r.status === 'NOT PAID');
   else if (currentView !== 'workshop') data = data.filter(r => r.status === currentView);
-  if (fs) data = data.filter(r => r.status === fs);
+  if (_statusFilters.size > 0) data = data.filter(r => _statusFilters.has(r.status));
   // Search field filters — normalize date fields before comparison
   var _dateFields = ['dateRequested','dateReceived','dateIssued'];
   [{f:document.getElementById('SEARCHFIELD1').value,v:(document.getElementById('SEARCH1').value||'').trim().toLowerCase()},
@@ -14588,7 +14654,7 @@ function exportSpareParts(){
 }
 function clearSearch(){
   ['SEARCH1','SEARCH2','SEARCH3'].forEach(id=>document.getElementById(id).value='');
-  document.getElementById('STATUSFILTER').value='';
+  clearStatusFilter();
   document.getElementById('SEARCHFIELD1').value='truck';
   document.getElementById('SEARCHFIELD2').value='';
   document.getElementById('SEARCHFIELD3').value='';
