@@ -2090,11 +2090,12 @@ function switchView(v){
   // Update per-collection listeners for new view
   if (typeof window._wsSyncListenersForView === 'function') window._wsSyncListenersForView(v);
   // Hide all floating selection bars on view change
-  var _bars = ['tyreFitReqFilterRow','storeinvfilterrow','sreq_selbar','iss_req_selbar','iph_selbar','bat_remhold_selbar','tyre_remhold_selbar','tyre_scrap_selbar','tinv_selbar','batinv_selbar','batsales_selbar','selectionbar','tpo_selbar','fitreq_selbar','batfitreq_selbar','bpo_selbar','spm_selbar'];
+  var _bars = ['tyreFitReqFilterRow','storeinvfilterrow','sreq_selbar','iss_req_selbar','iph_selbar','bat_remhold_selbar','tyre_remhold_selbar','tyre_scrap_selbar','tinv_selbar','batinv_selbar','batsales_selbar','selectionbar','tpo_selbar','fitreq_selbar','batfitreq_selbar','bpo_selbar','spm_selbar','jc_selbar'];
   _bars.forEach(function(bid){ var b=document.getElementById(bid); if(b) b.style.display='none'; });
   _sreqSelected.clear();
   _issPendingSelected.clear();
   _tpoSelected.clear();
+  if(typeof _jcSelected!=='undefined') _jcSelected.clear();
   if(typeof _fitReqSelected!=='undefined') _fitReqSelected.clear();
   if(typeof _batFitReqSelected!=='undefined') _batFitReqSelected.clear();
   if(typeof _bpoSelected!=='undefined') _bpoSelected.clear();
@@ -15099,10 +15100,176 @@ function deleteJobCard(id) {
   }).catch(() => { toast('Delete failed', 'er'); if(bk){JOBCARDS.push(bk);updateBadges();renderJobCards();} });
 }
 
+// ── JOB CARD SELECTION & EXPORT ─────────────────────────────────────────────
+var _jcSelected = new Set();
+
+function toggleAllJC(masterCb) {
+  document.querySelectorAll('.jc-chk').forEach(function(cb) {
+    cb.checked = masterCb.checked;
+    var id = cb.getAttribute('data-id');
+    if (id) { if (masterCb.checked) _jcSelected.add(id); else _jcSelected.delete(id); }
+  });
+  updateJCSelBar();
+}
+
+function onJCCheck(cb) {
+  var id = cb.getAttribute('data-id');
+  if (id) { if (cb.checked) _jcSelected.add(id); else _jcSelected.delete(id); }
+  var all = document.querySelectorAll('.jc-chk');
+  var master = document.getElementById('jc_chk_all');
+  if (master) master.checked = all.length > 0 && Array.from(all).every(function(b){ return _jcSelected.has(b.getAttribute('data-id')); });
+  updateJCSelBar();
+}
+
+function clearJCSelection() {
+  _jcSelected.clear();
+  document.querySelectorAll('.jc-chk').forEach(function(cb){ cb.checked = false; });
+  var master = document.getElementById('jc_chk_all'); if (master) master.checked = false;
+  var bar = document.getElementById('jc_selbar'); if (bar) bar.style.display = 'none';
+}
+
+function updateJCSelBar() {
+  var bar = document.getElementById('jc_selbar');
+  var cnt = document.getElementById('jc_selcount');
+  if (!bar) return;
+  if (_jcSelected.size > 0) {
+    bar.style.display = 'flex';
+    if (cnt) cnt.textContent = _jcSelected.size + ' record' + (_jcSelected.size > 1 ? 's' : '') + ' selected';
+  } else {
+    bar.style.display = 'none';
+  }
+}
+
+function _getJCExportRows() {
+  var ids = Array.from(_jcSelected);
+  return JOBCARDS.filter(function(j){ return ids.includes(j.id); });
+}
+
+function exportJCExcel() {
+  var rows = _getJCExportRows();
+  if (!rows.length) { toast('No records selected', 'er'); return; }
+  var headers = ['S/No','Job Card No','Vehicle','Category','Location','Task','Duration','Work Status','Amount (Tshs)'];
+  var wsData = [headers];
+  var total = 0;
+  rows.forEach(function(j, i) {
+    var amt = calcJCTotal(j.code, j.jobCardNo);
+    total += amt;
+    var dur = calcDurationDays(j.startDate, j.endDate, j.workStatus);
+    wsData.push([
+      i + 1,
+      j.jobCardNo || j.code || '',
+      j.vehicle || '',
+      j.category || '',
+      j.location || '',
+      j.taskDescription || '',
+      dur || '',
+      j.workStatus || '',
+      amt > 0 ? amt : 0
+    ]);
+  });
+  wsData.push([]);
+  wsData.push(['', '', '', '', '', '', '', 'TOTAL AMOUNT (Tshs)', total]);
+  var wb = XLSX.utils.book_new();
+  var ws = XLSX.utils.aoa_to_sheet(wsData);
+  ws['!cols'] = [{wch:6},{wch:18},{wch:12},{wch:12},{wch:14},{wch:34},{wch:12},{wch:24},{wch:18}];
+  XLSX.utils.book_append_sheet(wb, ws, 'Job Cards');
+  XLSX.writeFile(wb, 'AK_JobCards_' + todayStr() + '.xlsx');
+  toast('Exported ' + rows.length + ' job card(s) to Excel ✓', 'ok');
+}
+
+function exportJCPDF() {
+  var rows = _getJCExportRows();
+  if (!rows.length) { toast('No records selected', 'er'); return; }
+  var total = 0;
+  var tableRows = '';
+  var vehicleTitle = rows.length ? (rows[0].vehicle || '') : '';
+  rows.forEach(function(j, i) {
+    var amt = calcJCTotal(j.code, j.jobCardNo);
+    total += amt;
+    var wsLabel = j.workStatus || '';
+    var wsBg   = wsLabel==='COMPLETED'?'#bbf7d0':wsLabel==='IN PROGRESS'?'#fde68a':wsLabel==='STALLED'?'#fecaca':wsLabel==='PENDING'?'#dbeafe':'#e5e7eb';
+    var catBg   = j.category==='WORKSHOP'?'#dbeafe':'#ffedd5';
+    var rowBg = i%2===0?'#ffffff':'#f8fafc';
+    var startFmt = j.startDate ? fmtDate(j.startDate) : '—';
+    tableRows += '<tr style="background:'+rowBg+'">'
+      + '<td style="text-align:center;color:#000;font-size:11px;font-weight:600">'+(i+1)+'</td>'
+      + '<td style="font-size:11px;font-weight:600;color:#000">'+startFmt+'</td>'
+      + '<td style="font-family:\'Courier New\',monospace;font-weight:700;color:#000;font-size:11px">'+(j.jobCardNo||j.code||'')+'</td>'
+      + '<td><span style="display:inline-block;padding:3px 9px;border-radius:20px;font-size:9px;font-weight:800;letter-spacing:.04em;background:'+catBg+';color:#000">'+(j.category||'')+'</span></td>'
+      + '<td style="color:#000;font-size:11px">'+(j.location||'')+'</td>'
+      + '<td style="font-size:11px;color:#000;line-height:1.5;white-space:normal;word-wrap:break-word;min-width:240px">'+(j.taskDescription||'')+'</td>'
+      + '<td><span style="display:inline-block;padding:3px 9px;border-radius:20px;font-size:9px;font-weight:800;letter-spacing:.04em;background:'+wsBg+';color:#000">'+wsLabel+'</span></td>'
+      + '<td style="text-align:right;font-family:\'Courier New\',monospace;font-weight:700;font-size:12px;color:#000">'+(amt>0?amt.toLocaleString('en-US',{minimumFractionDigits:2}):'—')+'</td>'
+      + '</tr>';
+  });
+  var printDate = fmtDate(todayStr());
+  var html = '<!DOCTYPE html><html><head><meta charset="utf-8">'
+    + '<title>AK Transport – Job Cards</title>'
+    + '<style>'
+    + '@import url(\'https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap\');'
+    + '*{margin:0;padding:0;box-sizing:border-box}'
+    + 'body{font-family:\'Inter\',Arial,sans-serif;font-size:12px;color:#111827;background:#fff;padding:32px 36px}'
+    + '.header{display:flex;justify-content:space-between;align-items:flex-start;padding-bottom:20px;border-bottom:3px solid #0a2d6e;margin-bottom:24px}'
+    + '.brand{display:flex;align-items:center;gap:14px}'
+    + '.brand-icon{width:46px;height:46px;background:#0a2d6e;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:22px}'
+    + '.brand-name{font-size:22px;font-weight:900;color:#0a2d6e;letter-spacing:-.02em;line-height:1}'
+    + '.brand-sub{font-size:11px;color:#6b7280;margin-top:2px;font-weight:500;letter-spacing:.06em;text-transform:uppercase}'
+    + '.doc-title{font-size:14px;font-weight:700;color:#0a2d6e;text-align:right}'
+    + '.doc-meta{font-size:11px;color:#6b7280;margin-top:4px;text-align:right;line-height:1.6}'
+    + 'table{width:100%;border-collapse:collapse;font-size:11px}'
+    + 'thead tr{background:#d1d5db}'
+    + 'th{padding:10px 12px;text-align:left;font-size:10px;font-weight:700;color:#000;letter-spacing:.06em;text-transform:uppercase;white-space:nowrap}'
+    + 'th:last-child{text-align:right}'
+    + 'td{padding:9px 12px;border-bottom:1px solid #000;vertical-align:middle;white-space:nowrap}'
+    + 'tbody tr:hover{background:#f8fafc}'
+    + '.footer{margin-top:28px;display:flex;justify-content:space-between;align-items:flex-end}'
+    + '.note{font-size:10px;color:#000;line-height:1.6}'
+    + '.sum-panel{background:#e5e7eb;color:#000;padding:16px 28px;border-radius:12px;text-align:right;min-width:280px;border:1px solid #9ca3af}'
+    + '.sum-rows{display:flex;justify-content:space-between;align-items:center;gap:32px}'
+    + '.sum-item{text-align:right}.sum-lbl{font-size:9px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#000;margin-bottom:3px}'
+    + '.sum-val{font-size:13px;font-weight:800;font-family:\'Courier New\',monospace;letter-spacing:-.01em;color:#000}'
+    + '.sum-total-lbl{font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#000;margin-bottom:4px}'
+    + '.sum-total-val{font-size:20px;font-weight:900;font-family:\'Courier New\',monospace;color:#000}'
+    + '.divider{width:1px;background:#9ca3af;height:36px}'
+    + '.print-btn{background:#0a2d6e;color:#fff;border:none;padding:10px 22px;border-radius:8px;cursor:pointer;font-size:13px;font-weight:700;letter-spacing:.02em}'
+    + '@media print{.no-print{display:none!important}body{padding:16px 20px}thead tr{background:#d1d5db!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}.sum-panel{background:#e5e7eb!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}}'
+    + '</style></head><body>'
+    + '<div class="header">'
+    + '<div class="brand"><div class="brand-icon">🚛</div><div><div class="brand-name">AK TRANSPORT</div><div class="brand-sub">Workshop Management System</div></div></div>'
+    + '<div style="text-align:right"><div class="doc-title">JOB CARDS REPORT</div><div style="font-size:16px;font-weight:800;color:#000;margin-top:4px;letter-spacing:.04em">'+vehicleTitle+'</div><div class="doc-meta">Date Printed: '+printDate+'<br>Total Records: '+rows.length+'</div>'
+    + '<button class="print-btn no-print" onclick="window.print()" style="margin-top:10px">🖨 Print / Save PDF</button></div>'
+    + '</div>'
+    + '<table><thead><tr>'
+    + '<th style="width:36px">#</th>'
+    + '<th>Start Date</th>'
+    + '<th>Job Card No</th>'
+    + '<th>Category</th>'
+    + '<th>Location</th>'
+    + '<th style="min-width:240px;white-space:normal">Task / Description</th>'
+    + '<th>Work Status</th>'
+    + '<th style="text-align:right">Amount (Tshs)</th>'
+    + '</tr></thead><tbody>'+tableRows+'</tbody></table>'
+    + '<div class="footer">'
+    + '<div class="note">Generated by AK Transport Workshop System<br>This document is computer generated and valid without signature.</div>'
+    + '<div class="sum-panel">'
+    + '<div class="sum-rows">'
+    + '<div class="sum-item"><div class="sum-lbl">Records</div><div class="sum-val">'+rows.length+'</div></div>'
+    + '<div class="divider"></div>'
+    + '<div class="sum-item"><div class="sum-total-lbl">Total Amount Spent</div><div class="sum-total-val">Tshs '+total.toLocaleString('en-US',{minimumFractionDigits:2})+'</div></div>'
+    + '</div></div>'
+    + '</div>'
+    + '</body></html>';
+  var win = window.open('', '_blank');
+  if (win) { win.document.write(html); win.document.close(); }
+  else toast('Allow popups to print PDF', 'er');
+}
+
 function renderJobCards() {
   renderJCStats(JOBCARDS);
   document.getElementById('viewsub').textContent = '';
+  _jcSelected.clear();
   document.getElementById('tablehead').innerHTML = `<tr>
+    <th style="width:36px;text-align:center"><input type="checkbox" id="jc_chk_all" onclick="toggleAllJC(this)" style="cursor:pointer;width:14px;height:14px;accent-color:var(--ac)"></th>
     <th>JC Code</th>
     <th>Vehicle No</th>
     <th>Type</th>
@@ -15144,6 +15311,7 @@ function renderJobCards() {
 
   document.getElementById('emptystate').style.display = 'none';
   document.getElementById('TBODY').innerHTML = JOBCARDS.map(j => `<tr class="${j.workStatus==='COMPLETED'?'jc-completed':''}">
+    <td style="width:36px;text-align:center"><input type="checkbox" class="jc-chk" data-id="${j.id}" onchange="onJCCheck(this)" style="cursor:pointer;width:14px;height:14px;accent-color:var(--ac)"></td>
     <td><span class="reqbadge">${j.code||''}</span></td>
     <td><b>${j.vehicle||''}</b></td>
     <td style="color:var(--t2);font-size:10px">${j.vehicleType||''}</td>
@@ -17547,7 +17715,7 @@ function renderFilteredJobCards(data) {
   if (data.length===0){document.getElementById('TBODY').innerHTML='';document.getElementById('emptystate').style.display='block';return;}
   document.getElementById('emptystate').style.display='none';
   var wsColors={'IN PROGRESS':'sPNR','COMPLETED':'sR','STALLED':'sOH','PENDING':'sRNP','TO BE REPAIRED AFTER LOADING':'sNR'};
-  document.getElementById('TBODY').innerHTML=data.map(function(j){return'<tr class="'+(j.workStatus==="COMPLETED"?"jc-completed":"")+'"><td><span class="reqbadge">'+(j.code||'')+'</span></td><td><b>'+(j.vehicle||'')+'</b></td><td style="color:var(--t2);font-size:10px">'+(j.vehicleType||'')+'</td><td>'+(j.driverName||'')+'</td><td style="font-family:monospace;font-size:10px">'+(j.odometer?Number(j.odometer).toLocaleString()+' km':'')+'</td><td><span style="font-size:10px;font-weight:600;color:'+(j.orderStatus==="LOADED"?"#4ade80":j.orderStatus==="EMPTY"?"#60a5fa":"#f97316")+'">'+(j.orderStatus||'')+'</span></td><td style="color:var(--t2)">'+(j.clientName||'')+'</td><td><span style="background:'+(j.category==="WORKSHOP"?"rgba(79,142,247,.15)":"rgba(249,115,22,.15)")+';color:'+(j.category==="WORKSHOP"?"#4f8ef7":"#f97316")+';padding:2px 7px;border-radius:5px;font-size:10px;font-weight:700">'+(j.category||'')+'</span></td><td style="color:var(--t2);font-size:10px">'+(j.location||'')+'</td><td style="color:var(--t2);font-size:10px">'+(j.maintenanceLevel||'')+'</td><td><span style="font-family:monospace;font-size:10px;color:var(--ac)">'+(j.jobCardNo||'')+'</span></td><td title="'+(j.taskDescription||'')+'">'+(j.taskDescription||'').substring(0,25)+((j.taskDescription||'').length>25?"…":"")+'</td><td title="'+(j.partsRequested||'')+'" style="color:var(--t2);font-size:10px">'+(j.partsRequested||'').substring(0,20)+((j.partsRequested||'').length>20?"…":"")+'</td><td>'+fd(j.startDate)+'</td><td>'+fd(j.endDate)+'</td><td>'+fd(j.expectedReleaseDate)+'</td><td style="font-family:monospace;text-align:center">'+calcDurationDays(j.startDate,j.endDate,j.workStatus)+'</td><td><span class="sb '+(wsColors[j.workStatus]||'sNR')+'">'+(j.workStatus||'')+'</span></td><td style="color:var(--t2);font-size:10px" title="'+(j.comment||'')+'">'+(j.comment||'').substring(0,20)+((j.comment||'').length>20?"…":"")+'</td><td style="font-family:monospace;font-weight:700;color:var(--ac)">'+(function(){ var t=calcJCTotal(j.code,j.jobCardNo); return t>0?t.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}):'-'; })()+'</td><td><button class="actbtn jcr-edit jc-action" data-id="'+j.id+'" data-done="'+(j.workStatus==="COMPLETED"?"1":"")+'" style="'+(j.workStatus==="COMPLETED"?"color:#fbbf24;border-color:#fbbf24":"")+'">'+(j.workStatus==="COMPLETED"?"🔒 Edit":"✏ Edit")+'</button><button class="actbtn d jcr-del jc-action" data-id="'+j.id+'" data-done="'+(j.workStatus==="COMPLETED"?"1":"")+'">🗑</button></td></tr>';}).join('');
+  document.getElementById('TBODY').innerHTML=data.map(function(j){return'<tr class="'+(j.workStatus==="COMPLETED"?"jc-completed":"")+'"><td style="width:36px;text-align:center"><input type="checkbox" class="jc-chk" data-id="'+j.id+'" onchange="onJCCheck(this)" style="cursor:pointer;width:14px;height:14px;accent-color:var(--ac)"></td><td><span class="reqbadge">'+(j.code||'')+'</span></td><td><b>'+(j.vehicle||'')+'</b></td><td style="color:var(--t2);font-size:10px">'+(j.vehicleType||'')+'</td><td>'+(j.driverName||'')+'</td><td style="font-family:monospace;font-size:10px">'+(j.odometer?Number(j.odometer).toLocaleString()+' km':'')+'</td><td><span style="font-size:10px;font-weight:600;color:'+(j.orderStatus==="LOADED"?"#4ade80":j.orderStatus==="EMPTY"?"#60a5fa":"#f97316")+'">'+(j.orderStatus||'')+'</span></td><td style="color:var(--t2)">'+(j.clientName||'')+'</td><td><span style="background:'+(j.category==="WORKSHOP"?"rgba(79,142,247,.15)":"rgba(249,115,22,.15)")+';color:'+(j.category==="WORKSHOP"?"#4f8ef7":"#f97316")+';padding:2px 7px;border-radius:5px;font-size:10px;font-weight:700">'+(j.category||'')+'</span></td><td style="color:var(--t2);font-size:10px">'+(j.location||'')+'</td><td style="color:var(--t2);font-size:10px">'+(j.maintenanceLevel||'')+'</td><td><span style="font-family:monospace;font-size:10px;color:var(--ac)">'+(j.jobCardNo||'')+'</span></td><td title="'+(j.taskDescription||'')+'">'+(j.taskDescription||'').substring(0,25)+((j.taskDescription||'').length>25?"…":"")+'</td><td title="'+(j.partsRequested||'')+'" style="color:var(--t2);font-size:10px">'+(j.partsRequested||'').substring(0,20)+((j.partsRequested||'').length>20?"…":"")+'</td><td>'+fd(j.startDate)+'</td><td>'+fd(j.endDate)+'</td><td>'+fd(j.expectedReleaseDate)+'</td><td style="font-family:monospace;text-align:center">'+calcDurationDays(j.startDate,j.endDate,j.workStatus)+'</td><td><span class="sb '+(wsColors[j.workStatus]||'sNR')+'">'+(j.workStatus||'')+'</span></td><td style="color:var(--t2);font-size:10px" title="'+(j.comment||'')+'">'+(j.comment||'').substring(0,20)+((j.comment||'').length>20?"…":"")+'</td><td style="font-family:monospace;font-weight:700;color:var(--ac)">'+(function(){ var t=calcJCTotal(j.code,j.jobCardNo); return t>0?t.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}):'-'; })()+'</td><td><button class="actbtn jcr-edit jc-action" data-id="'+j.id+'" data-done="'+(j.workStatus==="COMPLETED"?"1":"")+'" style="'+(j.workStatus==="COMPLETED"?"color:#fbbf24;border-color:#fbbf24":"")+'">'+(j.workStatus==="COMPLETED"?"🔒 Edit":"✏ Edit")+'</button><button class="actbtn d jcr-del jc-action" data-id="'+j.id+'" data-done="'+(j.workStatus==="COMPLETED"?"1":"")+'">🗑</button></td></tr>';}).join('');
   // Re-wire event delegation
   document.getElementById('TBODY').onclick = function(e) {
     var btn = e.target.closest('button'); if (!btn) return;
@@ -18695,6 +18863,15 @@ history.pushState(null, '', window.location.href);
       </div>
     </div>
   </div>
+</div>
+
+<!-- JOB CARD SELECTION ACTION BAR -->
+<div id="jc_selbar" style="display:none;position:fixed;bottom:28px;left:50%;transform:translateX(-50%);background:#0a2d6e;color:#fff;border-radius:12px;padding:11px 20px;align-items:center;gap:12px;box-shadow:0 8px 32px rgba(10,45,110,.4);z-index:5000;white-space:nowrap">
+  <span id="jc_selcount" style="font-size:13px;font-weight:600">0 selected</span>
+  <div style="width:1px;background:rgba(255,255,255,.3);height:18px;flex-shrink:0"></div>
+  <button onclick="exportJCExcel()" style="background:rgba(255,255,255,.18);border:1px solid rgba(255,255,255,.3);color:#fff;padding:6px 14px;border-radius:7px;cursor:pointer;font-size:12px;font-weight:600">⬇ Export Excel</button>
+  <button onclick="exportJCPDF()" style="background:rgba(255,255,255,.18);border:1px solid rgba(255,255,255,.3);color:#fff;padding:6px 14px;border-radius:7px;cursor:pointer;font-size:12px;font-weight:600">🖨 Print / PDF</button>
+  <button onclick="clearJCSelection()" style="background:none;border:none;color:rgba(255,255,255,.7);cursor:pointer;font-size:20px;line-height:1;padding:0 4px">✕</button>
 </div>
 
 <!-- SELECTION ACTION BAR -->
