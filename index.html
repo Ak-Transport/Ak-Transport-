@@ -10748,12 +10748,12 @@ function exportSelectedPDF() {
     + '<th class="col-sup">Supplier</th>'
     + '</tr></thead>'
     + '<tbody>' + formRows + '</tbody>'
-    + '<tfoot><tr>'
-    + '<td colspan="9" style="text-align:right;font-size:11px;color:#0a2d6e">GRAND TOTAL</td>'
-    + '<td style="text-align:right;font-size:13px;color:#0a2d6e">' + totalAmt.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}) + '</td>'
-    + '<td></td>'
-    + '</tr></tfoot>'
     + '</table>'
+    /* -- TOTAL -- */
+    + '<div style="margin-bottom:20px;padding:14px 20px;border:2px solid #000;border-radius:4px;display:flex;justify-content:space-between;align-items:center">'
+    + '<span style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#000">GRAND TOTAL</span>'
+    + '<span style="font-size:16px;font-weight:900;font-family:\'Courier New\',monospace;color:#000">Tshs ' + totalAmt.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}) + '</span>'
+    + '</div>'
     /* -- SIGNATURE SECTION -- */
     + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:24px;margin-top:8px">'
     /* Requested by */
@@ -17655,6 +17655,7 @@ function renderFilteredDrivers(data) {
   for (var i=0;i<data.length;i++) {
     var d=data[i];
     html += '<tr>';
+    html += '<td style="text-align:center;width:36px"><input type="checkbox" class="drv-chk" data-id="'+d.id+'" onchange="onDrvCheck(this)" style="cursor:pointer;width:14px;height:14px;accent-color:var(--ac)"></td>';
     html += '<td><span class="reqbadge">'+(d.code||'')+'</span></td>';
     html += '<td><b>'+(d.name||'')+'</b></td>';
     html += '<td style="font-size:11px">'+(d.phone||'')+'</td>';
@@ -17686,6 +17687,7 @@ function renderFilteredVehicles(data) {
   for (var i=0;i<data.length;i++) {
     var v=data[i];
     html += '<tr>';
+    html += '<td style="text-align:center;width:36px"><input type="checkbox" class="veh-chk" data-id="'+v.id+'" onchange="onVehCheck(this)" style="cursor:pointer;width:14px;height:14px;accent-color:var(--ac)"></td>';
     html += '<td><span class="reqbadge">'+(v.code||'')+'</span></td>';
     html += '<td><b style="color:var(--ac)">'+(v.plate||'')+'</b></td>';
     html += '<td style="color:var(--t2);font-size:10px">'+(v.vehicleType||'')+'</td>';
@@ -17702,6 +17704,7 @@ function renderFilteredVehicles(data) {
     html += '<td>'+eb(v.insuranceExpiry)+'</td>';
     html += '<td>'+eb(v.inspectionExpiry)+'</td>';
     html += '<td style="color:var(--t2);font-size:10px">'+(v.ownership||'')+'</td>';
+    html += '<td style="font-size:11px;font-weight:600;color:var(--ac)">'+(v.tyreConfig||'-')+'</td>';
     html += '<td><span class="sb '+(sc[v.status]||'sNR')+'">'+(v.status||'')+'</span></td>';
     html += '<td><button class="actbtn e gf-edit fleet-action" data-fn="editVehicle" data-id="'+v.id+'">&#9999;</button>';
     html += '<button class="actbtn d gf-del fleet-action" data-fn="deleteVehicle" data-id="'+v.id+'">&#128465;</button></td>';
