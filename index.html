@@ -797,8 +797,9 @@ body.no-delete .actbtn.d:not(.ws-action):not(.jc-action):not(.fleet-action):not(
         <div onclick="openSpareMoveForm();closeAllNDrops()">📦 Spare Movement Request</div>
       </div></div>
     <div class="newwrap-item" id="ndwrap-jc"><button class="nb-btn" onclick="toggleNDrop('nd_jc')">+ Job Card &#9662;</button>
-      <div class="newdrop" id="nd_jc" style="min-width:160px">
+      <div class="newdrop" id="nd_jc" style="min-width:180px">
         <div onclick="openAddJobCard();closeAllNDrops()">📋 New Job Card</div>
+        <div onclick="openMechanicMgmt();closeAllNDrops()">🔧 Manage Mechanics</div>
       </div></div>
     <div class="newwrap-item" id="ndwrap-store"><button class="nb-btn" onclick="toggleNDrop('nd_store')">+ Store &#9662;</button>
       <div class="newdrop" id="nd_store" style="min-width:180px">
@@ -18441,8 +18442,144 @@ history.pushState(null, '', window.location.href);
       <div class="formgroup"><label>Expected Release Date</label><input type="date" id="jc_releasedate"></div>
       <div class="formgroup"><label>Duration (Days)</label><input type="number" id="jc_duration" min="0" readonly style="opacity:.7;cursor:not-allowed"></div>
       <div class="formgroup full"><label>Comment</label><textarea id="jc_comment"></textarea></div>
+
+      <!-- ── MECHANIC ASSIGNMENTS (only shown when editing an existing job card) ── -->
+      <div class="formgroup full" id="jc_mech_section" style="display:none;border-top:1px solid var(--br);padding-top:18px;margin-top:6px">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+          <label style="margin:0;font-size:13px;font-weight:700;color:var(--ac)">🔧 Mechanic Assignments</label>
+          <button type="button" onclick="openAssignMechanic()" style="background:var(--ac);color:#fff;border:none;border-radius:7px;padding:5px 13px;font-size:12px;font-weight:600;cursor:pointer">+ Assign Mechanic</button>
+        </div>
+        <div id="jc_mech_list" style="display:flex;flex-direction:column;gap:6px">
+          <div style="color:var(--t3);font-size:12px;text-align:center;padding:12px 0">No mechanics assigned yet</div>
+        </div>
+      </div>
     </div></div>
     <div class="modalfoot"><button class="btn bg" onclick="closeModal('jcmodal')">Cancel</button><button class="btn bp" id="jcsavebtn" onclick="saveJobCard()">Save Job Card</button></div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════
+     MECHANIC MANAGEMENT MODAL
+════════════════════════════════════════════════════════════════ -->
+<div class="overlay hidden" id="mechMgmtModal">
+  <div class="modal" style="max-width:860px;width:95vw">
+    <div class="modalhead">
+      <div class="modaltitle">🔧 Mechanics Register</div>
+      <button class="modalclose" style="color:#fff" onclick="closeModal('mechMgmtModal')">&#10005;</button>
+    </div>
+    <div class="modalbody" style="padding:0">
+      <!-- Toolbar -->
+      <div style="display:flex;align-items:center;gap:10px;padding:14px 20px;border-bottom:1px solid var(--br);background:var(--bg)">
+        <input type="text" id="mech_search" placeholder="Search mechanics…" oninput="renderMechanicList()" style="flex:1;padding:7px 12px;border:1px solid var(--br);border-radius:8px;font-size:13px">
+        <button class="btn bp" onclick="openAddMechanic()" style="white-space:nowrap">+ Add Mechanic</button>
+      </div>
+      <!-- List -->
+      <div style="overflow:auto;max-height:55vh;padding:0 20px 16px">
+        <table style="width:100%;border-collapse:collapse;font-size:13px;margin-top:12px" id="mech_table">
+          <thead>
+            <tr style="border-bottom:2px solid var(--br)">
+              <th style="padding:8px 10px;text-align:left;white-space:nowrap">Code</th>
+              <th style="padding:8px 10px;text-align:left">Name</th>
+              <th style="padding:8px 10px;text-align:left">Trade</th>
+              <th style="padding:8px 10px;text-align:left">Phone</th>
+              <th style="padding:8px 10px;text-align:left">Status</th>
+              <th style="padding:8px 10px;text-align:left">History</th>
+              <th style="padding:8px 10px;text-align:left">Actions</th>
+            </tr>
+          </thead>
+          <tbody id="mech_tbody"></tbody>
+        </table>
+      </div>
+    </div>
+    <div class="modalfoot"><button class="btn bg" onclick="closeModal('mechMgmtModal')">Close</button></div>
+  </div>
+</div>
+
+<!-- ADD / EDIT MECHANIC MODAL -->
+<div class="overlay hidden" id="mechFormModal">
+  <div class="modal" style="max-width:500px">
+    <div class="modalhead">
+      <div class="modaltitle" id="mechFormTitle">Add Mechanic</div>
+      <button class="modalclose" style="color:#fff" onclick="closeModal('mechFormModal')">&#10005;</button>
+    </div>
+    <div class="modalbody"><div class="formgrid">
+      <div class="formgroup"><label>Mechanic Code</label><input type="text" id="mf_code" readonly style="font-family:monospace;color:var(--ac)"></div>
+      <div class="formgroup"><label>Full Name <span style="color:#f87171">*</span></label><input type="text" id="mf_name" placeholder="e.g. John Mwanga"></div>
+      <div class="formgroup"><label>Trade / Specialisation <span style="color:#f87171">*</span></label>
+        <select id="mf_trade">
+          <option value="">Select…</option>
+          <option>ENGINE</option>
+          <option>TRANSMISSION</option>
+          <option>ELECTRICAL</option>
+          <option>TYRES &amp; BRAKES</option>
+          <option>BODY WORKS</option>
+          <option>WELDING</option>
+          <option>GENERAL</option>
+          <option>OTHER</option>
+        </select>
+      </div>
+      <div class="formgroup"><label>Phone</label><input type="text" id="mf_phone" placeholder="+255…"></div>
+      <div class="formgroup"><label>Status</label>
+        <select id="mf_status">
+          <option value="ACTIVE">ACTIVE</option>
+          <option value="INACTIVE">INACTIVE</option>
+        </select>
+      </div>
+      <div class="formgroup"><label>Date Added</label><input type="date" id="mf_dateadded"></div>
+    </div></div>
+    <div class="modalfoot">
+      <button class="btn bg" onclick="closeModal('mechFormModal')">Cancel</button>
+      <button class="btn bp" onclick="saveMechanic()">Save Mechanic</button>
+    </div>
+  </div>
+</div>
+
+<!-- ASSIGN MECHANIC MODAL (inside job card) -->
+<div class="overlay hidden" id="assignMechModal">
+  <div class="modal" style="max-width:520px">
+    <div class="modalhead">
+      <div class="modaltitle" id="assignMechTitle">Assign Mechanic</div>
+      <button class="modalclose" style="color:#fff" onclick="closeModal('assignMechModal')">&#10005;</button>
+    </div>
+    <div class="modalbody"><div class="formgrid">
+      <div class="formgroup full"><label>Mechanic <span style="color:#f87171">*</span></label>
+        <select id="am_mechanic">
+          <option value="">Select mechanic…</option>
+        </select>
+      </div>
+      <div class="formgroup full"><label>Task / Work Description <span style="color:#f87171">*</span></label>
+        <textarea id="am_task" style="min-height:70px" placeholder="Describe what this mechanic is assigned to fix…"></textarea>
+      </div>
+      <div class="formgroup"><label>Assigned Date</label><input type="date" id="am_assigndate"></div>
+      <div class="formgroup"><label>Completed Date</label><input type="date" id="am_compldate"></div>
+      <div class="formgroup full"><label>Status</label>
+        <select id="am_status">
+          <option value="ASSIGNED">ASSIGNED</option>
+          <option value="IN PROGRESS">IN PROGRESS</option>
+          <option value="COMPLETED">COMPLETED</option>
+        </select>
+      </div>
+    </div></div>
+    <div class="modalfoot">
+      <button class="btn bg" onclick="closeModal('assignMechModal')">Cancel</button>
+      <button class="btn bp" onclick="saveAssignment()">Save Assignment</button>
+    </div>
+  </div>
+</div>
+
+<!-- MECHANIC HISTORY MODAL -->
+<div class="overlay hidden" id="mechHistoryModal">
+  <div class="modal" style="max-width:900px;width:95vw">
+    <div class="modalhead">
+      <div class="modaltitle" id="mechHistoryTitle">Mechanic History</div>
+      <button class="modalclose" style="color:#fff" onclick="closeModal('mechHistoryModal')">&#10005;</button>
+    </div>
+    <div class="modalbody" style="padding:0">
+      <div style="overflow:auto;max-height:60vh;padding:16px 24px">
+        <div id="mechHistoryContent"></div>
+      </div>
+    </div>
+    <div class="modalfoot"><button class="btn bg" onclick="closeModal('mechHistoryModal')">Close</button></div>
   </div>
 </div>
 
@@ -19845,6 +19982,345 @@ function doSignIn() {
       }
     }
     return _origSave.apply(this, arguments);
+  };
+})();
+
+// ═══════════════════════════════════════════════════════════════════
+//  MECHANIC ASSIGNMENT SYSTEM
+// ═══════════════════════════════════════════════════════════════════
+var MECHANICS = [];
+var MECH_ASSIGNMENTS = [];
+var _mechLoaded = false;
+var _editingMech = null;      // mechanic id being edited
+var _editingAssign = null;    // assignment id being edited
+var _currentJCForAssign = null; // jobcard id/code currently open
+
+// ── Load mechanics & assignments ────────────────────────────────
+async function loadMechanics(force) {
+  if (_mechLoaded && !force) return;
+  try {
+    // Try Firebase first for instant load, fall back to Apps Script
+    var fbMech = await wsFbRead('/mechanics').catch(function(){ return null; });
+    if (fbMech && fbMech.records && fbMech.records.length) {
+      MECHANICS = fbMech.records;
+    } else {
+      var r = await callAPI('getMechanics');
+      if (r && r.records) MECHANICS = r.records;
+    }
+    var fbAssign = await wsFbRead('/mechanicAssignments').catch(function(){ return null; });
+    if (fbAssign && fbAssign.records && fbAssign.records.length) {
+      MECH_ASSIGNMENTS = fbAssign.records;
+    } else {
+      var r2 = await callAPI('getMechanicAssignments');
+      if (r2 && r2.records) MECH_ASSIGNMENTS = r2.records;
+    }
+    _mechLoaded = true;
+  } catch(e) { console.warn('loadMechanics:', e.message); }
+}
+
+// ── Next mechanic code ───────────────────────────────────────────
+function nextMechCode() {
+  if (!MECHANICS.length) return 'MCH-0001';
+  var nums = MECHANICS.map(function(m){ return parseInt((m.id||m.code||'MCH-0000').replace(/\D/g,''))||0; });
+  return 'MCH-' + String(Math.max.apply(null,nums)+1).padStart(4,'0');
+}
+
+// ── Open Mechanic Management ─────────────────────────────────────
+async function openMechanicMgmt() {
+  await loadMechanics(true);
+  renderMechanicList();
+  document.getElementById('mech_search').value = '';
+  document.getElementById('mechMgmtModal').classList.remove('hidden');
+}
+
+function renderMechanicList() {
+  var q = (document.getElementById('mech_search').value||'').toLowerCase();
+  var list = MECHANICS.filter(function(m){
+    return !q || (m.name||'').toLowerCase().includes(q) || (m.trade||'').toLowerCase().includes(q) || (m.id||'').toLowerCase().includes(q);
+  });
+  var tbody = document.getElementById('mech_tbody');
+  if (!list.length) {
+    tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:20px;color:var(--t3)">No mechanics found</td></tr>';
+    return;
+  }
+  tbody.innerHTML = list.map(function(m) {
+    var active = m.status === 'ACTIVE';
+    var assignCount = MECH_ASSIGNMENTS.filter(function(a){ return a.mechanicId === m.id; }).length;
+    return '<tr style="border-bottom:1px solid var(--br)">'
+      + '<td style="padding:8px 10px;font-family:monospace;color:var(--ac);font-weight:700">' + esc(m.id||'') + '</td>'
+      + '<td style="padding:8px 10px;font-weight:600">' + esc(m.name||'') + '</td>'
+      + '<td style="padding:8px 10px">' + esc(m.trade||'') + '</td>'
+      + '<td style="padding:8px 10px">' + esc(m.phone||'—') + '</td>'
+      + '<td style="padding:8px 10px"><span style="background:' + (active?'#dcfce7':'#fee2e2') + ';color:' + (active?'#166534':'#991b1b') + ';padding:2px 9px;border-radius:20px;font-size:11px;font-weight:700">' + esc(m.status||'ACTIVE') + '</span></td>'
+      + '<td style="padding:8px 10px"><button onclick="openMechHistory(\'' + esc(m.id) + '\')" style="background:none;border:1px solid var(--br);border-radius:6px;padding:3px 9px;font-size:11px;cursor:pointer;color:var(--ac)">' + assignCount + ' job(s) ↗</button></td>'
+      + '<td style="padding:8px 10px;display:flex;gap:6px">'
+      +   '<button onclick="openEditMechanic(\'' + esc(m.id) + '\')" style="background:none;border:1px solid var(--br);border-radius:6px;padding:3px 9px;font-size:11px;cursor:pointer">✏️ Edit</button>'
+      +   '<button onclick="deleteMechanic(\'' + esc(m.id) + '\')" style="background:none;border:1px solid #fca5a5;border-radius:6px;padding:3px 9px;font-size:11px;cursor:pointer;color:#dc2626">🗑 Del</button>'
+      + '</td>'
+      + '</tr>';
+  }).join('');
+}
+
+// ── Add/Edit mechanic ────────────────────────────────────────────
+function openAddMechanic() {
+  _editingMech = null;
+  document.getElementById('mechFormTitle').textContent = 'Add Mechanic';
+  document.getElementById('mf_code').value = nextMechCode();
+  document.getElementById('mf_name').value = '';
+  document.getElementById('mf_trade').value = '';
+  document.getElementById('mf_phone').value = '';
+  document.getElementById('mf_status').value = 'ACTIVE';
+  document.getElementById('mf_dateadded').value = todayStr();
+  document.getElementById('mechFormModal').classList.remove('hidden');
+}
+
+function openEditMechanic(id) {
+  var m = MECHANICS.find(function(x){ return x.id === id; });
+  if (!m) return;
+  _editingMech = id;
+  document.getElementById('mechFormTitle').textContent = 'Edit Mechanic';
+  document.getElementById('mf_code').value = m.id || '';
+  document.getElementById('mf_name').value = m.name || '';
+  document.getElementById('mf_trade').value = m.trade || '';
+  document.getElementById('mf_phone').value = m.phone || '';
+  document.getElementById('mf_status').value = m.status || 'ACTIVE';
+  document.getElementById('mf_dateadded').value = m.dateAdded || '';
+  document.getElementById('mechFormModal').classList.remove('hidden');
+}
+
+async function saveMechanic() {
+  var name  = (document.getElementById('mf_name').value||'').trim();
+  var trade = document.getElementById('mf_trade').value;
+  if (!name) { toast('Name is required', 'er'); return; }
+  if (!trade) { toast('Trade is required', 'er'); return; }
+  var record = {
+    id:        _editingMech || document.getElementById('mf_code').value,
+    name:      name,
+    trade:     trade,
+    phone:     (document.getElementById('mf_phone').value||'').trim(),
+    status:    document.getElementById('mf_status').value,
+    dateAdded: document.getElementById('mf_dateadded').value,
+  };
+  try {
+    if (_editingMech) {
+      await callAPI('updateMechanic', {record: record});
+      var idx = MECHANICS.findIndex(function(x){ return x.id === _editingMech; });
+      if (idx >= 0) MECHANICS[idx] = record;
+      toast('Mechanic updated ✓', 'ok');
+    } else {
+      await callAPI('addMechanic', {record: record});
+      MECHANICS.push(record);
+      toast('Mechanic added ✓', 'ok');
+    }
+    closeModal('mechFormModal');
+    renderMechanicList();
+  } catch(e) { toast('Error: ' + e.message, 'er'); }
+}
+
+async function deleteMechanic(id) {
+  var m = MECHANICS.find(function(x){ return x.id === id; });
+  if (!m) return;
+  var used = MECH_ASSIGNMENTS.filter(function(a){ return a.mechanicId === id; }).length;
+  if (used > 0 && !confirm('This mechanic has ' + used + ' assignment(s). Delete anyway?')) return;
+  if (!confirm('Delete mechanic "' + (m.name||id) + '"?')) return;
+  try {
+    await callAPI('deleteMechanic', {id: id});
+    MECHANICS = MECHANICS.filter(function(x){ return x.id !== id; });
+    toast('Mechanic deleted', 'ok');
+    renderMechanicList();
+  } catch(e) { toast('Error: ' + e.message, 'er'); }
+}
+
+// ── Mechanic history view ────────────────────────────────────────
+function openMechHistory(mechId) {
+  var m = MECHANICS.find(function(x){ return x.id === mechId; });
+  if (!m) return;
+  var assigns = MECH_ASSIGNMENTS.filter(function(a){ return a.mechanicId === mechId; })
+    .sort(function(a,b){ return new Date(b.assignedDate||0) - new Date(a.assignedDate||0); });
+
+  // Check for recurring issues
+  var taskMap = {};
+  assigns.forEach(function(a){
+    var key = (a.vehicle||'').toUpperCase() + '|' + (a.task||'').substring(0,40).toLowerCase();
+    taskMap[key] = (taskMap[key]||0) + 1;
+  });
+
+  document.getElementById('mechHistoryTitle').textContent = '🔧 ' + (m.name||mechId) + ' — Job History';
+  var html = '<p style="color:var(--t3);font-size:12px;margin:0 0 14px">' + assigns.length + ' assignment(s) — Trade: <b>' + esc(m.trade||'') + '</b></p>';
+  if (!assigns.length) {
+    html += '<div style="color:var(--t3);text-align:center;padding:30px">No assignments yet</div>';
+  } else {
+    html += '<table style="width:100%;border-collapse:collapse;font-size:12.5px"><thead><tr style="border-bottom:2px solid var(--br)">'
+      + '<th style="padding:8px 10px;text-align:left;white-space:nowrap">Job Card</th>'
+      + '<th style="padding:8px 10px;text-align:left">Vehicle</th>'
+      + '<th style="padding:8px 10px;text-align:left">Task</th>'
+      + '<th style="padding:8px 10px;text-align:left;white-space:nowrap">Assigned</th>'
+      + '<th style="padding:8px 10px;text-align:left;white-space:nowrap">Completed</th>'
+      + '<th style="padding:8px 10px;text-align:left">Status</th>'
+      + '</tr></thead><tbody>';
+    assigns.forEach(function(a){
+      var key = (a.vehicle||'').toUpperCase() + '|' + (a.task||'').substring(0,40).toLowerCase();
+      var recur = taskMap[key] > 1;
+      html += '<tr style="border-bottom:1px solid var(--br)' + (recur ? ';background:#fff7ed' : '') + '">'
+        + '<td style="padding:8px 10px;font-family:monospace;color:var(--ac)">' + esc(a.jobCardNo||'') + '</td>'
+        + '<td style="padding:8px 10px;font-weight:600">' + esc(a.vehicle||'') + '</td>'
+        + '<td style="padding:8px 10px">' + esc(a.task||'') + (recur ? ' <span style="font-size:10px;color:#d97706" title="Recurring issue">⚠️ Recurring</span>' : '') + '</td>'
+        + '<td style="padding:8px 10px">' + esc(a.assignedDate||'—') + '</td>'
+        + '<td style="padding:8px 10px">' + esc(a.completedDate||'—') + '</td>'
+        + '<td style="padding:8px 10px"><span style="background:' + (a.status==='COMPLETED'?'#dcfce7':a.status==='IN PROGRESS'?'#dbeafe':'#f3f4f6') + ';color:' + (a.status==='COMPLETED'?'#166534':a.status==='IN PROGRESS'?'#1d4ed8':'#374151') + ';padding:2px 7px;border-radius:20px;font-size:10px;font-weight:700">' + esc(a.status||'') + '</span></td>'
+        + '</tr>';
+    });
+    html += '</tbody></table>';
+  }
+  document.getElementById('mechHistoryContent').innerHTML = html;
+  document.getElementById('mechHistoryModal').classList.remove('hidden');
+}
+
+// ── Assign Mechanic (inside Job Card) ───────────────────────────
+async function openAssignMechanic(assignId) {
+  await loadMechanics();
+  _editingAssign = assignId || null;
+
+  // Populate mechanic dropdown
+  var sel = document.getElementById('am_mechanic');
+  sel.innerHTML = '<option value="">Select mechanic…</option>';
+  MECHANICS.filter(function(m){ return m.status !== 'INACTIVE'; }).forEach(function(m){
+    var o = document.createElement('option');
+    o.value = m.id; o.textContent = m.name + ' (' + m.trade + ')';
+    sel.appendChild(o);
+  });
+
+  if (assignId) {
+    var a = MECH_ASSIGNMENTS.find(function(x){ return x.id === assignId; });
+    if (a) {
+      document.getElementById('assignMechTitle').textContent = 'Edit Assignment';
+      sel.value = a.mechanicId || '';
+      document.getElementById('am_task').value = a.task || '';
+      document.getElementById('am_assigndate').value = a.assignedDate || '';
+      document.getElementById('am_compldate').value = a.completedDate || '';
+      document.getElementById('am_status').value = a.status || 'ASSIGNED';
+    }
+  } else {
+    document.getElementById('assignMechTitle').textContent = 'Assign Mechanic';
+    sel.value = '';
+    document.getElementById('am_task').value = '';
+    document.getElementById('am_assigndate').value = todayStr();
+    document.getElementById('am_compldate').value = '';
+    document.getElementById('am_status').value = 'ASSIGNED';
+  }
+  document.getElementById('assignMechModal').classList.remove('hidden');
+}
+
+async function saveAssignment() {
+  var mechId = document.getElementById('am_mechanic').value;
+  var task   = (document.getElementById('am_task').value||'').trim();
+  if (!mechId) { toast('Select a mechanic', 'er'); return; }
+  if (!task)   { toast('Task description is required', 'er'); return; }
+
+  var jc = JOBCARDS.find(function(x){ return x.id === _currentJCForAssign; }) || {};
+  var mech = MECHANICS.find(function(x){ return x.id === mechId; }) || {};
+
+  // Check for recurring issue on this vehicle+task
+  var vehicle = (jc.vehicle || jc.vehiclePlate || '').toUpperCase();
+  var taskKey = vehicle + '|' + task.substring(0,40).toLowerCase();
+  var prior = MECH_ASSIGNMENTS.filter(function(a){
+    return a.mechanicId === mechId && (a.vehicle||'').toUpperCase() === vehicle
+      && (a.task||'').substring(0,40).toLowerCase() === task.substring(0,40).toLowerCase()
+      && a.id !== _editingAssign;
+  });
+  if (prior.length > 0) {
+    if (!confirm('⚠️ Warning: ' + (mech.name||mechId) + ' has previously worked on the same issue for ' + vehicle + ' (' + prior.length + ' time(s)). Continue anyway?')) return;
+  }
+
+  var record = {
+    id:           _editingAssign || ('MA-' + Date.now()),
+    jobCardNo:    jc.code || jc.jobCardNo || _currentJCForAssign,
+    vehicle:      vehicle,
+    mechanicId:   mechId,
+    mechanicName: mech.name || mechId,
+    task:         task,
+    assignedDate: document.getElementById('am_assigndate').value,
+    completedDate:document.getElementById('am_compldate').value,
+    status:       document.getElementById('am_status').value,
+  };
+  try {
+    if (_editingAssign) {
+      await callAPI('updateMechanicAssignment', {record: record});
+      var idx = MECH_ASSIGNMENTS.findIndex(function(x){ return x.id === _editingAssign; });
+      if (idx >= 0) MECH_ASSIGNMENTS[idx] = record;
+      toast('Assignment updated ✓', 'ok');
+    } else {
+      await callAPI('addMechanicAssignment', {record: record});
+      MECH_ASSIGNMENTS.push(record);
+      toast('Mechanic assigned ✓', 'ok');
+    }
+    closeModal('assignMechModal');
+    renderJCMechanics(_currentJCForAssign);
+  } catch(e) { toast('Error: ' + e.message, 'er'); }
+}
+
+async function removeAssignment(id) {
+  if (!confirm('Remove this mechanic assignment?')) return;
+  try {
+    await callAPI('deleteMechanicAssignment', {id: id});
+    MECH_ASSIGNMENTS = MECH_ASSIGNMENTS.filter(function(x){ return x.id !== id; });
+    toast('Assignment removed', 'ok');
+    renderJCMechanics(_currentJCForAssign);
+  } catch(e) { toast('Error: ' + e.message, 'er'); }
+}
+
+// ── Render assignments inside Job Card modal ─────────────────────
+function renderJCMechanics(jcId) {
+  var div = document.getElementById('jc_mech_list');
+  if (!div) return;
+  var assigns = MECH_ASSIGNMENTS.filter(function(a){
+    var jc = JOBCARDS.find(function(x){ return x.id === jcId; });
+    var code = jc ? (jc.code||'') : '';
+    return a.jobCardNo === code || a.jobCardNo === jcId;
+  });
+  if (!assigns.length) {
+    div.innerHTML = '<div style="color:var(--t3);font-size:12px;text-align:center;padding:12px 0">No mechanics assigned yet</div>';
+    return;
+  }
+  div.innerHTML = assigns.map(function(a){
+    var statusColor = a.status==='COMPLETED'?'#dcfce7':a.status==='IN PROGRESS'?'#dbeafe':'#f3f4f6';
+    var statusText  = a.status==='COMPLETED'?'#166534':a.status==='IN PROGRESS'?'#1d4ed8':'#374151';
+    return '<div style="display:flex;align-items:flex-start;gap:10px;padding:10px 12px;background:var(--bg);border:1px solid var(--br);border-radius:8px">'
+      + '<div style="flex:1">'
+      +   '<div style="font-weight:700;font-size:13px">' + esc(a.mechanicName||a.mechanicId||'') + '</div>'
+      +   '<div style="font-size:12px;color:var(--t3);margin-top:2px">' + esc(a.task||'') + '</div>'
+      +   '<div style="font-size:11px;color:var(--t3);margin-top:4px">Assigned: ' + esc(a.assignedDate||'—') + (a.completedDate?' | Completed: '+esc(a.completedDate):'') + '</div>'
+      + '</div>'
+      + '<div style="display:flex;align-items:center;gap:6px;flex-shrink:0">'
+      +   '<span style="background:' + statusColor + ';color:' + statusText + ';padding:2px 8px;border-radius:20px;font-size:10px;font-weight:700">' + esc(a.status||'') + '</span>'
+      +   '<button onclick="openAssignMechanic(\'' + esc(a.id) + '\')" title="Edit" style="background:none;border:1px solid var(--br);border-radius:6px;padding:3px 8px;font-size:11px;cursor:pointer">✏️</button>'
+      +   '<button onclick="removeAssignment(\'' + esc(a.id) + '\')" title="Remove" style="background:none;border:1px solid #fca5a5;border-radius:6px;padding:3px 8px;font-size:11px;cursor:pointer;color:#dc2626">✕</button>'
+      + '</div>'
+      + '</div>';
+  }).join('');
+}
+
+// ── Hook into editJobCard to show mechanic section ───────────────
+(function(){
+  var _origEdit = window.editJobCard;
+  if (!_origEdit) return;
+  window.editJobCard = async function(id) {
+    _origEdit.call(this, id);
+    _currentJCForAssign = id;
+    await loadMechanics();
+    document.getElementById('jc_mech_section').style.display = '';
+    renderJCMechanics(id);
+  };
+})();
+
+// Hide mechanic section when opening NEW job card
+(function(){
+  var _origNew = window.openAddJobCard;
+  if (!_origNew) return;
+  window.openAddJobCard = async function() {
+    await _origNew.call(this);
+    _currentJCForAssign = null;
+    document.getElementById('jc_mech_section').style.display = 'none';
   };
 })();
 </script>
