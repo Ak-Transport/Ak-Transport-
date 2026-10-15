@@ -3935,7 +3935,10 @@ function _mkSelect(id, items, curVal, disabled, style) {
 }
 function fmtDate(d) {
   if (!d) return '';
-  var dt = new Date(d);
+  // Strip time part if ISO string, then replace hyphens with slashes so
+  // JS parses it as LOCAL midnight instead of UTC midnight (avoids off-by-one-day bug)
+  var s = String(d).substring(0, 10).replace(/-/g, '/');
+  var dt = new Date(s);
   if (isNaN(dt.getTime())) return d;
   var months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
   var dd = String(dt.getDate()).padStart(2,'0');
@@ -16150,7 +16153,7 @@ function buildJobCardHTML(j, defects, parts, mechAssigns) {
     <tr>${ir('Category',j.category,'70px')}${ir('Maint. Level',j.maintenanceLevel,'70px')}${ir('Odometer',j.odometer,'60px')}</tr>
     <tr>${ir('Order Status',j.orderStatus,'70px')}${ir('Client',j.clientName,'70px')}${ir('Location',j.location,'60px')}</tr>
     <tr>${ir('Start Date',fd(j.startDate),'70px')}${ir('End Date',fd(j.endDate),'70px')}${ir('Release Date',fd(j.expectedReleaseDate),'60px')}</tr>
-    <tr>${ir('Work Status',j.workStatus,'70px')}<td colspan="3" style="padding:3px 6px;font-size:7px;border:1px solid #999"><span style="font-size:7px;font-weight:700;text-transform:uppercase;letter-spacing:.04em">Comment: </span>${j.comment||'&nbsp;'}</td></tr>
+    <tr>${ir('Work Status',j.workStatus,'70px')}<td colspan="3" style="padding:3px 6px;font-size:7px;border:1px solid #999;word-wrap:break-word;white-space:pre-wrap;overflow:visible"><span style="font-size:7px;font-weight:700;text-transform:uppercase;letter-spacing:.04em">Comment: </span>${j.comment||'&nbsp;'}</td></tr>
   </table>
     <!-- TASK DESCRIPTION -->
   <div class="sh">Task / Defects Description</div>
@@ -16190,15 +16193,15 @@ function buildJobCardHTML(j, defects, parts, mechAssigns) {
           + '<td style="padding:3px 4px;border:1px solid #999;text-align:center;font-size:7px;color:#555;width:16px">'+(i+1)+'</td>'
           + '<td style="padding:4px 7px;border:1px solid #999;font-size:7px;font-weight:700">'+(a.mechanicName||a.mechanicId||'')+'</td>'
           + '<td style="padding:4px 7px;border:1px solid #999;font-size:7px">'+(a.task||'')+'</td>'
-          + '<td style="padding:3px 6px;border:1px solid #999;font-size:7px;text-align:center;white-space:nowrap">'+(a.assignedDate||'—')+'</td>'
-          + '<td style="padding:3px 6px;border:1px solid #999;font-size:7px;text-align:center;white-space:nowrap">'+(a.completedDate||'—')+'</td>'
+          + '<td style="padding:3px 6px;border:1px solid #999;font-size:7px;text-align:center;white-space:nowrap">'+(a.assignedDate?fd(a.assignedDate):'—')+'</td>'
+          + '<td style="padding:3px 6px;border:1px solid #999;font-size:7px;text-align:center;white-space:nowrap">'+(a.completedDate?fd(a.completedDate):'—')+'</td>'
           + '<td style="padding:3px 6px;border:1px solid #999;font-size:7px;text-align:center;background:'+statusBg+';font-weight:700">'+(a.status||'')+'</td>'
           + '</tr>';
         // Signature block per mechanic
         sigBlocks += '<td style="padding:10px 12px;border-right:1px solid #999;vertical-align:top;width:'+(100/Math.max(mechAssigns.length,1))+'%">'
           + '<div style="font-size:7px;font-weight:700;color:#000;text-transform:uppercase;letter-spacing:.08em;margin-bottom:3px">Mechanic '+(i+1)+'</div>'
           + '<div style="font-size:8px;font-weight:900;color:#000;margin-bottom:6px">'+(a.mechanicName||a.mechanicId||'')+'</div>'
-          + '<div style="font-size:7px;color:#555;margin-bottom:2px">Work: '+(a.task||'').substring(0,60)+'</div>'
+          + '<div style="font-size:7px;color:#555;margin-bottom:2px;word-wrap:break-word;white-space:pre-wrap;overflow:visible">Work: '+(a.task||'')+'</div>'
           + '<div style="border-bottom:1.5px solid #000;height:28px;margin-top:10px;margin-bottom:4px"></div>'
           + '<div style="font-size:7px;color:#666">Signature &amp; Date</div>'
           + '</td>';
@@ -16658,7 +16661,11 @@ function downloadJCPDFById(id) {
     return {description:desc.trim(),qty:1,unitPrice:pp,cost:pp};
   });
   const allParts2 = receivedParts.concat(tyreParts2).concat(batParts2);
-  const jcHtml = buildJobCardHTML(j, defects, allParts2);
+  const jcCode3 = (j.code||j.jobCardNo||'').toUpperCase();
+  const mechAssigns2 = (MECH_ASSIGNMENTS||[]).filter(function(a){
+    return (a.jobCardNo||'').toUpperCase() === jcCode3;
+  });
+  const jcHtml = buildJobCardHTML(j, defects, allParts2, mechAssigns2);
   const win = window.open('', '_blank', 'width=900,height=700');
   const out = '<!DOCTYPE html><html><head><title>Job Card ' + (j.code||'') + '</title>'
     + '<style>body{margin:20px;font-family:Arial,sans-serif;color:#000}@media print{body{margin:0}@page{margin:15mm size:A4}}</style>'
