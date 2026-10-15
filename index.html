@@ -18666,7 +18666,7 @@ history.pushState(null, '', window.location.href);
 
 <!-- ASSIGN MECHANIC MODAL (inside job card) -->
 <div class="overlay hidden" id="assignMechModal">
-  <div class="modal" style="max-width:520px">
+  <div class="modal" style="max-width:720px;width:96vw">
     <div class="modalhead">
       <div class="modaltitle" id="assignMechTitle">Assign Mechanic</div>
       <button class="modalclose" style="color:#fff" onclick="closeModal('assignMechModal')">&#10005;</button>
@@ -18678,8 +18678,12 @@ history.pushState(null, '', window.location.href);
           <option value="">Select mechanic…</option>
         </select>
       </div>
-      <div class="formgroup full"><label>Task / Work Description <span style="color:#f87171">*</span></label>
-        <textarea id="am_task" style="min-height:70px" placeholder="Describe what this mechanic is assigned to fix…"></textarea>
+      <div class="formgroup full">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
+          <label style="margin:0">Task / Work Description <span style="color:#f87171">*</span></label>
+          <button type="button" onclick="_amAddTaskLine()" style="background:none;border:1px solid var(--ac);color:var(--ac);border-radius:6px;padding:2px 10px;font-size:11px;font-weight:600;cursor:pointer">+ Add Line</button>
+        </div>
+        <div id="am_task_lines" style="display:flex;flex-direction:column;gap:6px"></div>
       </div>
       <div class="formgroup"><label>Assigned Date</label><input type="date" id="am_assigndate"></div>
       <div class="formgroup"><label>Completed Date</label><input type="date" id="am_compldate" onchange="(function(v){var s=document.getElementById('am_status');if(v){s.value='COMPLETED';}else if(s.value==='COMPLETED'){s.value='IN PROGRESS';}})(this.value)"></div>
@@ -20351,7 +20355,7 @@ function openMechHistory(mechId) {
         + '<td style="padding:8px 10px;font-family:monospace;color:var(--ac)">' + esc(a.jobCardNo||'') + '</td>'
         + '<td style="padding:8px 10px;font-weight:600">' + esc(a.vehicle||'') + '</td>'
         + '<td style="padding:8px 10px">' + esc(a.task||'') + (recur ? ' <span style="font-size:10px;color:#d97706" title="Recurring issue">⚠️ Recurring</span>' : '') + '</td>'
-        + '<td style="padding:8px 10px">' + esc(a.assignedDate||'—') + '</td>'
+        + '<td style="padding:8px 10px">' + (a.assignedDate?fmtDate(a.assignedDate):'—') + '</td>'
         + '<td style="padding:8px 10px">' + esc(a.completedDate||'—') + '</td>'
         + '<td style="padding:8px 10px"><span style="background:' + (a.status==='COMPLETED'?'#dcfce7':a.status==='IN PROGRESS'?'#dbeafe':'#f3f4f6') + ';color:' + (a.status==='COMPLETED'?'#166534':a.status==='IN PROGRESS'?'#1d4ed8':'#374151') + ';padding:2px 7px;border-radius:20px;font-size:10px;font-weight:700">' + esc(a.status||'') + '</span></td>'
         + '</tr>';
@@ -20381,7 +20385,7 @@ async function openAssignMechanic(assignId) {
     if (a) {
       document.getElementById('assignMechTitle').textContent = 'Edit Assignment';
       sel.value = a.mechanicId || '';
-      document.getElementById('am_task').value = a.task || '';
+      _amSetTaskLines(a.task || '');
       document.getElementById('am_assigndate').value = a.assignedDate || '';
       document.getElementById('am_compldate').value = a.completedDate || '';
       document.getElementById('am_status').value = a.status || 'ASSIGNED';
@@ -20389,13 +20393,64 @@ async function openAssignMechanic(assignId) {
   } else {
     document.getElementById('assignMechTitle').textContent = 'Assign Mechanic';
     sel.value = '';
-    document.getElementById('am_task').value = '';
+    _amSetTaskLines('');
     document.getElementById('am_assigndate').value = todayStr();
     document.getElementById('am_compldate').value = '';
     document.getElementById('am_status').value = 'ASSIGNED';
   }
   _amErr(''); // clear any previous error
   document.getElementById('assignMechModal').classList.remove('hidden');
+}
+
+// ── Task line helpers ─────────────────────────────────────────────
+function _amAddTaskLine(val) {
+  var container = document.getElementById('am_task_lines');
+  if (!container) return;
+  var idx = container.children.length;
+  var row = document.createElement('div');
+  row.style.cssText = 'display:flex;align-items:center;gap:6px';
+  var num = document.createElement('span');
+  num.style.cssText = 'font-size:12px;font-weight:700;color:var(--t3);min-width:16px;text-align:right';
+  num.textContent = (idx + 1) + '.';
+  var inp = document.createElement('input');
+  inp.type = 'text';
+  inp.className = 'am_task_input';
+  inp.placeholder = 'Task line ' + (idx + 1) + '…';
+  inp.value = val || '';
+  inp.style.cssText = 'flex:1;padding:8px 12px;border:1px solid var(--br);border-radius:7px;font-size:13px;font-family:inherit';
+  inp.addEventListener('keydown', function(e) {
+    if (e.key === 'Enter') { e.preventDefault(); _amAddTaskLine(); setTimeout(function(){ var ins=container.querySelectorAll('.am_task_input'); if(ins.length) ins[ins.length-1].focus(); },50); }
+  });
+  var del = document.createElement('button');
+  del.type = 'button';
+  del.textContent = '✕';
+  del.style.cssText = 'background:none;border:none;color:#f87171;font-size:14px;cursor:pointer;padding:2px 4px;line-height:1;flex-shrink:0';
+  del.title = 'Remove line';
+  del.onclick = function() {
+    row.remove();
+    // Renumber
+    var rows = container.querySelectorAll('span');
+    rows.forEach(function(s,i){ s.textContent = (i+1)+'.'; });
+    var ins2 = container.querySelectorAll('.am_task_input');
+    ins2.forEach(function(inp2,i){ inp2.placeholder = 'Task line '+(i+1)+'…'; });
+  };
+  row.appendChild(num); row.appendChild(inp); row.appendChild(del);
+  container.appendChild(row);
+  setTimeout(function(){ inp.focus(); }, 50);
+}
+function _amSetTaskLines(taskStr) {
+  var container = document.getElementById('am_task_lines');
+  if (!container) return;
+  container.innerHTML = '';
+  var lines = (taskStr||'').split('\n').map(function(l){ return l.trim(); }).filter(Boolean);
+  if (!lines.length) lines = [''];
+  lines.forEach(function(l){ _amAddTaskLine(l); });
+}
+function _amGetTaskLines() {
+  var inputs = document.querySelectorAll('#am_task_lines .am_task_input');
+  var lines = [];
+  inputs.forEach(function(inp){ var v=(inp.value||'').trim(); if(v) lines.push(v); });
+  return lines.join('\n');
 }
 
 function _amErr(msg) {
@@ -20408,12 +20463,12 @@ function _amErr(msg) {
 async function saveAssignment() {
   _amErr(''); // clear previous error
   var mechId = document.getElementById('am_mechanic').value;
-  var task   = (document.getElementById('am_task').value||'').trim();
+  var task   = _amGetTaskLines();
   var status = document.getElementById('am_status').value;
   var complDate = document.getElementById('am_compldate').value;
 
   if (!mechId) { _amErr('Please select a mechanic.'); document.getElementById('am_mechanic').focus(); return; }
-  if (!task)   { _amErr('Task / Work Description is required.'); document.getElementById('am_task').focus(); return; }
+  if (!task)   { _amErr('Task / Work Description is required.'); document.getElementById('am_task_lines').querySelector('input,textarea') && document.getElementById('am_task_lines').querySelector('input,textarea').focus(); return; }
   if (status === 'COMPLETED' && !complDate) {
     _amErr('Completed Date is required when status is COMPLETED.');
     document.getElementById('am_compldate').focus();
@@ -20563,7 +20618,7 @@ function renderJCMechanics(jcId) {
       + '<div style="flex:1">'
       +   '<div style="font-weight:700;font-size:13px">' + esc(a.mechanicName||a.mechanicId||'') + '</div>'
       +   '<div style="font-size:12px;color:var(--t3);margin-top:2px">' + esc(a.task||'') + '</div>'
-      +   '<div style="font-size:11px;color:var(--t3);margin-top:4px">Assigned: ' + esc(a.assignedDate||'—') + (a.completedDate?' | Completed: '+esc(a.completedDate):'') + '</div>'
+      +   '<div style="font-size:11px;color:var(--t3);margin-top:4px">Assigned: ' + (a.assignedDate?fmtDate(a.assignedDate):'—') + (a.completedDate?' | Completed: '+fmtDate(a.completedDate):'') + '</div>'
       + '</div>'
       + '<div style="display:flex;align-items:center;gap:6px;flex-shrink:0">'
       +   '<span style="background:' + statusColor + ';color:' + statusText + ';padding:2px 8px;border-radius:20px;font-size:10px;font-weight:700">' + esc(a.status||'') + '</span>'
