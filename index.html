@@ -799,7 +799,7 @@ body.no-delete .actbtn.d:not(.ws-action):not(.jc-action):not(.fleet-action):not(
     <div class="newwrap-item" id="ndwrap-jc"><button class="nb-btn" onclick="toggleNDrop('nd_jc')">+ Job Card &#9662;</button>
       <div class="newdrop" id="nd_jc" style="min-width:180px">
         <div onclick="openAddJobCard();closeAllNDrops()">📋 New Job Card</div>
-        <div onclick="openMechanicMgmt();closeAllNDrops()">🔧 Manage Mechanics</div>
+        <div id="nd_manage_mechanics" onclick="openMechanicMgmt();closeAllNDrops()">🔧 Manage Mechanics</div>
       </div></div>
     <div class="newwrap-item" id="ndwrap-store"><button class="nb-btn" onclick="toggleNDrop('nd_store')">+ Store &#9662;</button>
       <div class="newdrop" id="nd_store" style="min-width:180px">
@@ -17144,8 +17144,18 @@ function applyPermissions() {
   if (navBatRH) navBatRH.style.display = can('battery_approve') ? '' : 'none';
   var navSpmHold = document.getElementById('nav-spm_hold');
   if (navSpmHold) navSpmHold.style.display = can('sparemove_approve') ? '' : 'none';
-  // Show/hide User Management in dropdown and sidebar based on role
+  // -- Mechanic nav items --
   var isAdmin = CURRENT_USER.role === 'admin';
+  // "Manage Mechanics" dropdown item — admin only
+  var ndManMech = document.getElementById('nd_manage_mechanics');
+  if (ndManMech) ndManMech.style.display = isAdmin ? '' : 'none';
+  // "Mechanic History" and "Mechanic Dashboard" — anyone with job card view access
+  var canJC = can('jobcard');
+  var navMechHist = document.getElementById('nav-mechhistory');
+  if (navMechHist) navMechHist.style.display = canJC ? '' : 'none';
+  var navMechDash = document.getElementById('nav-mechdash');
+  if (navMechDash) navMechDash.style.display = canJC ? '' : 'none';
+  // Show/hide User Management in dropdown and sidebar based on role
   var ul = document.getElementById('usermgmt_link');
   if (ul) ul.style.display = isAdmin ? 'flex' : 'none';
   // Sidebar user management
@@ -18616,18 +18626,27 @@ history.pushState(null, '', window.location.href);
     <div class="modalbody"><div class="formgrid" style="grid-template-columns:repeat(3,1fr);gap:16px 20px">
       <div class="formgroup"><label>Mechanic Code</label><input type="text" id="mf_code" readonly style="font-family:monospace;color:var(--ac);font-size:15px;font-weight:700"></div>
       <div class="formgroup" style="grid-column:span 2"><label>Full Name <span style="color:#f87171">*</span></label><input type="text" id="mf_name" placeholder="e.g. John Mwanga"></div>
-      <div class="formgroup" style="grid-column:span 2"><label>Trade / Specialisation <span style="color:#f87171">*</span></label>
-        <select id="mf_trade">
+      <div class="formgroup" style="grid-column:span 2"><label>Job Title <span style="color:#f87171">*</span></label>
+        <select id="mf_trade" onchange="_mfToggleSpecs()">
           <option value="">Select…</option>
-          <option>ENGINE</option>
-          <option>TRANSMISSION</option>
-          <option>ELECTRICAL</option>
-          <option>TYRES &amp; BRAKES</option>
-          <option>BODY WORKS</option>
-          <option>WELDING</option>
-          <option>GENERAL</option>
-          <option>OTHER</option>
+          <option>Heavy Vehicle Mechanic</option>
+          <option>Air System Technician</option>
+          <option>Trailer Mechanic</option>
+          <option>Auto Electrician</option>
+          <option>Vehicle Painter</option>
+          <option>Workshop Assistant</option>
+          <option>Fabricator / Welder</option>
         </select>
+      </div>
+      <div class="formgroup full" id="mf_specs_group" style="display:none">
+        <label>Vehicle Brand Specialisations</label>
+        <div style="display:flex;flex-wrap:wrap;gap:10px 20px;margin-top:4px">
+          <label style="display:flex;align-items:center;gap:6px;font-weight:500;cursor:pointer"><input type="checkbox" id="mf_spec_scania" value="Scania"> Scania</label>
+          <label style="display:flex;align-items:center;gap:6px;font-weight:500;cursor:pointer"><input type="checkbox" id="mf_spec_mercedesbenz" value="Mercedes-Benz"> Mercedes-Benz</label>
+          <label style="display:flex;align-items:center;gap:6px;font-weight:500;cursor:pointer"><input type="checkbox" id="mf_spec_iveco" value="Iveco"> Iveco</label>
+          <label style="display:flex;align-items:center;gap:6px;font-weight:500;cursor:pointer"><input type="checkbox" id="mf_spec_howo" value="Howo"> Howo</label>
+          <label style="display:flex;align-items:center;gap:6px;font-weight:500;cursor:pointer"><input type="checkbox" id="mf_spec_shacman" value="Shacman"> Shacman</label>
+        </div>
       </div>
       <div class="formgroup"><label>Phone</label><input type="text" id="mf_phone" placeholder="+255…"></div>
       <div class="formgroup"><label>Status</label>
@@ -20152,6 +20171,10 @@ function nextMechCode() {
 
 // ── Open Mechanic Management ─────────────────────────────────────
 async function openMechanicMgmt() {
+  if (!CURRENT_USER || CURRENT_USER.role !== 'admin') {
+    toast('Access denied — Manage Mechanics is for admins only', 'er');
+    return;
+  }
   // Open modal instantly — show whatever is already cached
   document.getElementById('mech_search').value = '';
   document.getElementById('mechMgmtModal').classList.remove('hidden');
@@ -20170,7 +20193,7 @@ async function openMechanicMgmt() {
 function renderMechanicList() {
   var q = (document.getElementById('mech_search').value||'').toLowerCase();
   var list = MECHANICS.filter(function(m){
-    return !q || (m.name||'').toLowerCase().includes(q) || (m.trade||'').toLowerCase().includes(q) || (m.id||'').toLowerCase().includes(q);
+    return !q || (m.name||'').toLowerCase().includes(q) || (m.trade||'').toLowerCase().includes(q) || (m.id||'').toLowerCase().includes(q) || (m.specialisations||'').toLowerCase().includes(q);
   });
   var tbody = document.getElementById('mech_tbody');
   if (!list.length) {
@@ -20183,7 +20206,7 @@ function renderMechanicList() {
     return '<tr style="border-bottom:1px solid var(--br)">'
       + '<td style="padding:8px 10px;font-family:monospace;color:var(--ac);font-weight:700">' + esc(m.id||'') + '</td>'
       + '<td style="padding:8px 10px;font-weight:600">' + esc(m.name||'') + '</td>'
-      + '<td style="padding:8px 10px">' + esc(m.trade||'') + '</td>'
+      + '<td style="padding:8px 10px">' + esc(m.trade||'') + (m.specialisations ? '<br><span style="font-size:10px;color:var(--t3)">' + esc(m.specialisations) + '</span>' : '') + '</td>'
       + '<td style="padding:8px 10px">' + esc(m.phone||'—') + '</td>'
       + '<td style="padding:8px 10px"><span style="background:' + (active?'#dcfce7':'#fee2e2') + ';color:' + (active?'#166534':'#991b1b') + ';padding:2px 9px;border-radius:20px;font-size:11px;font-weight:700">' + esc(m.status||'ACTIVE') + '</span></td>'
       + '<td style="padding:8px 10px"><button onclick="openMechHistory(\'' + esc(m.id) + '\')" style="background:none;border:1px solid var(--br);border-radius:6px;padding:3px 9px;font-size:11px;cursor:pointer;color:var(--ac)">' + assignCount + ' job(s) ↗</button></td>'
@@ -20196,6 +20219,21 @@ function renderMechanicList() {
 }
 
 // ── Add/Edit mechanic ────────────────────────────────────────────
+var _MECH_SPEC_IDS = ['scania','mercedesbenz','iveco','howo','shacman'];
+function _mfToggleSpecs() {
+  var isHVM = document.getElementById('mf_trade').value === 'Heavy Vehicle Mechanic';
+  document.getElementById('mf_specs_group').style.display = isHVM ? '' : 'none';
+  if (!isHVM) _MECH_SPEC_IDS.forEach(function(s){ document.getElementById('mf_spec_'+s).checked = false; });
+}
+function _mfSetSpecs(specsStr) {
+  var specs = (specsStr||'').split(',').map(function(s){ return s.trim().toLowerCase().replace(/[^a-z]/g,''); });
+  _MECH_SPEC_IDS.forEach(function(s){ document.getElementById('mf_spec_'+s).checked = specs.indexOf(s) >= 0; });
+}
+function _mfGetSpecs() {
+  return _MECH_SPEC_IDS.filter(function(s){ return document.getElementById('mf_spec_'+s).checked; })
+    .map(function(s){ return document.getElementById('mf_spec_'+s).value; }).join(', ');
+}
+
 function openAddMechanic() {
   _editingMech = null;
   document.getElementById('mechFormTitle').textContent = 'Add Mechanic';
@@ -20205,6 +20243,8 @@ function openAddMechanic() {
   document.getElementById('mf_phone').value = '';
   document.getElementById('mf_status').value = 'ACTIVE';
   document.getElementById('mf_dateadded').value = todayStr();
+  _mfSetSpecs('');
+  _mfToggleSpecs();
   document.getElementById('mechFormModal').classList.remove('hidden');
 }
 
@@ -20219,6 +20259,8 @@ function openEditMechanic(id) {
   document.getElementById('mf_phone').value = m.phone || '';
   document.getElementById('mf_status').value = m.status || 'ACTIVE';
   document.getElementById('mf_dateadded').value = m.dateAdded || '';
+  _mfSetSpecs(m.specialisations || '');
+  _mfToggleSpecs();
   document.getElementById('mechFormModal').classList.remove('hidden');
 }
 
@@ -20226,14 +20268,16 @@ async function saveMechanic() {
   var name  = (document.getElementById('mf_name').value||'').trim();
   var trade = document.getElementById('mf_trade').value;
   if (!name) { toast('Name is required', 'er'); return; }
-  if (!trade) { toast('Trade is required', 'er'); return; }
+  if (!trade) { toast('Job Title is required', 'er'); return; }
+  var specs = trade === 'Heavy Vehicle Mechanic' ? _mfGetSpecs() : '';
   var record = {
-    id:        _editingMech || document.getElementById('mf_code').value,
-    name:      name,
-    trade:     trade,
-    phone:     (document.getElementById('mf_phone').value||'').trim(),
-    status:    document.getElementById('mf_status').value,
-    dateAdded: document.getElementById('mf_dateadded').value,
+    id:              _editingMech || document.getElementById('mf_code').value,
+    name:            name,
+    trade:           trade,
+    specialisations: specs,
+    phone:           (document.getElementById('mf_phone').value||'').trim(),
+    status:          document.getElementById('mf_status').value,
+    dateAdded:       document.getElementById('mf_dateadded').value,
   };
   // Show saving state on button
   var btn = document.querySelector('#mechFormModal .btn.bp');
@@ -20288,7 +20332,7 @@ function openMechHistory(mechId) {
   });
 
   document.getElementById('mechHistoryTitle').textContent = '🔧 ' + (m.name||mechId) + ' — Job History';
-  var html = '<p style="color:var(--t3);font-size:12px;margin:0 0 14px">' + assigns.length + ' assignment(s) — Trade: <b>' + esc(m.trade||'') + '</b></p>';
+  var html = '<p style="color:var(--t3);font-size:12px;margin:0 0 14px">' + assigns.length + ' assignment(s) — <b>' + esc(m.trade||'') + '</b>' + (m.specialisations ? ' — <span style="color:var(--ac)">' + esc(m.specialisations) + '</span>' : '') + '</p>';
   if (!assigns.length) {
     html += '<div style="color:var(--t3);text-align:center;padding:30px">No assignments yet</div>';
   } else {
@@ -20328,7 +20372,7 @@ async function openAssignMechanic(assignId) {
   sel.innerHTML = '<option value="">Select mechanic…</option>';
   MECHANICS.filter(function(m){ return m.status !== 'INACTIVE'; }).forEach(function(m){
     var o = document.createElement('option');
-    o.value = m.id; o.textContent = m.name + ' (' + m.trade + ')';
+    o.value = m.id; o.textContent = m.name + ' (' + m.trade + (m.specialisations ? ' — ' + m.specialisations : '') + ')';
     sel.appendChild(o);
   });
 
@@ -20643,7 +20687,7 @@ function renderMechDash() {
             '<div style="width:44px;height:44px;border-radius:50%;background:'+avatarBg+';color:'+avatarColor+';display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:800;flex-shrink:0">'+initials+'</div>' +
             '<div style="flex:1;min-width:0">' +
               '<div style="font-size:15px;font-weight:800;color:var(--ac);word-break:break-word">'+esc(m.name||'Unknown')+'</div>' +
-              '<div style="font-size:11px;color:var(--t3);margin-top:1px">'+esc(m.trade||'General')+'</div>' +
+              '<div style="font-size:11px;color:var(--t3);margin-top:1px">'+esc(m.trade||'General')+(m.specialisations?'<br><span style="font-size:10px;color:var(--ac);font-weight:600">'+esc(m.specialisations)+'</span>':'')+'</div>' +
             '</div>' +
             '<span style="background:'+statusBg+';color:'+statusColor+';border-radius:20px;padding:3px 10px;font-size:10px;font-weight:700;white-space:nowrap;display:flex;align-items:center;gap:4px;flex-shrink:0">'+
               '<span style="width:6px;height:6px;border-radius:50%;background:'+statusDot+';display:inline-block"></span>'+
