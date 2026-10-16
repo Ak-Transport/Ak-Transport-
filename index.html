@@ -3935,12 +3935,25 @@ function _mkSelect(id, items, curVal, disabled, style) {
 }
 function fmtDate(d) {
   if (!d) return '';
-  // Strip time part if ISO string, then replace hyphens with slashes so
-  // JS parses it as LOCAL midnight instead of UTC midnight (avoids off-by-one-day bug)
-  var s = String(d).substring(0, 10).replace(/-/g, '/');
-  var dt = new Date(s);
-  if (isNaN(dt.getTime())) return d;
   var months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  var s = String(d);
+  var dt;
+  // 1. Plain YYYY-MM-DD — parse as local midnight (avoids UTC off-by-one-day bug)
+  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) {
+    dt = new Date(s.replace(/-/g, '/'));
+  }
+  // 2. String contains YYYY-MM-DD somewhere (e.g. ISO with time) — extract and parse as local
+  else if (/\d{4}-\d{2}-\d{2}/.test(s)) {
+    var iso = s.match(/(\d{4}-\d{2}-\d{2})/)[1];
+    dt = new Date(iso.replace(/-/g, '/'));
+  }
+  // 3. Locale string like "Wed Oct 07 2026 00:00:00 GMT+0300 (Saa za Afrika Mashariki)"
+  //    Strip the non-standard parenthetical timezone name before parsing
+  else {
+    var cleaned = s.replace(/\s*\([^)]*\)\s*$/, '');
+    dt = new Date(cleaned);
+  }
+  if (isNaN(dt.getTime())) return s;
   var dd = String(dt.getDate()).padStart(2,'0');
   var mon = months[dt.getMonth()];
   var yy = String(dt.getFullYear()).slice(-2);
@@ -20946,14 +20959,7 @@ function exportMechDashPDF() {
   setTimeout(function(){ w.print(); }, 600);
 }
 
-// ── Date formatter: any ISO/date string → DD-MM-YYYY ─────────────
-function fmtDate(val) {
-  if (!val) return '';
-  // Extract YYYY-MM-DD from ISO string or plain date
-  var m = String(val).match(/(\d{4})-(\d{2})-(\d{2})/);
-  if (!m) return val;
-  return m[3] + '-' + m[2] + '-' + m[1];
-}
+// ── fmtDate duplicate removed — using the main definition above ───
 // Extract YYYY-MM-DD portion for date-input comparisons
 function isoDate(val) {
   if (!val) return '';
