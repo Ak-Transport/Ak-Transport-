@@ -1663,8 +1663,8 @@ body.no-delete .actbtn.d:not(.ws-action):not(.jc-action):not(.fleet-action):not(
     <!-- batInvFilterRow -->
     <div id="batInvFilterRow" style="display:none;padding:0 20px 8px;flex-shrink:0">
       <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px">
-        <div style="display:flex;gap:6px"><select id="BIFF1" onchange="onBIFChange();applyBatInvFilter()" style="background:var(--s1);border:1.5px solid var(--ac);border-radius:8px;padding:8px 10px;color:#1d3c6e;font-size:12px;font-weight:600;outline:none;cursor:pointer;width:148px;flex-shrink:0"><option value="">— Filter 1 —</option><option value="batteryRef">🔢 Ref</option><option value="brand">🏷 Brand</option><option value="voltage">⚡ Voltage</option><option value="capacity">💪 Capacity</option><option value="purchaseDate">📅 Purchase Date</option></select><input type="text" id="BIFV1" placeholder="Search..." autocomplete="off" spellcheck="false" style="flex:1;min-width:0;background:var(--s1);border:1.5px solid var(--br);border-radius:8px;padding:8px 12px;color:var(--tx);font-size:13px;outline:none" oninput="applyBatInvFilter()"></div>
-        <div style="display:flex;gap:6px"><select id="BIFF2" onchange="onBIFChange();applyBatInvFilter()" style="background:var(--s1);border:1.5px solid var(--ac);border-radius:8px;padding:8px 10px;color:#1d3c6e;font-size:12px;font-weight:600;outline:none;cursor:pointer;width:148px;flex-shrink:0"><option value="">— Filter 2 —</option><option value="supplier">🏪 Supplier</option><option value="poNo">📄 Req No</option><option value="lpoNo">📄 LPO No</option><option value="purchaseDate">📅 Purchase Date</option></select><input type="text" id="BIFV2" placeholder="Optional..." autocomplete="off" spellcheck="false" style="flex:1;min-width:0;background:var(--s1);border:1.5px solid var(--br);border-radius:8px;padding:8px 12px;color:var(--tx);font-size:13px;outline:none" oninput="applyBatInvFilter()"></div>
+        <div style="display:flex;gap:6px"><select id="BIFF1" onchange="onBIFChange();applyBatInvFilter()" style="background:var(--s1);border:1.5px solid var(--ac);border-radius:8px;padding:8px 10px;color:#1d3c6e;font-size:12px;font-weight:600;outline:none;cursor:pointer;width:148px;flex-shrink:0"><option value="">— Filter 1 —</option><option value="batteryRef">🔢 Ref</option><option value="brand">🏷 Brand</option><option value="currentVehicle">🚛 Vehicle</option><option value="currentPosition">📍 Position</option><option value="voltage">⚡ Voltage</option><option value="capacity">💪 Capacity</option><option value="purchaseDate">📅 Purchase Date</option></select><input type="text" id="BIFV1" placeholder="Search..." autocomplete="off" spellcheck="false" style="flex:1;min-width:0;background:var(--s1);border:1.5px solid var(--br);border-radius:8px;padding:8px 12px;color:var(--tx);font-size:13px;outline:none" oninput="applyBatInvFilter()"></div>
+        <div style="display:flex;gap:6px"><select id="BIFF2" onchange="onBIFChange();applyBatInvFilter()" style="background:var(--s1);border:1.5px solid var(--ac);border-radius:8px;padding:8px 10px;color:#1d3c6e;font-size:12px;font-weight:600;outline:none;cursor:pointer;width:148px;flex-shrink:0"><option value="">— Filter 2 —</option><option value="supplier">🏪 Supplier</option><option value="currentVehicle">🚛 Vehicle</option><option value="currentPosition">📍 Position</option><option value="poNo">📄 Req No</option><option value="lpoNo">📄 LPO No</option><option value="purchaseDate">📅 Purchase Date</option></select><input type="text" id="BIFV2" placeholder="Optional..." autocomplete="off" spellcheck="false" style="flex:1;min-width:0;background:var(--s1);border:1.5px solid var(--br);border-radius:8px;padding:8px 12px;color:var(--tx);font-size:13px;outline:none" oninput="applyBatInvFilter()"></div>
         <div style="display:flex;gap:6px"><select id="BIFSTATUS" style="flex:1;background:var(--s1);border:1.5px solid var(--br);border-radius:8px;padding:8px 10px;color:var(--tx);font-size:12px;outline:none;cursor:pointer" onchange="applyBatInvFilter()"><option value="">All Status</option><option value="IN STORE">IN STORE</option><option value="FITTED">FITTED</option><option value="SOLD">SOLD</option></select><button class="btn bg" onclick="clearBatInvFilter()" style="padding:8px 14px;font-size:12px;white-space:nowrap">✕ Clear</button></div>
       </div>
       <!-- date range row -->
@@ -1782,13 +1782,25 @@ body.no-delete .actbtn.d:not(.ws-action):not(.jc-action):not(.fleet-action):not(
           <select id="SINVF3" style="background:var(--s1);border:1.5px solid var(--ac);border-radius:8px;padding:8px 10px;color:#1d3c6e;font-size:12px;font-weight:600;outline:none;cursor:pointer;width:148px;flex-shrink:0" onchange="onSINVChange();renderStoreInventory('__filter__')"><option value="">-- Filter 3 --</option><option value="partName">🔧 Part Name</option><option value="reqNo">🔢 Req No</option><option value="dateReceived">📅 Date Received</option><option value="supplier">🏪 Supplier</option><option value="lpoNo">📄 LPO No</option></select>
           <input type="text" id="SINVV3" placeholder="Optional..." autocomplete="off" spellcheck="false" style="flex:1;min-width:0;background:var(--s1);border:1.5px solid var(--br);border-radius:8px;padding:8px 12px;color:var(--tx);font-size:13px;outline:none" oninput="renderStoreInventory('__filter__')">
         </div>
-        <div style="display:flex;gap:6px">
-          <select id="SINV_STATUS" style="flex:1;background:var(--s1);border:1.5px solid var(--br);border-radius:8px;padding:8px 10px;color:var(--tx);font-size:12px;outline:none;cursor:pointer" onchange="renderStoreInventory('__filter__')">
-            <option value="">All Status</option>
-            <option value="OUT OF STOCK">OUT OF STOCK</option>
-            <option value="LOW STOCK">LOW STOCK</option>
-            <option value="OK">OK</option>
-          </select>
+        <div style="display:flex;gap:6px;align-items:center">
+          <!-- Multi-select status dropdown -->
+          <div id="sinv-status-wrap" style="position:relative;flex:1">
+            <button id="sinv-status-btn" onclick="_sinvStatusToggle(event)" style="width:100%;height:36px;background:var(--s1);border:1.5px solid var(--br);border-radius:8px;padding:0 10px;color:var(--tx);font-size:12px;outline:none;cursor:pointer;text-align:left;display:flex;align-items:center;justify-content:space-between;gap:6px">
+              <span id="sinv-status-label" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">All Status</span>
+              <span style="font-size:10px;opacity:.5;flex-shrink:0">▼</span>
+            </button>
+            <div id="sinv-status-panel" style="display:none;position:absolute;top:calc(100% + 4px);left:0;min-width:180px;background:var(--bg);border:1.5px solid var(--br);border-radius:10px;box-shadow:0 4px 16px rgba(0,0,0,.12);z-index:999;padding:6px 0">
+              <label style="display:flex;align-items:center;gap:8px;padding:8px 14px;cursor:pointer;font-size:13px;font-weight:600;color:#065f46" onmouseenter="this.style.background='#f0fdf4'" onmouseleave="this.style.background=''">
+                <input type="checkbox" id="SINV_ST_OK" value="OK" onchange="_sinvStatusChange()" style="accent-color:#059669;width:15px;height:15px;cursor:pointer;flex-shrink:0"> ✅ OK
+              </label>
+              <label style="display:flex;align-items:center;gap:8px;padding:8px 14px;cursor:pointer;font-size:13px;font-weight:600;color:#92400e" onmouseenter="this.style.background='#fffbeb'" onmouseleave="this.style.background=''">
+                <input type="checkbox" id="SINV_ST_LOW" value="LOW STOCK" onchange="_sinvStatusChange()" style="accent-color:#d97706;width:15px;height:15px;cursor:pointer;flex-shrink:0"> ⚠️ Low Stock
+              </label>
+              <label style="display:flex;align-items:center;gap:8px;padding:8px 14px;cursor:pointer;font-size:13px;font-weight:600;color:#7f1d1d" onmouseenter="this.style.background='#fff1f2'" onmouseleave="this.style.background=''">
+                <input type="checkbox" id="SINV_ST_OUT" value="OUT OF STOCK" onchange="_sinvStatusChange()" style="accent-color:#dc2626;width:15px;height:15px;cursor:pointer;flex-shrink:0"> 🔴 Out of Stock
+              </label>
+            </div>
+          </div>
           <button class="btn bg" onclick="clearSINVFilter()" style="padding:8px 14px;font-size:12px;white-space:nowrap">✕ Clear</button>
         </div>
       </div>
@@ -3936,41 +3948,42 @@ function _mkSelect(id, items, curVal, disabled, style) {
 function fmtDate(d) {
   if (!d) return '';
   var months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-  var s = String(d);
-  var dt;
-  // 1. Plain YYYY-MM-DD — parse as local midnight (avoids UTC off-by-one-day bug)
-  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) {
-    dt = new Date(s.replace(/-/g, '/'));
-  }
-  // 2. String contains YYYY-MM-DD somewhere (e.g. ISO with time) — extract and parse as local
-  else if (/\d{4}-\d{2}-\d{2}/.test(s)) {
-    var iso = s.match(/(\d{4}-\d{2}-\d{2})/)[1];
-    dt = new Date(iso.replace(/-/g, '/'));
-  }
-  // 3. Locale string like "Wed Oct 07 2026 00:00:00 GMT+0300 (Saa za Afrika Mashariki)"
-  //    Strip the non-standard parenthetical timezone name before parsing
-  else {
-    var cleaned = s.replace(/\s*\([^)]*\)\s*$/, '');
-    dt = new Date(cleaned);
-  }
-  if (isNaN(dt.getTime())) return s;
+  var dt = _parseDateLocal(String(d));
+  if (isNaN(dt.getTime())) return String(d);
   var dd = String(dt.getDate()).padStart(2,'0');
   var mon = months[dt.getMonth()];
   var yy = String(dt.getFullYear()).slice(-2);
   return dd + '-' + mon + '-' + yy;
 }
+// Shared local-date parser — avoids the UTC midnight off-by-one-day bug.
+// new Date('YYYY-MM-DD') treats bare ISO dates as UTC midnight,
+// which in UTC+3 becomes the previous calendar day.
+// Using slashes ('YYYY/MM/DD') forces JS to parse as LOCAL midnight.
+function _parseDateLocal(s) {
+  if (!s) return new Date(NaN);
+  s = String(s);
+  // Plain YYYY-MM-DD
+  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return new Date(s.replace(/-/g, '/'));
+  // ISO string with time component — extract the date part and parse as local
+  var m = s.match(/(\d{4})-(\d{2})-(\d{2})/);
+  if (m) return new Date(m[1]+'/'+m[2]+'/'+m[3]);
+  // Locale string like "Wed Oct 07 2026 00:00:00 GMT+0300 (Saa za Afrika Mashariki)"
+  // Strip non-standard parenthetical timezone name before parsing
+  var cleaned = s.replace(/\s*\([^)]*\)\s*$/, '');
+  return new Date(cleaned);
+}
 // Convert any date value to ISO YYYY-MM-DD for filter comparison
 function toISODate(d) {
   if (!d) return '';
-  var dt = new Date(d);
+  var dt = _parseDateLocal(String(d));
   if (isNaN(dt.getTime())) return String(d).substring(0,10);
   return dt.getFullYear()+'-'+String(dt.getMonth()+1).padStart(2,'0')+'-'+String(dt.getDate()).padStart(2,'0');
 }
 
 function fmtDateTime(d) {
   if (!d) return '';
-  var dt = new Date(d);
-  if (isNaN(dt.getTime())) return d;
+  var dt = _parseDateLocal(String(d));
+  if (isNaN(dt.getTime())) return String(d);
   var months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
   var dd = String(dt.getDate()).padStart(2,'0');
   var mon = months[dt.getMonth()];
@@ -3982,10 +3995,10 @@ function fmtDateTime(d) {
 
 function calcDurationDays(startDate, endDate, workStatus) {
   if (!startDate) return '<span style="color:var(--t3)">-</span>';
-  var start = new Date(startDate);
+  var start = _parseDateLocal(String(startDate));
   if (isNaN(start.getTime())) return '<span style="color:var(--t3)">-</span>';
   var isOngoing = !endDate && workStatus !== 'COMPLETED';
-  var end = endDate ? new Date(endDate) : new Date();
+  var end = endDate ? _parseDateLocal(String(endDate)) : new Date();
   if (isNaN(end.getTime())) end = new Date();
   var days = Math.ceil((end - start) / (1000 * 60 * 60 * 24));
   if (days < 0) days = 0;
@@ -10620,22 +10633,26 @@ document.addEventListener('click',function(e){
     pwdCb=null;
   }
 });
-function fd(v){if(!v)return'-';const m=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];const d=new Date(v);if(isNaN(d.getTime()))return v;return`${String(d.getDate()).padStart(2,'0')}-${m[d.getMonth()]}-${String(d.getFullYear()).slice(-2)}`;}
+function fd(v){if(!v)return'-';var m=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];var d=_parseDateLocal(String(v));if(isNaN(d.getTime()))return v;return String(d.getDate()).padStart(2,'0')+'-'+m[d.getMonth()]+'-'+String(d.getFullYear()).slice(-2);}
 function todayStr(){return new Date().toISOString().split('T')[0];}
 function toDateInput(v){
   // Convert any date string to yyyy-mm-dd for HTML date inputs
   if(!v) return '';
+  var s = String(v);
   // Already yyyy-mm-dd
-  if(/^\d{4}-\d{2}-\d{2}$/.test(v)) return v;
-  // Try parsing
-  var d = new Date(v);
+  if(/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+  // Contains ISO date somewhere
+  var iso = s.match(/(\d{4}-\d{2}-\d{2})/);
+  if(iso) return iso[1];
+  // Parse via local helper (avoids UTC off-by-one bug)
+  var d = _parseDateLocal(s);
   if(!isNaN(d.getTime())){
     var yyyy=d.getFullYear();
     var mm=String(d.getMonth()+1).padStart(2,'0');
     var dd=String(d.getDate()).padStart(2,'0');
     return yyyy+'-'+mm+'-'+dd;
   }
-  return v;
+  return '';
 }
 function toast(msg,type='in'){const icons={ok:'✅',er:'❌',in:'ℹ️'};const el=document.createElement('div');el.className=`toast ${type}`;el.innerHTML=`<span>${icons[type]}</span><span>${msg}</span>`;document.getElementById('toastbox').appendChild(el);setTimeout(()=>el.remove(),3000);}
 // -- ROW SELECTION --
@@ -12097,6 +12114,8 @@ async function saveFreeReq(){
 var _invTab = 'summary';
 var _invFilter1 = { name: '', status: '' };
 var _invFilter2 = { field1: '', field2: '', req: '', date: '', name: '', supplier: '', lpo: '' };
+// Persistent status filter state (survives re-renders that may rebuild DOM)
+var _sinvStatusSet = new Set(); // values: 'OK', 'LOW STOCK', 'OUT OF STOCK'
 
 function onSINVChange(){
   var hasDate=false;
@@ -12105,11 +12124,14 @@ function onSINVChange(){
 }
 function clearSINVFilter(){
   [1,2,3].forEach(function(n){var s=document.getElementById("SINVF"+n);if(s)s.value="";var v=document.getElementById("SINVV"+n);if(v){v.value="";v.type="text";}});
-  var st=document.getElementById("SINV_STATUS");if(st)st.value="";
+  _sinvStatusSet = new Set();
+  ['SINV_ST_OK','SINV_ST_LOW','SINV_ST_OUT'].forEach(function(id){var cb=document.getElementById(id);if(cb)cb.checked=false;});
+  var lbl=document.getElementById('sinv-status-label');if(lbl)lbl.textContent='All Status';
+  var panel=document.getElementById('sinv-status-panel');if(panel)panel.style.display='none';
   var df=document.getElementById("SINV_DATE_FROM");if(df)df.value="";
   var dt=document.getElementById("SINV_DATE_TO");if(dt)dt.value="";
   var dr=document.getElementById("sinv_daterow");if(dr)dr.style.display="none";
-  renderStoreInventory("summary");
+  renderStoreInventory(_invTab);
 }
 function _applySINVFilters(rows){
   var fmap={reqNo:"_reqNo",dateReceived:"_dateReceived",partName:"partName",supplier:"supplier",lpoNo:"partCode"};
@@ -12119,9 +12141,21 @@ function _applySINVFilters(rows){
     var val=((document.getElementById("SINVV"+n)||{}).value||"").trim().toLowerCase();
     if(fld&&val)fs.push({fld:fmap[fld]||fld,val:val});
   });
-  var st=((document.getElementById("SINV_STATUS")||{}).value||"").toUpperCase();
+  // Multi-checkbox status filter — read from persistent JS var (survives re-renders)
+  var stSet = _sinvStatusSet;
   var df=(document.getElementById("SINV_DATE_FROM")||{}).value||"";
   var dt=(document.getElementById("SINV_DATE_TO")||{}).value||"";
+
+  // For Detailed tab: pre-compute grouped totals so status reflects total qty per part, not per-batch qty
+  var _groupedQty = null;
+  if (_invTab === 'detailed') {
+    _groupedQty = {};
+    STORE_INVENTORY.forEach(function(r){
+      var k = (r.partName||'').toUpperCase();
+      _groupedQty[k] = (_groupedQty[k]||0) + Number(r.qtyOnHand||0);
+    });
+  }
+
   return rows.filter(function(r){
     for(var i=0;i<fs.length;i++){
       var fld = fs[i].fld;
@@ -12130,10 +12164,16 @@ function _applySINVFilters(rows){
                  : r[fld];
       if(String(rawVal||"").toLowerCase().indexOf(fs[i].val)<0)return false;
     }
-    if(st){
-      var minLvl = STORE_MIN_LEVELS[(r.partName||'').toUpperCase()]||r.minStockLevel||0;
-      var stObj = _invStatus(r.qtyOnHand, minLvl);
-      if(stObj.label !== st) return false;
+    if(stSet.size > 0){
+      var statusLabel;
+      if (r._stLabel !== undefined) {
+        // Detailed rows: status pre-computed from grouped total + STORE_MIN_LEVELS at render time
+        statusLabel = r._stLabel;
+      } else {
+        // Summary rows: r.qtyOnHand is already the grouped total, r.minStockLevel is already from STORE_MIN_LEVELS
+        statusLabel = _invStatus(Number(r.qtyOnHand||0), Number(r.minStockLevel||0)).label;
+      }
+      if(!stSet.has(statusLabel)) return false;
     }
     if(df&&(r._dateReceived||r.dateReceived||"")&&(r._dateReceived||r.dateReceived||"")<df)return false;
     if(dt&&(r._dateReceived||r.dateReceived||"")&&(r._dateReceived||r.dateReceived||"")>dt)return false;
@@ -12207,9 +12247,12 @@ function renderStoreInventory(tab) {
     + '<div class="statcard statcard-sm" style="background:#d97706;color:#fff"><div class="scl">Low Stock</div><div class="scv">'+lowStock.length+'</div></div>'
     + '</div>';
 
-  // Only show Issue from Store button (Receive Stock removed from nav)
-  html += '<div style="display:flex;gap:8px;margin-bottom:14px">';
-  html += '</div>';
+  // Export + action bar
+  html += '<div style="display:flex;gap:8px;margin-bottom:14px;align-items:center;flex-wrap:wrap">'
+    + '<button onclick="_sinvExportExcel()" style="display:flex;align-items:center;gap:6px;padding:8px 16px;background:#1d6f42;color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer">📊 Export Excel</button>'
+    + '<button onclick="_sinvExportPDF()" style="display:flex;align-items:center;gap:6px;padding:8px 16px;background:#b91c1c;color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer">📄 Export PDF</button>'
+    + '<span id="sinv-sel-count" style="font-size:12px;color:#888;margin-left:4px"></span>'
+    + '</div>';
 
   var inpS = 'height:34px;padding:0 10px;font-size:12px;border:1.5px solid #d2d2d7;border-radius:7px;background:#fff;box-sizing:border-box;font-family:Inter,sans-serif;outline:none;';
   var selS = inpS + 'cursor:pointer;';
@@ -12234,21 +12277,23 @@ function renderStoreInventory(tab) {
     });
     var rows = _applySINVFilters(Object.values(grouped)).sort(function(a,b){ return a.partName.localeCompare(b.partName); });
 
-    html += '<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse">'
+    html += '<div style="overflow-x:auto"><table id="sinv-summary-table" style="width:100%;border-collapse:collapse">'
       + '<thead><tr>'
+      + '<th style="'+thS+';width:32px;text-align:center"><input type="checkbox" id="sinv-chk-all" title="Select all" onchange="_sinvToggleAll(this)"></th>'
       + '<th style="'+thS+';text-align:left">Part Name</th>'
       + '<th style="'+thS+';text-align:center">Total Qty On Hand</th>'
       + '<th style="'+thS+';text-align:center">Min Level'+(CURRENT_USER&&CURRENT_USER.role==='admin'?' <span style="font-size:10px;font-weight:400;color:#888">(click to edit)</span>':'')+'</th>'
       + '<th style="'+thS+';text-align:center">Status</th>'
       + '</tr></thead><tbody>';
     if (!rows.length) {
-      html += '<tr><td colspan="4" style="text-align:center;color:var(--t3);padding:28px">No records match filter</td></tr>';
+      html += '<tr><td colspan="5" style="text-align:center;color:var(--t3);padding:28px">No records match filter</td></tr>';
     } else {
       rows.forEach(function(r){
         var st = _invStatus(r.qtyOnHand, r.minStockLevel);
         var safePartName = String(r.partName||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
         var safePartNameJs = String(r.partName||'').replace(/\\/g,'\\\\').replace(/'/g,"\\'");
-        html += '<tr style="'+(st.label!=='OK'?'background:'+st.bg:'')+'">'
+        html += '<tr style="'+(st.label!=='OK'?'background:'+st.bg:'')+'" data-sinv-row="1" data-pname="'+safePartName+'" data-qty="'+r.qtyOnHand+'" data-min="'+r.minStockLevel+'" data-status="'+st.label+'">'
+          + '<td style="'+tdS+';text-align:center"><input type="checkbox" class="sinv-cb" onchange="_sinvUpdateSelCount()"></td>'
           + '<td style="'+tdS+';font-weight:600">'+safePartName+'</td>'
           + '<td style="'+tdS+';text-align:center;font-weight:700;color:'+st.dot+'">'+r.qtyOnHand+'</td>'
           + '<td style="'+tdS+';text-align:center">'
@@ -12274,6 +12319,13 @@ function renderStoreInventory(tab) {
     var spmLookup = {};
     (SPARE_MOVES||[]).forEach(function(r){ if(r.reqNo) spmLookup[r.reqNo.toUpperCase()] = r; });
 
+    // Pre-compute grouped totals per part name \u2014 status reflects TOTAL qty across all batches
+    var _detGroupedQty = {};
+    STORE_INVENTORY.forEach(function(r){
+      var k = (r.partName||'').toUpperCase();
+      _detGroupedQty[k] = (_detGroupedQty[k]||0) + Number(r.qtyOnHand||0);
+    });
+
     var detailed = STORE_INVENTORY.map(function(r){
       var reqNo = ''; var dateReceived = ''; var qtyReceived = ''; var supplierDisplay = (r.supplier||''); var lpoDisplay = (r.partCode||'');
       var mSreq = (r.remarks||'').match(/SREQ-\d+/i);
@@ -12283,7 +12335,7 @@ function renderStoreInventory(tab) {
         var match = reqLookup[reqNo];
         if (match) {
           dateReceived = match.dateReceived || '';
-          qtyReceived  = match.qty || '';        // original qty received from store req
+          qtyReceived  = match.qty || '';
         }
       } else if (mSpm) {
         reqNo = mSpm[0].toUpperCase();
@@ -12297,15 +12349,18 @@ function renderStoreInventory(tab) {
           lpoDisplay = 'N/A';
         }
       }
-      return Object.assign({}, r, { _reqNo: reqNo, _dateReceived: dateReceived, _qtyReceived: qtyReceived, _supplierDisplay: supplierDisplay, _lpoDisplay: lpoDisplay });
-    }).filter(function(r){
-      var _fmap={'reqNo':'_reqNo','dateReceived':'_dateReceived','partName':'partName','supplier':'supplier','lpoNo':'partCode'};
-      return true;
+      // Attach grouped total AND min level so filter + render both use same values as Summary
+      var _pkey = (r.partName||'').toUpperCase();
+      var _totalQty = _detGroupedQty[_pkey]||0;
+      var _minLevel = STORE_MIN_LEVELS[_pkey]||0;
+      var _stLabel  = _invStatus(_totalQty, _minLevel).label;
+      return Object.assign({}, r, { _reqNo: reqNo, _dateReceived: dateReceived, _qtyReceived: qtyReceived, _supplierDisplay: supplierDisplay, _lpoDisplay: lpoDisplay, _totalQty: _totalQty, _minLevel: _minLevel, _stLabel: _stLabel });
     });
     var rows = _applySINVFilters(detailed).sort(function(a,b){ return (a.partName||'').localeCompare(b.partName||''); });
 
-    // 9 columns - no Status column, auto layout
-    html += '<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse"><thead><tr>'
+    // 10 columns (with checkbox)
+    html += '<div style="overflow-x:auto"><table id="sinv-detail-table" style="width:100%;border-collapse:collapse"><thead><tr>'
+      + '<th style="'+thS+';width:32px;text-align:center"><input type="checkbox" id="sinv-chk-all" title="Select all" onchange="_sinvToggleAll(this)"></th>'
       + '<th style="'+thS+';text-align:left;min-width:120px">Req No</th>'
       + '<th style="'+thS+';text-align:left;min-width:110px">Date Received</th>'
       + '<th style="'+thS+';text-align:left;min-width:180px">Part Name</th>'
@@ -12319,18 +12374,22 @@ function renderStoreInventory(tab) {
       + '</tr></thead><tbody>';
 
     if (!rows.length) {
-      html += '<tr><td colspan="10" style="text-align:center;color:var(--t3);padding:28px">No records match filter</td></tr>';
+      html += '<tr><td colspan="11" style="text-align:center;color:var(--t3);padding:28px">No records match filter</td></tr>';
     } else {
       rows.forEach(function(r){
-        var qtyOnHand = Number(r.qtyOnHand||0);
-        var min       = STORE_MIN_LEVELS[(r.partName||'').toUpperCase()]||0;
-        var st        = _invStatus(qtyOnHand, min);
-        html += '<tr style="'+(st.label!=='OK'?'background:'+st.bg:'')+'">'
+        var qtyOnHand = Number(r.qtyOnHand||0);       // per-batch qty (shown in Qty On Hand column)
+        var totalQty  = Number(r._totalQty||0);        // grouped total (drives status badge + row colour)
+        var min       = Number(r._minLevel||0);        // min level pre-looked-up at map-time (same as filter uses)
+        var st        = _invStatus(totalQty, min);     // status based on total stock of this part
+        var unitPriceDisp = r.unitPrice?Number(r.unitPrice).toLocaleString('en-US',{minimumFractionDigits:2}):'-';
+        var safePname = String(r.partName||'').replace(/"/g,'&quot;');
+        html += '<tr style="'+(st.label!=='OK'?'background:'+st.bg:'')+'" data-sinv-row="1" data-reqno="'+(r._reqNo||'-')+'" data-date="'+fmtDate(r._dateReceived||'')+'" data-pname="'+safePname+'" data-qtyrcv="'+(r._qtyReceived||qtyOnHand||0)+'" data-price="'+unitPriceDisp+'" data-supplier="'+(r._supplierDisplay||'')+'" data-lpo="'+(r._lpoDisplay||'-')+'" data-qty="'+qtyOnHand+'" data-min="'+min+'" data-status="'+st.label+'">'
+          + '<td style="'+tdS+';text-align:center"><input type="checkbox" class="sinv-cb" onchange="_sinvUpdateSelCount()"></td>'
           + '<td style="'+tdS+';font-family:monospace;font-weight:600;color:var(--ac)">'+(r._reqNo||'-')+'</td>'
           + '<td style="'+tdS+'">'+fmtDate(r._dateReceived||'')+'</td>'
           + '<td style="'+tdS+';font-weight:600">'+(r.partName||'')+'</td>'
-          + '<td style="'+tdS+';text-align:center">'+(r._qtyReceived||r.qtyOnHand||0)+'</td>'
-          + '<td style="'+tdS+';text-align:right;font-family:monospace">'+(r.unitPrice?Number(r.unitPrice).toLocaleString('en-US',{minimumFractionDigits:2}):'-')+'</td>'
+          + '<td style="'+tdS+';text-align:center">'+(r._qtyReceived||qtyOnHand||0)+'</td>'
+          + '<td style="'+tdS+';text-align:right;font-family:monospace">'+unitPriceDisp+'</td>'
           + '<td style="'+tdS+'">'+(r._supplierDisplay||'')+'</td>'
           + '<td style="'+tdS+';font-family:monospace;font-weight:600">'+(r._lpoDisplay||'-')+'</td>'
           + '<td style="'+tdS+';text-align:center;font-weight:700;color:'+st.dot+'">'+qtyOnHand+'</td>'
@@ -14858,8 +14917,8 @@ function calcDuration() {
   const e = document.getElementById('jc_enddate').value;
   const dur = document.getElementById('jc_duration');
   if (s && e) {
-    const start = new Date(s);
-    const end = new Date(e);
+    const start = _parseDateLocal(s);
+    const end = _parseDateLocal(e);
     const diff = Math.round((end - start) / (1000 * 60 * 60 * 24));
     dur.value = diff >= 0 ? diff : 0;
   } else {
@@ -16120,7 +16179,7 @@ function buildJobCardHTML(j, defects, parts, mechAssigns) {
   mechAssigns = mechAssigns || [];
   const totalCost = parts.reduce((sum,p)=>sum+(parseFloat(p.cost)||0),0);
   const fmt = n=>n.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
-  const fd = d=>{if(!d)return ''; var dt=new Date(d); if(isNaN(dt.getTime()))return d; var m=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']; return String(dt.getDate()).padStart(2,'0')+'-'+m[dt.getMonth()]+'-'+String(dt.getFullYear()).slice(-2);};
+  const fd = d=>{if(!d)return ''; var dt=_parseDateLocal(String(d)); if(isNaN(dt.getTime()))return String(d); var m=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']; return String(dt.getDate()).padStart(2,'0')+'-'+m[dt.getMonth()]+'-'+String(dt.getFullYear()).slice(-2);};
 
   const defectRows=[];
   for(let i=0;i<Math.max(8,defects.length+3);i++){
@@ -16210,11 +16269,32 @@ function buildJobCardHTML(j, defects, parts, mechAssigns) {
           + '<td style="padding:3px 6px;border:1px solid #999;font-size:7px;text-align:center;white-space:nowrap">'+(a.completedDate?fd(a.completedDate):'—')+'</td>'
           + '<td style="padding:3px 6px;border:1px solid #999;font-size:7px;text-align:center;background:'+statusBg+';font-weight:700">'+(a.status||'')+'</td>'
           + '</tr>';
-        // Signature block per mechanic
-        sigBlocks += '<td style="padding:10px 12px;border-right:1px solid #999;vertical-align:top;width:'+(100/Math.max(mechAssigns.length,1))+'%">'
-          + '<div style="font-size:7px;font-weight:700;color:#000;text-transform:uppercase;letter-spacing:.08em;margin-bottom:3px">Mechanic '+(i+1)+'</div>'
-          + '<div style="font-size:8px;font-weight:900;color:#000;margin-bottom:6px">'+(a.mechanicName||a.mechanicId||'')+'</div>'
-          + '<div style="font-size:7px;color:#555;margin-bottom:2px;word-wrap:break-word;white-space:pre-wrap;overflow:visible">Work: '+(a.task||'')+'</div>'
+      });
+
+      // Signature blocks — grouped by mechanic (one box per unique mechanic)
+      var mechGroups = {};
+      var mechOrder = [];
+      mechAssigns.forEach(function(a) {
+        var key = (a.mechanicId||a.mechanicName||'').trim();
+        if (!mechGroups[key]) {
+          mechGroups[key] = { name: a.mechanicName||a.mechanicId||'', tasks: [] };
+          mechOrder.push(key);
+        }
+        // Add each task line (split by \n) as a numbered sub-item
+        var lines = (a.task||'').split('\n').map(function(l){ return l.trim(); }).filter(function(l){ return l; });
+        lines.forEach(function(l){ mechGroups[key].tasks.push(l); });
+      });
+      var sigCount = mechOrder.length;
+      mechOrder.forEach(function(key, idx) {
+        var g = mechGroups[key];
+        var taskList = g.tasks.map(function(t, ti){
+          return '<div style="font-size:7px;color:#333;margin-bottom:1px">'+(ti+1)+'. '+t+'</div>';
+        }).join('');
+        sigBlocks += '<td style="padding:10px 12px;border-right:1px solid #999;vertical-align:top;width:'+(100/sigCount)+'%">'
+          + '<div style="font-size:7px;font-weight:700;color:#000;text-transform:uppercase;letter-spacing:.08em;margin-bottom:3px">Mechanic '+(idx+1)+'</div>'
+          + '<div style="font-size:8px;font-weight:900;color:#000;margin-bottom:6px">'+g.name+'</div>'
+          + '<div style="font-size:7px;font-weight:700;color:#555;margin-bottom:3px;text-transform:uppercase;letter-spacing:.04em">Tasks Performed:</div>'
+          + taskList
           + '<div style="border-bottom:1.5px solid #000;height:28px;margin-top:10px;margin-bottom:4px"></div>'
           + '<div style="font-size:7px;color:#666">Signature &amp; Date</div>'
           + '</td>';
@@ -20387,6 +20467,24 @@ function openMechHistory(mechId) {
 }
 
 // ── Assign Mechanic (inside Job Card) ───────────────────────────
+// Convert any stored date value to YYYY-MM-DD for <input type="date">
+function _toDateInput(d) {
+  if (!d) return '';
+  var s = String(d);
+  // Already YYYY-MM-DD
+  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+  // Contains YYYY-MM-DD (e.g. ISO string with time)
+  var m = s.match(/(\d{4}-\d{2}-\d{2})/);
+  if (m) return m[1];
+  // Locale string — strip parenthetical timezone name and parse
+  var cleaned = s.replace(/\s*\([^)]*\)\s*$/, '');
+  var dt = new Date(cleaned);
+  if (isNaN(dt.getTime())) return '';
+  return dt.getFullYear() + '-'
+    + String(dt.getMonth()+1).padStart(2,'0') + '-'
+    + String(dt.getDate()).padStart(2,'0');
+}
+
 async function openAssignMechanic(assignId) {
   await loadMechanics();
   _editingAssign = assignId || null;
@@ -20406,8 +20504,8 @@ async function openAssignMechanic(assignId) {
       document.getElementById('assignMechTitle').textContent = 'Edit Assignment';
       sel.value = a.mechanicId || '';
       _amSetTaskLines(a.task || '');
-      document.getElementById('am_assigndate').value = a.assignedDate || '';
-      document.getElementById('am_compldate').value = a.completedDate || '';
+      document.getElementById('am_assigndate').value = _toDateInput(a.assignedDate);
+      document.getElementById('am_compldate').value = _toDateInput(a.completedDate);
       document.getElementById('am_status').value = a.status || 'ASSIGNED';
     }
   } else {
@@ -21509,5 +21607,174 @@ function exportMechHistoryExcel() {
   <button id="scrap_reject_btn" onclick="bulkRejectScrapSales()" style="background:rgba(185,28,28,.7);border:1px solid rgba(255,255,255,.3);color:#fff;padding:6px 14px;border-radius:7px;cursor:pointer;font-size:12px;font-weight:600">✕ Reject Selected</button>
   <button onclick="tyreScrapClearSel()" style="background:none;border:none;color:rgba(255,255,255,.7);cursor:pointer;font-size:20px;line-height:1;padding:0 4px">&times;</button>
 </div>
+<!-- Store Inventory: checkbox + export helpers -->
+<script>
+// Status multi-select dropdown
+function _sinvStatusToggle(e) {
+  e.stopPropagation();
+  var panel = document.getElementById('sinv-status-panel');
+  if (!panel) return;
+  var open = panel.style.display !== 'none';
+  panel.style.display = open ? 'none' : 'block';
+}
+// Close status dropdown on any click outside the wrap (persistent listener)
+document.addEventListener('click', function(e){
+  var wrap = document.getElementById('sinv-status-wrap');
+  if (wrap && !wrap.contains(e.target)) {
+    var p = document.getElementById('sinv-status-panel');
+    if (p) p.style.display = 'none';
+  }
+});
+function _sinvStatusChange() {
+  // Persist selections to JS variable so they survive any re-render
+  _sinvStatusSet = new Set();
+  var checked = [];
+  [{id:'SINV_ST_OK',val:'OK',label:'OK'},{id:'SINV_ST_LOW',val:'LOW STOCK',label:'Low Stock'},{id:'SINV_ST_OUT',val:'OUT OF STOCK',label:'Out of Stock'}].forEach(function(o){
+    var cb = document.getElementById(o.id);
+    if (cb && cb.checked) { _sinvStatusSet.add(o.val); checked.push(o.label); }
+  });
+  var lbl = document.getElementById('sinv-status-label');
+  if (lbl) lbl.textContent = checked.length ? checked.join(', ') : 'All Status';
+  renderStoreInventory('__filter__');
+}
+
+function _sinvToggleAll(chk) {
+  document.querySelectorAll('.sinv-cb').forEach(function(cb){ cb.checked = chk.checked; });
+  _sinvUpdateSelCount();
+}
+function _sinvUpdateSelCount() {
+  var cbs = document.querySelectorAll('.sinv-cb');
+  var sel = Array.from(cbs).filter(function(c){ return c.checked; }).length;
+  var el = document.getElementById('sinv-sel-count');
+  if (el) el.textContent = sel ? sel + ' row' + (sel===1?'':'s') + ' selected' : '';
+  var all = document.getElementById('sinv-chk-all');
+  if (all) all.indeterminate = sel > 0 && sel < cbs.length;
+  if (all) all.checked = sel > 0 && sel === cbs.length;
+}
+
+function _sinvGetRows() {
+  // Returns array of data-* from checked rows, or ALL rows if none checked
+  var rows = Array.from(document.querySelectorAll('[data-sinv-row="1"]'));
+  var checked = rows.filter(function(r){ var cb=r.querySelector('.sinv-cb'); return cb&&cb.checked; });
+  var target = checked.length ? checked : rows;
+  return target.map(function(r){ return r.dataset; });
+}
+
+function _sinvExportExcel() {
+  var isSummary = (_invTab === 'summary');
+  var rows = _sinvGetRows();
+  if (!rows.length) { alert('No data to export.'); return; }
+
+  var now = new Date();
+  var dateStr = now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0')+'-'+String(now.getDate()).padStart(2,'0');
+  var label = isSummary ? 'Summary' : 'Detailed';
+
+  var headers, rowFn;
+  if (isSummary) {
+    headers = ['Part Name','Total Qty On Hand','Min Level','Status'];
+    rowFn = function(d){ return [d.pname, d.qty, d.min, d.status]; };
+  } else {
+    headers = ['Req No','Date Received','Part Name','Qty Received','Unit Price','Supplier','LPO No','Qty On Hand','Min Level','Status'];
+    rowFn = function(d){ return [d.reqno, d.date, d.pname, d.qtyrcv, d.price, d.supplier, d.lpo, d.qty, d.min, d.status]; };
+  }
+
+  // Build TSV for Excel-friendly clipboard, and also offer a downloadable .csv
+  var csvLines = [headers.join(',')];
+  rows.forEach(function(d){
+    var vals = rowFn(d).map(function(v){
+      var s = String(v||'').replace(/"/g,'""');
+      return (s.indexOf(',')>=0||s.indexOf('"')>=0||s.indexOf('\n')>=0) ? '"'+s+'"' : s;
+    });
+    csvLines.push(vals.join(','));
+  });
+  var csv = csvLines.join('\r\n');
+  var blob = new Blob(['﻿'+csv], {type:'text/csv;charset=utf-8;'});
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement('a');
+  a.href = url;
+  a.download = 'Store_Inventory_'+label+'_'+dateStr+'.csv';
+  document.body.appendChild(a);
+  a.click();
+  setTimeout(function(){ document.body.removeChild(a); URL.revokeObjectURL(url); }, 1000);
+}
+
+function _sinvExportPDF() {
+  var isSummary = (_invTab === 'summary');
+  var rows = _sinvGetRows();
+  if (!rows.length) { alert('No data to export.'); return; }
+
+  var now = new Date();
+  var genDate = now.toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'});
+  var label = isSummary ? 'Summary' : 'Detailed';
+
+  var headers, rowFn, colWidths;
+  if (isSummary) {
+    headers = ['Part Name','Total Qty On Hand','Min Level','Status'];
+    colWidths = ['55%','15%','15%','15%'];
+    rowFn = function(d){
+      var stCol = d.status==='OK'?'#065f46':d.status==='LOW STOCK'?'#92400e':'#7f1d1d';
+      var stBg  = d.status==='OK'?'#d1fae5':d.status==='LOW STOCK'?'#fef3c7':'#fee2e2';
+      return '<td>'+_esc(d.pname)+'</td>'
+        + '<td style="text-align:center;font-weight:700">'+_esc(d.qty)+'</td>'
+        + '<td style="text-align:center">'+_esc(d.min)+'</td>'
+        + '<td style="text-align:center"><span style="font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px;background:'+stBg+';color:'+stCol+'">'+_esc(d.status)+'</span></td>';
+    };
+  } else {
+    headers = ['Req No','Date','Part Name','Qty Rcv','Unit Price','Supplier','LPO No','Qty On Hand','Min','Status'];
+    colWidths = ['8%','8%','16%','6%','9%','14%','9%','8%','5%','9%'];
+    rowFn = function(d){
+      var stCol = d.status==='OK'?'#065f46':d.status==='LOW STOCK'?'#92400e':'#7f1d1d';
+      var stBg  = d.status==='OK'?'#d1fae5':d.status==='LOW STOCK'?'#fef3c7':'#fee2e2';
+      return '<td style="font-family:monospace;font-weight:600;color:#0a2d6e">'+_esc(d.reqno)+'</td>'
+        + '<td>'+_esc(d.date)+'</td>'
+        + '<td style="font-weight:600">'+_esc(d.pname)+'</td>'
+        + '<td style="text-align:center">'+_esc(d.qtyrcv)+'</td>'
+        + '<td style="text-align:right;font-family:monospace">'+_esc(d.price)+'</td>'
+        + '<td>'+_esc(d.supplier)+'</td>'
+        + '<td style="font-family:monospace">'+_esc(d.lpo)+'</td>'
+        + '<td style="text-align:center;font-weight:700">'+_esc(d.qty)+'</td>'
+        + '<td style="text-align:center">'+_esc(d.min)+'</td>'
+        + '<td style="text-align:center"><span style="font-size:9px;font-weight:700;padding:1px 6px;border-radius:8px;background:'+stBg+';color:'+stCol+'">'+_esc(d.status)+'</span></td>';
+    };
+  }
+
+  function _esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+  var colgroup = '<colgroup>'+colWidths.map(function(w){ return '<col style="width:'+w+'">'; }).join('')+'</colgroup>';
+  var thead = '<thead><tr style="background:#0a2d6e;color:#fff">'
+    + headers.map(function(h){ return '<th style="padding:7px 8px;font-size:11px;font-weight:700;text-align:left">'+h+'</th>'; }).join('')
+    + '</tr></thead>';
+  var tbody = '<tbody>'
+    + rows.map(function(d,i){
+        var bg = i%2===0?'#f9f9fc':'#fff';
+        return '<tr style="background:'+bg+';font-size:11px">'+rowFn(d)+'</tr>';
+      }).join('')
+    + '</tbody>';
+
+  var html = '<!DOCTYPE html><html><head><meta charset="utf-8">'
+    + '<title>Store Inventory '+label+'</title>'
+    + '<style>*{box-sizing:border-box;margin:0;padding:0;}body{font-family:Inter,Arial,sans-serif;padding:20px;color:#1a1a2e;font-size:11px;}'
+    + 'h2{font-size:16px;font-weight:700;color:#0a2d6e;margin-bottom:4px}'
+    + 'table{width:100%;border-collapse:collapse;margin-top:12px}'
+    + 'th,td{padding:6px 8px;border-bottom:1px solid #e2e2e7;vertical-align:middle}'
+    + 'thead th{background:#0a2d6e;color:#fff;font-size:11px;font-weight:700;padding:7px 8px}'
+    + 'tr:hover{background:#f0f4ff}'
+    + '.footer{margin-top:16px;font-size:9px;color:#999;display:flex;justify-content:space-between;border-top:1px solid #e2e2e7;padding-top:8px}'
+    + '@media print{body{padding:12px}.footer{position:fixed;bottom:0;left:12px;right:12px}}'
+    + '</style></head><body>'
+    + '<div style="display:flex;justify-content:space-between;align-items:flex-start">'
+    + '<div><h2>🏪 Store Inventory — '+label+'</h2><div style="font-size:11px;color:#666">Generated: '+genDate+' · '+rows.length+' record'+(rows.length===1?'':'s')+'</div></div>'
+    + '<div style="font-size:11px;color:#0a2d6e;font-weight:600;text-align:right">AK Transport<br>Workshop Management</div>'
+    + '</div>'
+    + '<table>'+colgroup+thead+tbody+'</table>'
+    + '<div class="footer"><span>AK Transport — Workshop Management System — Confidential</span><span>Store Inventory '+label+' · '+genDate+'</span></div>'
+    + '<scr'+'ipt>window.onload=function(){window.print();window.onafterprint=function(){window.close();};};</'+'script>'
+    + '</body></html>';
+
+  var win = window.open('','_blank','width=1000,height=720');
+  if (win) { win.document.write(html); win.document.close(); }
+  else alert('Pop-up blocked — please allow pop-ups for this page.');
+}
+</script>
 </body>
 </html>
