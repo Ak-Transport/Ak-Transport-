@@ -16200,8 +16200,26 @@ function buildJobCardHTML(j, defects, parts, mechAssigns) {
     body{font-family:Arial,Helvetica,sans-serif;font-size:7px;color:#000;background:#fff;padding:14px}
     @media print{@page{margin:8mm;size:A4}body{padding:0}}
     table{border-collapse:collapse;width:100%}
-    .sh{background:#e8e8e8;font-size:8px;font-weight:700;color:#000;text-transform:uppercase;letter-spacing:.08em;padding:4px 8px;border:1px solid #999;margin-top:8px;display:block}
+    .sh{background:#e8e8e8;font-size:8px;font-weight:700;color:#000;text-transform:uppercase;letter-spacing:.08em;padding:4px 8px;border:1px solid #999;margin-top:8px;display:block;page-break-after:avoid;break-after:avoid}
+    .sig-wrap{page-break-inside:avoid;break-inside:avoid}
+    .sig-row{page-break-inside:avoid;break-inside:avoid}
+    .sig-cell{vertical-align:top}
+    .sig-inner{display:flex;flex-direction:column;min-height:120px;height:100%}
+    /* Make td pass height to child so flex works in preview */
+    table.sig-table{border-collapse:collapse;width:100%;height:1px}
+    table.sig-table td.sig-cell{height:inherit}
   </style></head><body>
+  <!-- Inline styles for preview modal (head styles not applied when injected into div) -->
+  <style>
+    .sh{background:#e8e8e8;font-size:8px;font-weight:700;color:#000;text-transform:uppercase;letter-spacing:.08em;padding:4px 8px;border:1px solid #999;margin-top:8px;display:block;page-break-after:avoid;break-after:avoid}
+    .sig-wrap{page-break-inside:avoid;break-inside:avoid}
+    .sig-row{page-break-inside:avoid;break-inside:avoid}
+    .sig-cell{vertical-align:top}
+    .sig-inner{display:flex;flex-direction:column;min-height:120px;height:100%}
+    table.sig-table{border-collapse:collapse;width:100%;height:1px}
+    table.sig-table td.sig-cell{height:inherit}
+    table{border-collapse:collapse;width:100%}
+  </style>
 
   <!-- HEADER -->
   <table style="margin-bottom:8px;border:2px solid #000;padding:8px 10px">
@@ -16285,20 +16303,33 @@ function buildJobCardHTML(j, defects, parts, mechAssigns) {
         lines.forEach(function(l){ mechGroups[key].tasks.push(l); });
       });
       var sigCount = mechOrder.length;
-      mechOrder.forEach(function(key, idx) {
-        var g = mechGroups[key];
-        var taskList = g.tasks.map(function(t, ti){
-          return '<div style="font-size:7px;color:#333;margin-bottom:1px">'+(ti+1)+'. '+t+'</div>';
-        }).join('');
-        sigBlocks += '<td style="padding:10px 12px;border-right:1px solid #999;vertical-align:top;width:'+(100/sigCount)+'%">'
-          + '<div style="font-size:7px;font-weight:700;color:#000;text-transform:uppercase;letter-spacing:.08em;margin-bottom:3px">Mechanic '+(idx+1)+'</div>'
-          + '<div style="font-size:8px;font-weight:900;color:#000;margin-bottom:6px">'+g.name+'</div>'
-          + '<div style="font-size:7px;font-weight:700;color:#555;margin-bottom:3px;text-transform:uppercase;letter-spacing:.04em">Tasks Performed:</div>'
-          + taskList
-          + '<div style="border-bottom:1.5px solid #000;height:28px;margin-top:10px;margin-bottom:4px"></div>'
-          + '<div style="font-size:7px;color:#666">Signature &amp; Date</div>'
-          + '</td>';
-      });
+      // Build rows of 2 mechanics each; lone mechanic spans full width
+      var sigRows = '';
+      for (var ri = 0; ri < mechOrder.length; ri += 2) {
+        var pair = mechOrder.slice(ri, ri + 2);
+        var tdWidth = pair.length === 1 ? '100%' : '50%';
+        var rowTds = '';
+        pair.forEach(function(key, pi) {
+          var g = mechGroups[key];
+          var globalIdx = ri + pi;
+          var taskList = g.tasks.map(function(t, ti){
+            return '<div style="font-size:7px;color:#333;margin-bottom:2px;word-wrap:break-word;white-space:normal">'+(ti+1)+'. '+t+'</div>';
+          }).join('');
+          var borderRight = (pi === 0 && pair.length === 2) ? 'border-right:1px solid #999;' : '';
+          rowTds += '<td class="sig-cell" style="padding:10px 12px;'+borderRight+'vertical-align:top;width:'+tdWidth+'">'
+            + '<div class="sig-inner">'
+            + '<div style="font-size:7px;font-weight:700;color:#000;text-transform:uppercase;letter-spacing:.08em;margin-bottom:3px">Mechanic '+(globalIdx+1)+'</div>'
+            + '<div style="font-size:8px;font-weight:900;color:#000;margin-bottom:6px;word-wrap:break-word;white-space:normal">'+g.name+'</div>'
+            + '<div style="font-size:7px;font-weight:700;color:#555;margin-bottom:3px;text-transform:uppercase;letter-spacing:.04em">Tasks Performed:</div>'
+            + taskList
+            + '<div style="flex:1"></div>'
+            + '<div style="border-bottom:1.5px solid #000;margin-top:10px;margin-bottom:4px"></div>'
+            + '<div style="font-size:7px;color:#666">Signature &amp; Date</div>'
+            + '</div>'
+            + '</td>';
+        });
+        sigRows += '<tr class="sig-row" style="border-bottom:1px solid #999;page-break-inside:avoid;break-inside:avoid">'+rowTds+'</tr>';
+      }
     } else {
       // No mechanics — show 2 blank rows
       mechRows = '<tr><td style="padding:3px 4px;border:1px solid #999;text-align:center;font-size:7px;color:#555;width:16px">1</td><td colspan="5" style="padding:4px 7px;border:1px solid #999;font-size:7px">&nbsp;</td></tr>'
@@ -16313,7 +16344,7 @@ function buildJobCardHTML(j, defects, parts, mechAssigns) {
       + '<th style="padding:4px 7px;border:1px solid #999;background:#e8e8e8;font-size:8px;color:#000;text-align:center;white-space:nowrap;width:60px">Date Completed</th>'
       + '<th style="padding:4px 7px;border:1px solid #999;background:#e8e8e8;font-size:8px;color:#000;text-align:center;width:55px">Status</th>'
       + '</tr></thead><tbody>'+mechRows+'</tbody></table>'
-      + (sigBlocks ? '<div class="sh">Mechanic Signatures</div><table style="border:1.5px solid #000"><tr>'+sigBlocks+'</tr></table>' : '');
+      + (sigRows ? '<div class="sh sig-hdr" style="page-break-after:avoid;break-after:avoid">Mechanic Signatures</div><div class="sig-wrap" style="page-break-inside:avoid;break-inside:avoid"><table class="sig-table" style="border:1.5px solid #000;width:100%;table-layout:fixed"><tbody>'+sigRows+'</tbody></table></div>' : '');
   })()}
 
   <!-- SIGN-OFF -->
