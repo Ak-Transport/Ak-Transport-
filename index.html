@@ -20504,12 +20504,8 @@ function _toDateInput(d) {
   var s = String(d);
   // Already YYYY-MM-DD
   if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
-  // Contains YYYY-MM-DD (e.g. ISO string with time)
-  var m = s.match(/(\d{4}-\d{2}-\d{2})/);
-  if (m) return m[1];
-  // Locale string — strip parenthetical timezone name and parse
-  var cleaned = s.replace(/\s*\([^)]*\)\s*$/, '');
-  var dt = new Date(cleaned);
+  // Use the shared local parser to avoid UTC midnight off-by-one bug
+  var dt = _parseDateLocal(s);
   if (isNaN(dt.getTime())) return '';
   return dt.getFullYear() + '-'
     + String(dt.getMonth()+1).padStart(2,'0') + '-'
