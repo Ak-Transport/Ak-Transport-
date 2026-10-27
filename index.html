@@ -6839,7 +6839,7 @@ function _doOpenBpoBulkEdit(rows) {
       + '<div style="font-size:11px;font-weight:700;color:#1e3a5f;text-transform:uppercase;margin-bottom:10px">\uD83D\uDD0B '+(r.poNo||r.reqNo||'')+(r.brand?' \u2014 '+r.brand:'')+badge+'</div>'
       + '<div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:10px">'
       + '<div><label style="font-size:11px;font-weight:600;color:#555;display:block;margin-bottom:4px">Brand <span id="bpobe_req_brand_'+r.id+'" style="color:#dc2626;display:'+(isPNR?'inline':'none')+'">*</span></label>'
-      + _mkSelect('bpobe_brand_'+r.id,['AOKLY','DISCOVERY','ELEPHANT','APEX DRIVE','WENON','BOSCH','AMARON','VATRA','CHLORIDE EXIDE','INDEX','RHINO','BUFFALO','EVERSTART','KOJEAN'],(r.brand||''),locked,(locked?fsL:fs))+'</div>'
+      + _mkSelect('bpobe_brand_'+r.id,['AOKLY','DISCOVERY','ELEPHANT','APEX DRIVE','WENON','BOSCH','AMARON','VATRA','CHLORIDE EXIDE','INDEX','RHINO','BUFFALO','EVERSTART','KOJEAN','S.T POWER'],(r.brand||''),locked,(locked?fsL:fs))+'</div>'
       + '<div><label style="font-size:11px;font-weight:600;color:#555;display:block;margin-bottom:4px">Size <span id="bpobe_req_size_'+r.id+'" style="color:#dc2626;display:'+(isPNR?'inline':'none')+'">*</span></label>'
       + _mkSelect('bpobe_size_'+r.id,['N150','N180','N200','N225','N165'],((r.capacity||r.size)||''),locked,(locked?fsL:fs))+'</div>'
       + '<div><label style="font-size:11px;font-weight:600;color:#555;display:block;margin-bottom:4px">Qty <span id="bpobe_req_qty_'+r.id+'" style="color:#dc2626;display:'+(isPNR?'inline':'none')+'">*</span></label>'
@@ -8933,7 +8933,7 @@ function addBatPOLine() {
   div.id = 'bpo_line_'+n;
   div.style.cssText = 'display:grid;grid-template-columns:2fr 1fr 90px 80px 120px 110px 100px 1fr;gap:8px;align-items:center;padding:8px;background:#fff;border:1.5px solid #e2e2e7;border-radius:9px';
   div.innerHTML = '<select id="bpo_sup_'+n+'" style="'+fs+'">'+suppOpts+'</select>'
-    + '<select id="bpo_brand_'+n+'" style="'+fs+'"><option value="">Select brand...</option><option value="AOKLY">AOKLY</option><option value="DISCOVERY">DISCOVERY</option><option value="ELEPHANT">ELEPHANT</option><option value="APEX DRIVE">APEX DRIVE</option><option value="WENON">WENON</option><option value="BOSCH">BOSCH</option><option value="AMARON">AMARON</option><option value="VATRA">VATRA</option><option value="CHLORIDE EXIDE">CHLORIDE EXIDE</option><option value="INDEX">INDEX</option><option value="RHINO">RHINO</option><option value="BUFFALO">BUFFALO</option><option value="EVERSTART">EVERSTART</option><option value="KOJEAN">KOJEAN</option><option value="GALAXY">GALAXY</option></select>'
+    + '<select id="bpo_brand_'+n+'" style="'+fs+'"><option value="">Select brand...</option><option value="AOKLY">AOKLY</option><option value="DISCOVERY">DISCOVERY</option><option value="ELEPHANT">ELEPHANT</option><option value="APEX DRIVE">APEX DRIVE</option><option value="WENON">WENON</option><option value="BOSCH">BOSCH</option><option value="AMARON">AMARON</option><option value="VATRA">VATRA</option><option value="CHLORIDE EXIDE">CHLORIDE EXIDE</option><option value="INDEX">INDEX</option><option value="RHINO">RHINO</option><option value="BUFFALO">BUFFALO</option><option value="EVERSTART">EVERSTART</option><option value="KOJEAN">KOJEAN</option><option value="GALAXY">GALAXY</option><option value="S.T POWER">S.T POWER</option></select>'
     + '<select id="bpo_size_'+n+'" style="'+fs+'"><option value="">Select size...</option><option value="N150">N150</option><option value="N180">N180</option><option value="N200">N200</option><option value="N225">N225</option><option value="N165">N165</option></select>'
     + '<input type="number" id="bpo_qty_'+n+'" placeholder="Qty" min="1" style="'+fs+'" oninput="calcBatPOTotal('+n+')">'
     + '<input type="number" id="bpo_price_'+n+'" placeholder="e.g. 150000" min="0" style="'+fs+'" oninput="calcBatPOTotal('+n+')">'
@@ -9094,7 +9094,7 @@ function addBatGRNLine() {
   var n = ++_batGRNLineCount;
   var wrap = document.getElementById('bat_grn_lines_wrap');
   var fs = 'background:#fff;border:1.5px solid #e2e2e7;border-radius:8px;padding:9px 10px;font-size:13px;width:100%;box-sizing:border-box;outline:none;color:var(--tx)';
-  var brands=['AOKLY','DISCOVERY','ELEPHANT','APEX DRIVE','WENON','BOSCH','AMARON','VATRA','CHLORIDE EXIDE','INDEX','RHINO','BUFFALO','EVERSTART','KOJEAN'];
+  var brands=['AOKLY','DISCOVERY','ELEPHANT','APEX DRIVE','WENON','BOSCH','AMARON','VATRA','CHLORIDE EXIDE','INDEX','RHINO','BUFFALO','EVERSTART','KOJEAN','S.T POWER'];
   _batGRNActivePOs.forEach(function(p){ if(p.brand && brands.indexOf(p.brand)<0) brands.push(p.brand); });
   var sizes2=['N150','N180','N200','N225','N165'];
   _batGRNActivePOs.forEach(function(p){ var s=p.capacity||p.size||''; if(s && sizes2.indexOf(s)<0) sizes2.push(s); });
@@ -16149,6 +16149,14 @@ function previewJobCard(id) {
     if((f.jobCardNo||'').toUpperCase() !== jcCode) return false;
     var s=(f.status||'').toUpperCase();
     if(s!=='ACTIVE'&&s!=='CLOSED'&&s!=='PENDING REMOVAL') return false;
+    // Exclude tyres that have been sold/scrapped
+    var tyre=(TYRES||[]).find(function(t){return t.serialNo===f.tyreSerial;});
+    if(tyre&&(tyre.status||'').toUpperCase()==='SOLD') return false;
+    // Also exclude if there is an approved scrap sale for this tyre
+    var hasScrapped=(TYRE_SCRAPS||[]).some(function(sc){
+      return sc.tyreSerial===f.tyreSerial&&(sc.status||'').toUpperCase()==='APPROVED';
+    });
+    if(hasScrapped) return false;
     var priorFits=(TYRE_FITS||[]).filter(function(x){
       return String(x.tyreSerial||'').trim()===String(f.tyreSerial||'').trim()
         &&(x.status||'').toUpperCase()==='CLOSED'&&x.id!==f.id
@@ -16166,6 +16174,14 @@ function previewJobCard(id) {
     if((f.jobCardNo||'').toUpperCase() !== jcCode) return false;
     var s=(f.status||'').toUpperCase();
     if(s!=='ACTIVE'&&s!=='CLOSED'&&s!=='PENDING REMOVAL') return false;
+    // Exclude batteries that have been sold
+    var bat=(BATTERIES||[]).find(function(b){return b.batteryRef===f.batteryRef;});
+    if(bat&&(bat.status||'').toUpperCase()==='SOLD') return false;
+    // Also exclude if there is an approved sale for this battery
+    var hasSale=(BAT_SALES||[]).some(function(sale){
+      return sale.batteryRef===f.batteryRef&&(sale.status||'').toUpperCase()==='APPROVED';
+    });
+    if(hasSale) return false;
     var priorFits=(BAT_FITS||[]).filter(function(x){
       return String(x.batteryRef||'').trim()===String(f.batteryRef||'').trim()
         &&(x.status||'').toUpperCase()==='CLOSED'&&x.id!==f.id
@@ -16769,6 +16785,13 @@ function downloadJCPDFById(id) {
     if((f.jobCardNo||'').toUpperCase() !== jcCode2) return false;
     var s=(f.status||'').toUpperCase();
     if(s!=='ACTIVE'&&s!=='CLOSED'&&s!=='PENDING REMOVAL') return false;
+    // Exclude tyres that have been sold/scrapped
+    var tyre2=(TYRES||[]).find(function(t){return t.serialNo===f.tyreSerial;});
+    if(tyre2&&(tyre2.status||'').toUpperCase()==='SOLD') return false;
+    var hasScrapped2=(TYRE_SCRAPS||[]).some(function(sc){
+      return sc.tyreSerial===f.tyreSerial&&(sc.status||'').toUpperCase()==='APPROVED';
+    });
+    if(hasScrapped2) return false;
     var serial=String(f.tyreSerial||'').trim();
     var priorFits=(TYRE_FITS||[]).filter(function(x){
       return String(x.tyreSerial||'').trim()===serial
@@ -16787,6 +16810,13 @@ function downloadJCPDFById(id) {
     if((f.jobCardNo||'').toUpperCase() !== jcCode2) return false;
     var s=(f.status||'').toUpperCase();
     if(s!=='ACTIVE'&&s!=='CLOSED'&&s!=='PENDING REMOVAL') return false;
+    // Exclude batteries that have been sold
+    var bat2=(BATTERIES||[]).find(function(b){return b.batteryRef===f.batteryRef;});
+    if(bat2&&(bat2.status||'').toUpperCase()==='SOLD') return false;
+    var hasSale2=(BAT_SALES||[]).some(function(sale){
+      return sale.batteryRef===f.batteryRef&&(sale.status||'').toUpperCase()==='APPROVED';
+    });
+    if(hasSale2) return false;
     var ref=String(f.batteryRef||'').trim();
     var priorFits=(BAT_FITS||[]).filter(function(x){
       return String(x.batteryRef||'').trim()===ref
