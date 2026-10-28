@@ -5195,10 +5195,11 @@ function renderTyreInventory() {
   html += '<div class="tyre-scroll-wrap"><table id="tyreInventoryTable"><thead><tr>'
     + '<th style="width:36px;text-align:center"><input type="checkbox" id="tinv_chk_all" onclick="toggleAllTyreInv(this)" style="cursor:pointer;width:14px;height:14px;accent-color:var(--ac)"></th>'
     + '<th>Serial No</th><th>Brand</th><th>Size</th><th>Type</th><th>Supplier</th><th>Req No</th><th>LPO No</th>'
-    + '<th>Date Received</th><th>Purchase Price</th><th>Total KM</th><th>Retreads</th><th>Status</th><th>Vehicle</th><th>Position</th>'
+    + '<th>Date Received</th><th>Purchase Price</th><th>Months on Truck</th><th>Total Months in Service</th><th>Total KM</th><th>Retreads</th><th>Status</th><th>Vehicle</th><th>Position</th>'
     + '</tr></thead><tbody>';
+  var _tyreInvToday=new Date();
   if (!(TYRES||[]).length) {
-    html += '<tr><td colspan="15" style="text-align:center;color:var(--t3);padding:32px">No tyres in inventory. Complete a Tyre Inward first.</td></tr>';
+    html += '<tr><td colspan="17" style="text-align:center;color:var(--t3);padding:32px">No tyres in inventory. Complete a Tyre Inward first.</td></tr>';
   } else {
     _applyTyreFilter((TYRES||[]).slice(),'TIF',function(t){return{serialNo:t.serialNo||'',brand:t.brand||'',size:t.size||t.capacity||t.voltage||'',tyreType:t.tyreType||'',supplier:t.supplier||'',poNo:t.poNo||'',lpoNo:t.lpoNo||'',currentVehicle:t.currentVehicle||'',currentPosition:t.currentPosition||'',status:t.status||''};}).sort(function(a,b){ return (a.status||'').localeCompare(b.status||''); }).forEach(function(t){
       var sc = statusColors[t.status] || 'sNR';
@@ -5208,6 +5209,18 @@ function renderTyreInventory() {
       var lpoNo = t.lpoNo || po.lpoNo || (grn&&grn.lpoNo) || '\u2014';
       var tyreType = t.tyreType || po.tyreType || '\u2014';
       var isChk = _tyreInvSelected.has(t.id);
+      // Months on current truck \u2014 from active fitment's dateFitted
+      var _tSerial=String(t.serialNo||'').trim();
+      var _activeTyreFit=(TYRE_FITS||[]).find(function(f){return String(f.tyreSerial||'').trim()===_tSerial&&(f.status||'').toUpperCase()==='ACTIVE';});
+      var _tActiveDf=_activeTyreFit&&_activeTyreFit.dateFitted?_parseDateLocal(String(_activeTyreFit.dateFitted)):null;
+      var tMonthsOnTruck=(_tActiveDf&&!isNaN(_tActiveDf.getTime()))?Math.floor((_tyreInvToday-_tActiveDf)/(1000*60*60*24*30.44)):0;
+      // Total months in service \u2014 earliest dateFitted across all fitments
+      var _allTFits=(TYRE_FITS||[]).filter(function(f){return String(f.tyreSerial||'').trim()===_tSerial&&(f.dateFitted||'');});
+      var _earliestTD=null;
+      _allTFits.forEach(function(f){var d=_parseDateLocal(String(f.dateFitted));if(d&&!isNaN(d.getTime())&&(!_earliestTD||d<_earliestTD))_earliestTD=d;});
+      var tMonthsTotal=_earliestTD?Math.floor((_tyreInvToday-_earliestTD)/(1000*60*60*24*30.44)):tMonthsOnTruck;
+      var tTruckColor=tMonthsOnTruck>=24?'#dc2626':tMonthsOnTruck>=12?'#d97706':'#059669';
+      var tTotalColor=tMonthsTotal>=24?'#dc2626':tMonthsTotal>=12?'#d97706':'#059669';
       html += '<tr>'
         + '<td style="text-align:center"><input type="checkbox" class="tinv-chk" data-id="'+t.id+'" data-serial="'+t.serialNo+'" onchange="onTyreInvCheck(this)" '+(isChk?'checked':'')+' style="cursor:pointer;width:14px;height:14px;accent-color:var(--ac)"></td>'
         + '<td><span class="reqbadge" style="cursor:pointer;text-decoration:underline" data-tyre-serial="'+encodeURIComponent(t.serialNo||'')+'" onclick="openTyreProfile(decodeURIComponent(this.dataset.tyreSerial))" title="View Tyre Profile">'+t.serialNo+'</span></td>'
@@ -5219,6 +5232,8 @@ function renderTyreInventory() {
         + '<td style="font-family:monospace">'+lpoNo+'</td>'
         + '<td>'+fmtDate(t.dateReceived||t.purchaseDate||'')+'</td>'
         + '<td style="text-align:right;font-family:monospace">'+fmtMoney(t.purchasePrice)+'/=</td>'
+        + '<td style="text-align:center"><span style="background:'+tTruckColor+';color:#fff;padding:2px 8px;border-radius:12px;font-size:11px;font-weight:700">'+tMonthsOnTruck+' mo</span></td>'
+        + '<td style="text-align:center"><span style="background:'+tTotalColor+';color:#fff;padding:2px 8px;border-radius:12px;font-size:11px;font-weight:700">'+tMonthsTotal+' mo</span></td>'
         + '<td style="text-align:center">'+fmtMoney(t.totalKMRun)+' KM</td>'
         + '<td style="text-align:center">'+(t.retreadCount||0)+'</td>'
         + '<td><span class="sb '+sc+'">'+t.status+'</span></td>'
@@ -6375,13 +6390,14 @@ function renderTyreFitted() {
     + '<div class="statcard statcard-sm" style="background:#2563eb;color:#fff"><div class="scl">Currently Fitted</div><div class="scv">'+active.length+'</div></div>'
     + '<div class="statcard statcard-sm" style="background:#0a2d6e;color:#fff"><div class="scl">All Fitments</div><div class="scv">'+allFits.length+'</div></div>'
     + '</div>';
+  var _tyreToday=new Date();
   html += '<div class="tyre-scroll-wrap"><table id="tyreFittedTable"><thead><tr>'
     + '<th>Tyre Serial</th><th>Brand</th><th>Size</th><th>Type</th><th>Supplier</th><th>LPO No</th>'
-    + '<th>Vehicle</th><th>Position</th><th>Date Fitted</th><th>KM at Fitting</th><th>Driver</th>'
+    + '<th>Vehicle</th><th>Position</th><th>Date Fitted</th><th>Months on Truck</th><th>Total Months in Service</th><th>KM at Fitting</th><th>Driver</th>'
     + '<th>Date Removed</th><th>KM at Removal</th><th>KM Run</th><th>Reason Removed</th><th>Job Card</th><th>Status</th>'
     + '</tr></thead><tbody id="fit_tbody">';
   if (!allFits.length) {
-    html += '<tr><td colspan="18" style="text-align:center;color:var(--t3);padding:32px">No fitment records yet</td></tr>';
+    html += '<tr><td colspan="20" style="text-align:center;color:var(--t3);padding:32px">No fitment records yet</td></tr>';
   } else {
     allFits.slice().sort(function(a,b){ return (b.dateFitted||'').localeCompare(a.dateFitted||''); }).forEach(function(f){
       var isActive = f.status==='ACTIVE'||f.status==='PENDING REMOVAL';
@@ -6390,6 +6406,16 @@ function renderTyreFitted() {
       var size     = tyre.size     || f.size     || '\u2014';
       var tyreType = tyre.tyreType || f.tyreType || '\u2014';
       var supplier = tyre.supplier || f.supplier || '\u2014';
+      // Months on current truck
+      var tyreMonthsOnTruck=isActive&&f.dateFitted?Math.floor((_tyreToday-_parseDateLocal(String(f.dateFitted)))/(1000*60*60*24*30.44)):0;
+      // Total months in service \u2014 earliest dateFitted across all fitments for this tyre serial
+      var tyreSerial=String(f.tyreSerial||'').trim();
+      var allTyreFits=(TYRE_FITS||[]).filter(function(x){return String(x.tyreSerial||'').trim()===tyreSerial&&(x.dateFitted||'');});
+      var earliestTyreFitDate=null;
+      allTyreFits.forEach(function(x){var d=_parseDateLocal(String(x.dateFitted));if(d&&!isNaN(d.getTime())&&(!earliestTyreFitDate||d<earliestTyreFitDate))earliestTyreFitDate=d;});
+      var tyreMonthsTotal=earliestTyreFitDate?Math.floor((_tyreToday-earliestTyreFitDate)/(1000*60*60*24*30.44)):tyreMonthsOnTruck;
+      var tyreTruckColor=tyreMonthsOnTruck>=24?'#dc2626':tyreMonthsOnTruck>=12?'#d97706':'#059669';
+      var tyreTotalColor=tyreMonthsTotal>=24?'#dc2626':tyreMonthsTotal>=12?'#d97706':'#059669';
       var lpoNo = (function(){
         if(tyre.lpoNo) return tyre.lpoNo;
         if(tyre.poNo){
@@ -6413,6 +6439,8 @@ function renderTyreFitted() {
         + '<td><b style="color:var(--ac)">'+f.vehicle+'</b></td>'
         + '<td style="font-size:11px">'+f.position+'</td>'
         + '<td>'+fmtDate(f.dateFitted)+'</td>'
+        + '<td style="text-align:center"><span style="background:'+tyreTruckColor+';color:#fff;padding:2px 8px;border-radius:12px;font-size:11px;font-weight:700">'+tyreMonthsOnTruck+' mo</span></td>'
+        + '<td style="text-align:center"><span style="background:'+tyreTotalColor+';color:#fff;padding:2px 8px;border-radius:12px;font-size:11px;font-weight:700">'+tyreMonthsTotal+' mo</span></td>'
         + '<td style="text-align:right;font-family:monospace">'+fmtMoney(f.kmAtFitting)+' KM</td>'
         + '<td style="font-size:12px">'+(f.driverName||'\u2014')+'</td>'
         + '<td>'+(f.dateRemoved?fmtDate(f.dateRemoved):'\u2014')+'</td>'
@@ -7042,13 +7070,13 @@ function renderBatInventory() {
     +'</div>';
   html+='<div style="overflow-x:auto"><table style="min-width:max-content"><thead><tr>'
     +'<th style="width:36px;text-align:center"><input type="checkbox" id="binv_chk_all" onclick="toggleAllBatInv(this)" style="cursor:pointer;width:14px;height:14px;accent-color:var(--ac)"></th>'
-    +'<th>Battery Ref</th><th>Brand</th><th>Size</th><th>Supplier</th><th>Req No</th><th>LPO No</th><th>Date Received</th><th>Purchase Price</th><th>Months in Service</th><th>Status</th><th>Vehicle</th><th>Position</th>'
+    +'<th>Battery Ref</th><th>Brand</th><th>Size</th><th>Supplier</th><th>Req No</th><th>LPO No</th><th>Date Received</th><th>Purchase Price</th><th>Months on Truck</th><th>Total Months in Service</th><th>Status</th><th>Vehicle</th><th>Position</th>'
     +'</tr></thead><tbody>';
   var today=new Date();
   var _bifIds=new Set(_applyBattFilter((BATTERIES||[]).slice(),'BIF',function(b){return{id:b.id||b.batteryRef||'',batteryRef:b.batteryRef||'',brand:b.brand||'',size:b.size||b.capacity||b.voltage||'',capacity:b.capacity||b.size||'',voltage:b.voltage||b.size||'',supplier:b.supplier||'',poNo:b.poNo||'',lpoNo:b.lpoNo||'',purchaseDate:toISODate(b.purchaseDate),currentVehicle:b.currentVehicle||'',currentPosition:b.currentPosition||'',status:b.status||''};}).map(function(r){return r.id;}));
   var list=(BATTERIES||[]).filter(function(b){return _bifIds.has(b.id||b.batteryRef||'');}).slice().sort(function(a,b){return (a.status||'').localeCompare(b.status||'');});
   if(!list.length){
-    html+='<tr><td colspan="14" style="text-align:center;color:var(--t3);padding:32px">No batteries in inventory. Complete a Battery Inward first.</td></tr>';
+    html+='<tr><td colspan="15" style="text-align:center;color:var(--t3);padding:32px">No batteries in inventory. Complete a Battery Inward first.</td></tr>';
   } else {
     list.forEach(function(b){
       // Check BAT_FITS for batteries where status doesn't match fitment record
@@ -7056,10 +7084,16 @@ function renderBatInventory() {
       var _activeFit=(BAT_FITS||[]).find(function(f){return String(f.batteryRef||'').trim()===_bref&&(f.status||'').toUpperCase()==='ACTIVE';});
       var _dispStatus=(_activeFit&&b.status==='IN STORE')?'FITTED':b.status;
       var sc=_dispStatus==='FITTED'?'sPNR':_dispStatus==='IN STORE'?'sR':'sNR';
-      var months=Number(b.monthsInService||0);
-      var _df2=b.dateFitted||(_activeFit&&_activeFit.dateFitted)||'';
-      if(_dispStatus==='FITTED'&&_df2){var df=new Date(_df2);months+=Math.floor((today-df)/(1000*60*60*24*30.44));}
-      var ageColor=months>=24?'#dc2626':months>=12?'#d97706':'#059669';
+      // Months on current truck — from active fitment's dateFitted
+      var _df2=(_activeFit&&_activeFit.dateFitted)||b.dateFitted||'';
+      var monthsOnTruck=(_dispStatus==='FITTED'&&_df2)?Math.floor((today-_parseDateLocal(String(_df2)))/(1000*60*60*24*30.44)):0;
+      // Total months in service — from earliest dateFitted across all fitments for this battery
+      var allBatFitsInv=(BAT_FITS||[]).filter(function(x){return String(x.batteryRef||'').trim()===_bref&&(x.dateFitted||'');});
+      var earliestBatFitDate=null;
+      allBatFitsInv.forEach(function(x){var d=_parseDateLocal(String(x.dateFitted));if(d&&!isNaN(d.getTime())&&(!earliestBatFitDate||d<earliestBatFitDate))earliestBatFitDate=d;});
+      var monthsTotal=earliestBatFitDate?Math.floor((today-earliestBatFitDate)/(1000*60*60*24*30.44)):monthsOnTruck;
+      var truckColor=monthsOnTruck>=24?'#dc2626':monthsOnTruck>=12?'#d97706':'#059669';
+      var totalColor=monthsTotal>=24?'#dc2626':monthsTotal>=12?'#d97706':'#059669';
       var isChk=_batInvSelected.has(b.id);
       html+='<tr>'
         +'<td style="text-align:center"><input type="checkbox" class="binv-chk" data-id="'+b.id+'" onchange="onBatInvCheck(this)" '+(isChk?'checked':'')+' style="cursor:pointer;width:14px;height:14px;accent-color:var(--ac)"></td>'
@@ -7087,7 +7121,8 @@ function renderBatInventory() {
         +'<td style="font-family:monospace;font-size:11px">'+((function(){var isLpo=/^(PO-|PY-)/.test(b.poNo||'');if(isLpo)return b.poNo;var po=(BAT_POS||[]).find(function(p){return p.poNo===b.poNo;});return b.lpoNo||(po&&po.lpoNo)||'\u2014';})())+'</td>'
         +'<td>'+fmtDate(b.purchaseDate||'')+'</td>'
         +'<td style="text-align:right;font-family:monospace">'+fmtMoney(b.purchasePrice)+'/=</td>'
-        +'<td style="text-align:center"><span style="background:'+ageColor+';color:#fff;padding:2px 8px;border-radius:12px;font-size:11px;font-weight:700">'+months+' mo</span></td>'
+        +'<td style="text-align:center"><span style="background:'+truckColor+';color:#fff;padding:2px 8px;border-radius:12px;font-size:11px;font-weight:700">'+monthsOnTruck+' mo</span></td>'
+        +'<td style="text-align:center"><span style="background:'+totalColor+';color:#fff;padding:2px 8px;border-radius:12px;font-size:11px;font-weight:700">'+monthsTotal+' mo</span></td>'
         +'<td><span class="sb '+sc+'">'+_dispStatus+'</span></td>'
         +(function(){
           var veh=b.currentVehicle||'';
@@ -7466,17 +7501,25 @@ function renderBatFitted() {
   var filtered=allFits.filter(function(r){return _bffIds.has(r.id||'');});
   var _vs=document.getElementById('viewsub');if(_vs)_vs.textContent=filtered.length+' record'+(filtered.length!==1?'s':'');
   var html='<div style="overflow-x:auto"><table style="min-width:max-content"><thead><tr>'
-    +'<th>Battery Ref</th><th>Brand</th><th>Size</th><th>Vehicle</th><th>Position</th><th>Date Fitted</th><th>Months Served</th><th>Date Removed</th><th>Condition</th><th>Reason Removed</th><th>Job Card</th><th>Driver</th><th>Status</th>'
+    +'<th>Battery Ref</th><th>Brand</th><th>Size</th><th>Vehicle</th><th>Position</th><th>Date Fitted</th><th>Months on Truck</th><th>Total Months in Service</th><th>Date Removed</th><th>Condition</th><th>Reason Removed</th><th>Job Card</th><th>Driver</th><th>Status</th>'
     +'</tr></thead><tbody>';
   if(!filtered.length){
-    html+='<tr><td colspan="13" style="text-align:center;color:var(--t3);padding:32px">No battery fitment records.</td></tr>';
+    html+='<tr><td colspan="14" style="text-align:center;color:var(--t3);padding:32px">No battery fitment records.</td></tr>';
   } else {
     var today=new Date();
     filtered.slice().sort(function(a,b){return(b.dateFitted||'').localeCompare(a.dateFitted||'');}).forEach(function(f){
       var bat=(BATTERIES||[]).find(function(b){return String(b.batteryRef||'').trim()===String(f.batteryRef||'').trim();})||(f.vehicle?(BATTERIES||[]).find(function(b){return b.status==='FITTED'&&(b.currentVehicle||'').toUpperCase()===(f.vehicle||'').toUpperCase()&&(b.currentPosition||'').toUpperCase()===(f.position||'').toUpperCase();}):null)||{};
       var isActive=f.status==='ACTIVE';
-      var months=isActive&&f.dateFitted?Math.floor((today-new Date(f.dateFitted))/(1000*60*60*24*30.44)):Number(f.monthsServed||0);
-      var ageColor=months>=24?'#dc2626':months>=12?'#d97706':'#059669';
+      // Months on current truck \u2014 from this fitment's dateFitted
+      var monthsOnTruck=isActive&&f.dateFitted?Math.floor((today-_parseDateLocal(String(f.dateFitted)))/(1000*60*60*24*30.44)):Number(f.monthsServed||0);
+      // Total months in service \u2014 from the earliest dateFitted across all fitments for this battery
+      var batRef=String(f.batteryRef||'').trim();
+      var allBatFits=(BAT_FITS||[]).filter(function(x){return String(x.batteryRef||'').trim()===batRef&&(x.dateFitted||'');});
+      var earliestFitDate=null;
+      allBatFits.forEach(function(x){var d=_parseDateLocal(String(x.dateFitted));if(d&&!isNaN(d.getTime())&&(!earliestFitDate||d<earliestFitDate))earliestFitDate=d;});
+      var monthsTotal=earliestFitDate?Math.floor((today-earliestFitDate)/(1000*60*60*24*30.44)):monthsOnTruck;
+      var truckColor=monthsOnTruck>=24?'#dc2626':monthsOnTruck>=12?'#d97706':'#059669';
+      var totalColor=monthsTotal>=24?'#dc2626':monthsTotal>=12?'#d97706':'#059669';
       html+='<tr style="'+(isActive?'background:#f0fdf4':'')+'">'
         +'<td><span class="reqbadge" style="cursor:pointer;text-decoration:underline" onclick="openBatProfile(&apos;'+(f.batteryRef||'')+'&apos;)" title="View Battery Profile">'+(f.batteryRef||'')+'</span></td>'
         +'<td><b>'+(bat.brand||f.brand||'')+'</b></td>'
@@ -7484,7 +7527,8 @@ function renderBatFitted() {
         +'<td><b style="color:var(--ac)">'+(f.vehicle||'')+'</b></td>'
         +'<td style="font-size:11px">'+(f.position||'')+'</td>'
         +'<td>'+fmtDate(f.dateFitted)+'</td>'
-        +'<td style="text-align:center"><span style="background:'+ageColor+';color:#fff;padding:2px 8px;border-radius:12px;font-size:11px;font-weight:700">'+months+' mo</span></td>'
+        +'<td style="text-align:center"><span style="background:'+truckColor+';color:#fff;padding:2px 8px;border-radius:12px;font-size:11px;font-weight:700">'+monthsOnTruck+' mo</span></td>'
+        +'<td style="text-align:center"><span style="background:'+totalColor+';color:#fff;padding:2px 8px;border-radius:12px;font-size:11px;font-weight:700">'+monthsTotal+' mo</span></td>'
         +'<td>'+(f.dateRemoved?fmtDate(f.dateRemoved):'\u2014')+'</td>'
         +'<td style="font-size:11px">'+(f.conditionAtRemoval||'\u2014')+'</td>'
         +'<td style="font-size:11px">'+(f.removedReason||'\u2014')+'</td>'
@@ -7697,7 +7741,21 @@ async function bulkRejectBatFitReq(){
       var res=await callAPI('rejectBattFitment',{fitmentId:f.id,rejectedBy:rejectedBy,comment:'Bulk rejected'});
       if(res&&res.success){
         var idx=BAT_FITS.findIndex(function(x){return x.id===f.id;});
-        if(idx>=0){BAT_FITS[idx].status='REJECTED';BAT_FITS[idx].rejectedBy=rejectedBy;}
+        if(idx>=0){
+          if(res.wasRemoval){
+            // Rejecting a removal → battery stays fitted (ACTIVE), clear removal fields
+            BAT_FITS[idx].status='ACTIVE';
+            BAT_FITS[idx].dateRemoved='';
+            BAT_FITS[idx].conditionAtRemoval='';
+            BAT_FITS[idx].removedReason='';
+            BAT_FITS[idx].rejectedBy=rejectedBy;
+            BAT_FITS[idx].rejectedAt=new Date().toISOString();
+          } else {
+            BAT_FITS[idx].status='REJECTED';
+            BAT_FITS[idx].rejectedBy=rejectedBy;
+            BAT_FITS[idx].rejectedAt=new Date().toISOString();
+          }
+        }
         done++;
       } else { failed++; }
     } catch(e){ failed++; }
@@ -7920,8 +7978,8 @@ function renderBatRemHold() {
   var pending=all.filter(function(f){var s=(f.status||'').toUpperCase();return s==='PENDING ISSUANCE'||s==='PENDING REMOVAL';});
   var pendIss=pending.filter(function(f){return(f.status||'').toUpperCase()==='PENDING ISSUANCE';});
   var pendRem=pending.filter(function(f){return(f.status||'').toUpperCase()==='PENDING REMOVAL';});
-  var approved=all.filter(function(f){var s=(f.status||'').toUpperCase();return s==='ACTIVE'||s==='CLOSED';}).length;
-  var rejected=all.filter(function(f){return(f.status||'').toUpperCase()==='REJECTED';}).length;
+  var approved=all.filter(function(f){var s=(f.status||'').toUpperCase();return (s==='ACTIVE'||s==='CLOSED')&&!(f.rejectedAt||'').trim();}).length;
+  var rejected=all.filter(function(f){var s=(f.status||'').toUpperCase();return s==='REJECTED'||(s==='ACTIVE'&&!!(f.rejectedAt||'').trim());}).length;
   var isAdmin=CURRENT_USER&&(CURRENT_USER.role==='admin'||can('battery_approve'));
   var html='<div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap">'
     +'<div class="statcard statcard-sm" style="background:#d97706;color:#fff"><div class="scl">Pending Issuance</div><div class="scv">'+pendIss.length+'</div></div>'
@@ -7943,12 +8001,15 @@ function renderBatRemHold() {
       var s=(f.status||'').toUpperCase();
       var isPendIss=s==='PENDING ISSUANCE';
       var isPendRem=s==='PENDING REMOVAL';
-      var isApproved=s==='ACTIVE'||s==='CLOSED';
-      var isRejected=s==='REJECTED';
+      // A record with status ACTIVE but rejectedAt set = rejected removal (battery stays fitted)
+      var isRejectedRemoval=s==='ACTIVE'&&!!(f.rejectedAt||'').trim();
+      var isApproved=(s==='ACTIVE'||s==='CLOSED')&&!isRejectedRemoval;
+      var isRejected=s==='REJECTED'||isRejectedRemoval;
       var isPend=isPendIss||isPendRem;
       // Type detection: status is the sole reliable signal
       var isIssBR;
-      if(s==='PENDING ISSUANCE'||s==='ACTIVE') isIssBR=true;
+      if(isRejectedRemoval) isIssBR=false; // rejected removal → REMOVAL type
+      else if(s==='PENDING ISSUANCE'||s==='ACTIVE') isIssBR=true;
       else if(s==='PENDING REMOVAL') isIssBR=false;
       else if(s==='CLOSED') isIssBR=!(f.removedReason||'').trim();
       else if(s==='REJECTED') isIssBR=!(f.dateRemoved||'').trim();
@@ -8038,12 +8099,20 @@ function confirmBatReject(fitId){
       toast('Rejected','ok');
       var idx=BAT_FITS.findIndex(function(f){return f.id===fitId;});
       if(idx>=0){
+        var rBy=CURRENT_USER?CURRENT_USER.name||CURRENT_USER.username:'';
         if(res.wasRemoval){
+          // Rejecting a removal → battery stays fitted (ACTIVE), clear removal fields
           BAT_FITS[idx].status='ACTIVE';
           BAT_FITS[idx].dateRemoved='';
           BAT_FITS[idx].conditionAtRemoval='';
           BAT_FITS[idx].removedReason='';
-        } else { BAT_FITS[idx].status='REJECTED'; }
+          BAT_FITS[idx].rejectedBy=rBy;
+          BAT_FITS[idx].rejectedAt=new Date().toISOString();
+        } else {
+          BAT_FITS[idx].status='REJECTED';
+          BAT_FITS[idx].rejectedBy=rBy;
+          BAT_FITS[idx].rejectedAt=new Date().toISOString();
+        }
       }
       renderBatRemHold(); setTimeout(function(){ _wsFetchAndRender({'BAT_FITS':'/batteryFitments','BATTERIES':'/batteries'}, function(){ renderBatRemHold(); }); }, 3000);
     }else toast('Error: '+(res&&res.error?res.error:'Failed'),'er');
@@ -9414,6 +9483,15 @@ async function saveFitBattery(){
     batLines.push({batRef:batRef,position:position});
   }
   if(!batLines.length){toast('Add at least one battery','er');return;}
+  // Check truck does not already have 2 active batteries
+  var activeBatsOnTruck=(BAT_FITS||[]).filter(function(f){
+    return (f.vehicle||'').toUpperCase()===vehicle.toUpperCase()
+      && (f.status||'').toUpperCase()==='ACTIVE';
+  });
+  if(activeBatsOnTruck.length+batLines.length>2){
+    toast('Cannot fit: '+vehicle+' already has '+activeBatsOnTruck.length+' active batter'+(activeBatsOnTruck.length===1?'y':'ies')+'. Maximum is 2.','er');
+    return;
+  }
   var btn=document.getElementById('fit_bat_save_btn');
   if(btn){btn.disabled=true;btn.textContent='Saving...';}
   var batFitMax=0;
@@ -16157,19 +16235,38 @@ function previewJobCard(id) {
       return sc.tyreSerial===f.tyreSerial&&(sc.status||'').toUpperCase()==='APPROVED';
     });
     if(hasScrapped) return false;
-    var priorFits=(TYRE_FITS||[]).filter(function(x){
-      return String(x.tyreSerial||'').trim()===String(f.tyreSerial||'').trim()
-        &&(x.status||'').toUpperCase()==='CLOSED'&&x.id!==f.id
-        &&(x.dateFitted||'')<(f.dateFitted||'');
-    });
-    return priorFits.length===0;
+    // Exclude if dateFitted is older than 3 months — backdated/historical record
+    var _tyreToday=new Date(); _tyreToday.setHours(0,0,0,0);
+    var _tyre3mAgo=new Date(_tyreToday); _tyre3mAgo.setMonth(_tyre3mAgo.getMonth()-3);
+    var tyreFitDate=f.dateFitted?_parseDateLocal(String(f.dateFitted)):null;
+    if(!tyreFitDate||isNaN(tyreFitDate.getTime())||tyreFitDate<_tyre3mAgo) return false;
+    return true;
   }).map(function(f){
     var tyre=(TYRES||[]).find(function(t){return t.serialNo===f.tyreSerial;})||{};
     var pp=Number(tyre.purchasePrice||0);
     var desc=(tyre.brand||f.brand||'TYRE')+' '+(tyre.size||f.size||'')+' - '+(f.position||'');
+    // Check if previously fitted on a different job card — label as USED, pro-rate cost by remaining warranty (1 year)
+    var tyreSerial=String(f.tyreSerial||'').trim();
+    var priorTyreFit=(TYRE_FITS||[]).find(function(x){
+      return String(x.tyreSerial||'').trim()===tyreSerial
+        && x.id!==f.id
+        && (x.jobCardNo||'').toUpperCase()!==(f.jobCardNo||'').toUpperCase()
+        && x.jobCardNo;
+    });
+    if(priorTyreFit){
+      desc=desc.trim()+' - USED - Transferred from '+(priorTyreFit.vehicle||priorTyreFit.jobCardNo||'Unknown');
+      var priorTyreFitDate=priorTyreFit.dateFitted?_parseDateLocal(String(priorTyreFit.dateFitted)):null;
+      if(priorTyreFitDate&&!isNaN(priorTyreFitDate.getTime())){
+        var tyreAgedays=Math.floor((new Date()-priorTyreFitDate)/(1000*60*60*24));
+        var tyreRemaining=365-tyreAgedays;
+        pp=Math.max(120000,tyreRemaining>0?Math.round(pp*(tyreRemaining/365)):0);
+      } else {pp=120000;}
+    }
     return {description:desc.trim(),qty:1,unitPrice:pp,cost:pp};
   });
   // Add brand-new BATTERY fitments linked to this job card
+  var _batToday=new Date(); _batToday.setHours(0,0,0,0);
+  var _bat3mAgo=new Date(_batToday); _bat3mAgo.setMonth(_bat3mAgo.getMonth()-3);
   const batParts = (BAT_FITS||[]).filter(function(f){
     if((f.jobCardNo||'').toUpperCase() !== jcCode) return false;
     var s=(f.status||'').toUpperCase();
@@ -16177,17 +16274,15 @@ function previewJobCard(id) {
     // Exclude batteries that have been sold
     var bat=(BATTERIES||[]).find(function(b){return b.batteryRef===f.batteryRef;});
     if(bat&&(bat.status||'').toUpperCase()==='SOLD') return false;
-    // Also exclude if there is an approved sale for this battery
+    // Exclude if there is an approved sale for this battery
     var hasSale=(BAT_SALES||[]).some(function(sale){
       return sale.batteryRef===f.batteryRef&&(sale.status||'').toUpperCase()==='APPROVED';
     });
     if(hasSale) return false;
-    var priorFits=(BAT_FITS||[]).filter(function(x){
-      return String(x.batteryRef||'').trim()===String(f.batteryRef||'').trim()
-        &&(x.status||'').toUpperCase()==='CLOSED'&&x.id!==f.id
-        &&(x.dateFitted||'')<(f.dateFitted||'');
-    });
-    return priorFits.length===0;
+    // Exclude if dateFitted is older than 3 months — backdated/historical record
+    var fitDate=f.dateFitted?_parseDateLocal(String(f.dateFitted)):null;
+    if(!fitDate||isNaN(fitDate.getTime())||fitDate<_bat3mAgo) return false;
+    return true;
   }).map(function(f){
     var bat=(BATTERIES||[]).find(function(b){return b.batteryRef===f.batteryRef;})||{};
     var po=(BAT_POS||[]).find(function(p){
@@ -16196,6 +16291,23 @@ function previewJobCard(id) {
     })||{};
     var pp=Number(bat.purchasePrice||bat.unitPrice||po.unitPrice||0);
     var desc=(bat.brand||'BATTERY')+' '+(bat.size||bat.capacity||'')+' - '+(f.position||'');
+    // Check if previously fitted on a different job card — label as USED, pro-rate cost by remaining warranty (1 year)
+    var ref=String(f.batteryRef||'').trim();
+    var priorBatFit=(BAT_FITS||[]).find(function(x){
+      return String(x.batteryRef||'').trim()===ref
+        && x.id!==f.id
+        && (x.jobCardNo||'').toUpperCase()!==(f.jobCardNo||'').toUpperCase()
+        && x.jobCardNo;
+    });
+    if(priorBatFit){
+      desc=desc.trim()+' - USED - Transferred from '+(priorBatFit.vehicle||priorBatFit.jobCardNo||'Unknown');
+      var priorFitDate=priorBatFit.dateFitted?_parseDateLocal(String(priorBatFit.dateFitted)):null;
+      if(priorFitDate&&!isNaN(priorFitDate.getTime())){
+        var agedays=Math.floor((new Date()-priorFitDate)/(1000*60*60*24));
+        var remaining=365-agedays;
+        pp=Math.max(120000,remaining>0?Math.round(pp*(remaining/365)):0);
+      } else {pp=120000;}
+    }
     return {description:desc.trim(),qty:1,unitPrice:pp,cost:pp};
   });
   const allParts = receivedParts.concat(tyreParts).concat(batParts);
@@ -16604,39 +16716,95 @@ function calcJCTotal(jCode, jNo) {
       total += parseFloat(r.cost) || 0;
     }
   });
-  // 2. New-only tyre fitments - no prior CLOSED fitment for this serial before this one
+  // 2. Tyre fitments — same rules as job card preview
+  var _jcTyreToday=new Date(); _jcTyreToday.setHours(0,0,0,0);
+  var _jcTyre3mAgo=new Date(_jcTyreToday); _jcTyre3mAgo.setMonth(_jcTyre3mAgo.getMonth()-3);
   (TYRE_FITS||[]).forEach(function(f) {
     if (!matchJC(f.jobCardNo)) return;
     var s = (f.status||'').toUpperCase();
     if (s !== 'ACTIVE' && s !== 'CLOSED' && s !== 'PENDING REMOVAL') return;
-    var serial = String(f.tyreSerial||'').trim();
-    var priorFits = (TYRE_FITS||[]).filter(function(x){
-      return String(x.tyreSerial||'').trim() === serial
-        && (x.status||'').toUpperCase() === 'CLOSED'
-        && x.id !== f.id
-        && (x.dateFitted||'') < (f.dateFitted||'');
-    });
-    if (priorFits.length > 0) return;
+    // Exclude sold/scrapped tyres
     var tyre = (TYRES||[]).find(function(t){ return t.serialNo === f.tyreSerial; }) || {};
-    var price = Number(tyre.purchasePrice||0);
-
-    total += price;
+    if ((tyre.status||'').toUpperCase() === 'SOLD') return;
+    var hasScrapped = (TYRE_SCRAPS||[]).some(function(sc){
+      return sc.tyreSerial === f.tyreSerial && (sc.status||'').toUpperCase() === 'APPROVED';
+    });
+    if (hasScrapped) return;
+    // Exclude if dateFitted older than 3 months (historical/backdated)
+    var tyreFitD = f.dateFitted ? _parseDateLocal(String(f.dateFitted)) : null;
+    if (!tyreFitD || isNaN(tyreFitD.getTime()) || tyreFitD < _jcTyre3mAgo) return;
+    // Exclude cost if used/transferred from another truck (cost = 0)
+    var serial = String(f.tyreSerial||'').trim();
+    var tyreUsed = (TYRE_FITS||[]).some(function(x){
+      return String(x.tyreSerial||'').trim() === serial
+        && x.id !== f.id
+        && (x.jobCardNo||'').toUpperCase() !== (f.jobCardNo||'').toUpperCase()
+        && x.jobCardNo;
+    });
+    if (tyreUsed) {
+      // Pro-rate cost by remaining warranty (1 year from original fit date)
+      var priorTyreF=(TYRE_FITS||[]).find(function(x){
+        return String(x.tyreSerial||'').trim()===serial
+          && x.id!==f.id
+          && (x.jobCardNo||'').toUpperCase()!==(f.jobCardNo||'').toUpperCase()
+          && x.jobCardNo;
+      });
+      var priorTyreFD=priorTyreF&&priorTyreF.dateFitted?_parseDateLocal(String(priorTyreF.dateFitted)):null;
+      if(priorTyreFD&&!isNaN(priorTyreFD.getTime())){
+        var tAge=Math.floor((new Date()-priorTyreFD)/(1000*60*60*24));
+        var tRem=365-tAge;
+        total+=Math.max(120000,tRem>0?Math.round(Number(tyre.purchasePrice||0)*(tRem/365)):0);
+      } else { total+=120000; }
+      return;
+    }
+    total += Number(tyre.purchasePrice||0);
   });
-  // 3. New-only battery fitments - no prior CLOSED fitment for this ref before this one
+  // 3. Battery fitments — same rules as job card preview
+  var _jcBatToday=new Date(); _jcBatToday.setHours(0,0,0,0);
+  var _jcBat3mAgo=new Date(_jcBatToday); _jcBat3mAgo.setMonth(_jcBat3mAgo.getMonth()-3);
   (BAT_FITS||[]).forEach(function(f) {
     if (!matchJC(f.jobCardNo)) return;
     var s = (f.status||'').toUpperCase();
     if (s !== 'ACTIVE' && s !== 'CLOSED' && s !== 'PENDING REMOVAL') return;
-    var ref = String(f.batteryRef||'').trim();
-    var priorFits = (BAT_FITS||[]).filter(function(x){
-      return String(x.batteryRef||'').trim() === ref
-        && (x.status||'').toUpperCase() === 'CLOSED'
-        && x.id !== f.id
-        && (x.dateFitted||'') < (f.dateFitted||'');
-    });
-    if (priorFits.length > 0) return;
+    // Exclude sold batteries
     var bat = (BATTERIES||[]).find(function(b){ return b.batteryRef === f.batteryRef; }) || {};
-    var po  = (BAT_POS||[]).find(function(p){
+    if ((bat.status||'').toUpperCase() === 'SOLD') return;
+    var hasSale = (BAT_SALES||[]).some(function(sale){
+      return sale.batteryRef === f.batteryRef && (sale.status||'').toUpperCase() === 'APPROVED';
+    });
+    if (hasSale) return;
+    // Exclude if dateFitted older than 3 months (historical/backdated)
+    var batFitD = f.dateFitted ? _parseDateLocal(String(f.dateFitted)) : null;
+    if (!batFitD || isNaN(batFitD.getTime()) || batFitD < _jcBat3mAgo) return;
+    // Exclude cost if used/transferred from another truck (cost = 0)
+    var ref = String(f.batteryRef||'').trim();
+    var batUsed = (BAT_FITS||[]).some(function(x){
+      return String(x.batteryRef||'').trim() === ref
+        && x.id !== f.id
+        && (x.jobCardNo||'').toUpperCase() !== (f.jobCardNo||'').toUpperCase()
+        && x.jobCardNo;
+    });
+    if (batUsed) {
+      // Pro-rate cost by remaining warranty (1 year from original fit date)
+      var priorBatF=(BAT_FITS||[]).find(function(x){
+        return String(x.batteryRef||'').trim()===ref
+          && x.id!==f.id
+          && (x.jobCardNo||'').toUpperCase()!==(f.jobCardNo||'').toUpperCase()
+          && x.jobCardNo;
+      });
+      var priorBatFD=priorBatF&&priorBatF.dateFitted?_parseDateLocal(String(priorBatF.dateFitted)):null;
+      if(priorBatFD&&!isNaN(priorBatFD.getTime())){
+        var bAge=Math.floor((new Date()-priorBatFD)/(1000*60*60*24));
+        var bRem=365-bAge;
+        var poBat=(BAT_POS||[]).find(function(p){
+          return (p.lpoNo||'').trim().toUpperCase()===(bat.lpoNo||bat.poNo||'').trim().toUpperCase()
+              || (p.poNo||'').trim().toUpperCase()===(bat.poNo||'').trim().toUpperCase();
+        })||{};
+        total+=Math.max(120000,bRem>0?Math.round(Number(bat.purchasePrice||bat.unitPrice||poBat.unitPrice||0)*(bRem/365)):0);
+      } else { total+=120000; }
+      return;
+    }
+    var po = (BAT_POS||[]).find(function(p){
       return (p.lpoNo||'').trim().toUpperCase() === (bat.lpoNo||bat.poNo||'').trim().toUpperCase()
           || (p.poNo||'').trim().toUpperCase() === (bat.poNo||'').trim().toUpperCase();
     }) || {};
@@ -16792,20 +16960,38 @@ function downloadJCPDFById(id) {
       return sc.tyreSerial===f.tyreSerial&&(sc.status||'').toUpperCase()==='APPROVED';
     });
     if(hasScrapped2) return false;
-    var serial=String(f.tyreSerial||'').trim();
-    var priorFits=(TYRE_FITS||[]).filter(function(x){
-      return String(x.tyreSerial||'').trim()===serial
-        &&(x.status||'').toUpperCase()==='CLOSED'&&x.id!==f.id
-        &&(x.dateFitted||'')<(f.dateFitted||'');
-    });
-    return priorFits.length===0;
+    // Exclude if dateFitted is older than 3 months — backdated/historical record
+    var _pTyreToday=new Date(); _pTyreToday.setHours(0,0,0,0);
+    var _pTyre3mAgo=new Date(_pTyreToday); _pTyre3mAgo.setMonth(_pTyre3mAgo.getMonth()-3);
+    var tyreFitDate2=f.dateFitted?_parseDateLocal(String(f.dateFitted)):null;
+    if(!tyreFitDate2||isNaN(tyreFitDate2.getTime())||tyreFitDate2<_pTyre3mAgo) return false;
+    return true;
   }).map(function(f){
     var tyre=(TYRES||[]).find(function(t){return t.serialNo===f.tyreSerial;})||{};
     var pp=Number(tyre.purchasePrice||0);
     var desc=(tyre.brand||f.brand||'TYRE')+' '+(tyre.size||f.size||'')+' - '+(f.position||'');
+    // Check if previously fitted on a different job card — label as USED, pro-rate cost by remaining warranty (1 year)
+    var tyreSerial2=String(f.tyreSerial||'').trim();
+    var priorTyreFit2=(TYRE_FITS||[]).find(function(x){
+      return String(x.tyreSerial||'').trim()===tyreSerial2
+        && x.id!==f.id
+        && (x.jobCardNo||'').toUpperCase()!==(f.jobCardNo||'').toUpperCase()
+        && x.jobCardNo;
+    });
+    if(priorTyreFit2){
+      desc=desc.trim()+' - USED - Transferred from '+(priorTyreFit2.vehicle||priorTyreFit2.jobCardNo||'Unknown');
+      var priorTyreFitDate2=priorTyreFit2.dateFitted?_parseDateLocal(String(priorTyreFit2.dateFitted)):null;
+      if(priorTyreFitDate2&&!isNaN(priorTyreFitDate2.getTime())){
+        var tyreAgedays2=Math.floor((new Date()-priorTyreFitDate2)/(1000*60*60*24));
+        var tyreRemaining2=365-tyreAgedays2;
+        pp=Math.max(120000,tyreRemaining2>0?Math.round(pp*(tyreRemaining2/365)):0);
+      } else {pp=120000;}
+    }
     return {description:desc.trim(),qty:1,unitPrice:pp,cost:pp};
   });
   // Add new-only battery fitments - same logic as previewJobCard
+  var _pBatToday=new Date(); _pBatToday.setHours(0,0,0,0);
+  var _pBat3mAgo=new Date(_pBatToday); _pBat3mAgo.setMonth(_pBat3mAgo.getMonth()-3);
   const batParts2 = (BAT_FITS||[]).filter(function(f){
     if((f.jobCardNo||'').toUpperCase() !== jcCode2) return false;
     var s=(f.status||'').toUpperCase();
@@ -16817,13 +17003,10 @@ function downloadJCPDFById(id) {
       return sale.batteryRef===f.batteryRef&&(sale.status||'').toUpperCase()==='APPROVED';
     });
     if(hasSale2) return false;
-    var ref=String(f.batteryRef||'').trim();
-    var priorFits=(BAT_FITS||[]).filter(function(x){
-      return String(x.batteryRef||'').trim()===ref
-        &&(x.status||'').toUpperCase()==='CLOSED'&&x.id!==f.id
-        &&(x.dateFitted||'')<(f.dateFitted||'');
-    });
-    return priorFits.length===0;
+    // Exclude if dateFitted is older than 3 months — backdated/historical record
+    var batFitDate2=f.dateFitted?_parseDateLocal(String(f.dateFitted)):null;
+    if(!batFitDate2||isNaN(batFitDate2.getTime())||batFitDate2<_pBat3mAgo) return false;
+    return true;
   }).map(function(f){
     var bat=(BATTERIES||[]).find(function(b){return b.batteryRef===f.batteryRef;})||{};
     var po=(BAT_POS||[]).find(function(p){
@@ -16832,6 +17015,23 @@ function downloadJCPDFById(id) {
     })||{};
     var pp=Number(bat.purchasePrice||bat.unitPrice||po.unitPrice||0);
     var desc=(bat.brand||'BATTERY')+' '+(bat.size||bat.capacity||'')+' - '+(f.position||'');
+    // Check if previously fitted on a different job card — label as USED, pro-rate cost by remaining warranty (1 year)
+    var ref2=String(f.batteryRef||'').trim();
+    var priorBatFit2=(BAT_FITS||[]).find(function(x){
+      return String(x.batteryRef||'').trim()===ref2
+        && x.id!==f.id
+        && (x.jobCardNo||'').toUpperCase()!==(f.jobCardNo||'').toUpperCase()
+        && x.jobCardNo;
+    });
+    if(priorBatFit2){
+      desc=desc.trim()+' - USED - Transferred from '+(priorBatFit2.vehicle||priorBatFit2.jobCardNo||'Unknown');
+      var priorBatFitDate2=priorBatFit2.dateFitted?_parseDateLocal(String(priorBatFit2.dateFitted)):null;
+      if(priorBatFitDate2&&!isNaN(priorBatFitDate2.getTime())){
+        var batAgedays2=Math.floor((new Date()-priorBatFitDate2)/(1000*60*60*24));
+        var batRemaining2=365-batAgedays2;
+        pp=Math.max(120000,batRemaining2>0?Math.round(pp*(batRemaining2/365)):0);
+      } else {pp=120000;}
+    }
     return {description:desc.trim(),qty:1,unitPrice:pp,cost:pp};
   });
   const allParts2 = receivedParts.concat(tyreParts2).concat(batParts2);
