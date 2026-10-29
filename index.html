@@ -5237,7 +5237,7 @@ function renderTyreInventory() {
         + '<td style="text-align:center">'+fmtMoney(t.totalKMRun)+' KM</td>'
         + '<td style="text-align:center">'+(t.retreadCount||0)+'</td>'
         + '<td><span class="sb '+sc+'">'+t.status+'</span></td>'
-        + '<td>'+(t.currentVehicle||'\u2014')+'</td>'
+        + '<td>'+(t.currentVehicle?'<span class="reqbadge" style="cursor:pointer;text-decoration:underline" onclick="openTyreVehicleHistory(\''+encodeURIComponent(t.currentVehicle||'')+'\')">'+t.currentVehicle+'</span>':'\u2014')+'</td>'
         + '<td style="font-size:11px">'+(t.currentPosition||'\u2014')+'</td>'
         + '</tr>';
     });
@@ -5245,6 +5245,696 @@ function renderTyreInventory() {
   html += '</tbody></table></div>';
   document.getElementById('storecontent').innerHTML = html;
   tyreInvUpdateSelBar();
+}
+
+// -- TYRE VEHICLE HISTORY --
+function openTyreVehicleHistory(vehicleEncoded) {
+  var vehicle = decodeURIComponent(vehicleEncoded||'');
+  if (!vehicle) return;
+
+  // All fitments ever on this truck
+  var fits = (TYRE_FITS||[]).filter(function(f){
+    return String(f.vehicle||'').trim().toUpperCase() === vehicle.trim().toUpperCase()
+      && (f.status||'').toUpperCase() !== 'REJECTED';
+  }).sort(function(a,b){ return (_normDateVal(a.dateFitted||'')||'').localeCompare(_normDateVal(b.dateFitted||'')||''); });
+
+  // Build data objects
+  var _tvhData = [];
+  fits.forEach(function(f) {
+    var serial = String(f.tyreSerial||'').trim();
+    var tyre = (TYRES||[]).find(function(t){ return String(t.serialNo||'').trim() === serial; }) || {};
+    var brand = tyre.brand || f.brand || '';
+    var size  = tyre.size  || f.size  || '';
+    var status = (f.status||'').toUpperCase();
+    var isClosed = status === 'CLOSED';
+    var isActive = status === 'ACTIVE';
+    var supplier = tyre.supplier || f.supplier || '';
+
+    // NEW / USED detection
+    var allFitsForSerial = (TYRE_FITS||[]).filter(function(x){ return String(x.tyreSerial||'').trim() === serial; });
+    var thisFitDateMs = f.dateFitted ? _parseDateLocal(String(f.dateFitted)) : null;
+    thisFitDateMs = thisFitDateMs && !isNaN(thisFitDateMs.getTime()) ? thisFitDateMs.getTime() : 0;
+    var priorFitDiffVehicle = allFitsForSerial.filter(function(x){
+      if (x.id === f.id) return false;
+      if ((x.status||'').toUpperCase() !== 'CLOSED') return false;
+      if ((x.vehicle||'').trim().toUpperCase() === vehicle.trim().toUpperCase()) return false;
+      if (!x.vehicle) return false;
+      var removedD = x.dateRemoved ? _parseDateLocal(String(x.dateRemoved)) : null;
+      if (!removedD || isNaN(removedD.getTime())) return true;
+      return removedD.getTime() <= thisFitDateMs + (1000*60*60*24*7);
+    }).sort(function(a,b){ return (_normDateVal(b.dateFitted||'')||'').localeCompare(_normDateVal(a.dateFitted||'')||''); })[0];
+    var isUsed = !!priorFitDiffVehicle;
+    var usedFrom = isUsed ? (priorFitDiffVehicle.vehicle||'') : '';
+    var condText = isUsed ? ('USED'+(usedFrom?' • from '+usedFrom:'')) : 'NEW';
+
+    // Where now
+    var whereNowText = '';
+    if (isClosed) {
+      var tyreNow = (TYRES||[]).find(function(t){ return String(t.serialNo||'').trim() === serial; });
+      var nowStatus = tyreNow ? (tyreNow.status||'').toUpperCase() : '';
+      if (nowStatus === 'FITTED') {
+        var activeFit = (TYRE_FITS||[]).find(function(x){ return String(x.tyreSerial||'').trim()===serial && (x.status||'').toUpperCase()==='ACTIVE'; });
+        whereNowText = activeFit ? 'On '+(activeFit.vehicle||'truck') : 'Fitted (truck unknown)';
+      } else { whereNowText = nowStatus || 'Unknown'; }
+    } else if (isActive) { whereNowText = 'Currently here'; }
+
+    _tvhData.push({
+      serial: serial, brand: brand, size: size, brandSize: brand+(size?' '+size:''),
+      position: f.position||'', supplier: supplier,
+      dateFitted: f.dateFitted||'', dateRemoved: (isClosed&&f.dateRemoved)?f.dateRemoved:'',
+      dateFittedFmt: fmtDate(f.dateFitted||''), dateRemovedFmt: (isClosed&&f.dateRemoved)?fmtDate(f.dateRemoved):'—',
+      condText: condText, isUsed: isUsed,
+      statusRaw: f.status||'', isClosed: isClosed, isActive: isActive,
+      whereNowText: whereNowText
+    });
+  });
+
+  // Unique values for dropdowns
+  function _uniq(arr){ var s={}; arr.forEach(function(v){if(v)s[v]=1;}); return Object.keys(s).sort(); }
+  var _positions = _uniq(_tvhData.map(function(r){return r.position;}));
+  var _suppliers = _uniq(_tvhData.map(function(r){return r.supplier;}));
+  var _statuses  = _uniq(_tvhData.map(function(r){return r.statusRaw;}));
+
+  function _selOpts(arr){ return '<option value="">All</option>'+arr.map(function(v){return '<option value="'+v+'">'+v+'</option>';}).join(''); }
+
+  var uid = 'tvh'+Date.now();
+
+  var modal = document.createElement('div');
+  modal.id = 'tyreVehHistModal';
+  modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.65);z-index:9100;display:flex;align-items:stretch;justify-content:center;padding:0';
+
+  modal.innerHTML = '<div style="background:#fff;width:100%;height:100%;display:flex;flex-direction:column;overflow:hidden">'
+
+    // Header
+    + '<div style="padding:14px 24px;background:linear-gradient(135deg,#0a2d6e,#1e40af);color:#fff;display:flex;align-items:center;justify-content:space-between;flex-shrink:0">'
+    + '<div style="display:flex;align-items:center;gap:14px">'
+    + '<div style="background:rgba(255,255,255,0.15);border-radius:10px;width:40px;height:40px;display:flex;align-items:center;justify-content:center;font-size:20px">&#128665;</div>'
+    + '<div><div style="font-size:18px;font-weight:800;letter-spacing:.3px">Tyre History &mdash; '+vehicle+'</div>'
+    + '<div style="font-size:12px;opacity:.75;margin-top:2px" id="'+uid+'_count">'+fits.length+' fitment record'+(fits.length!==1?'s':'')+'</div></div>'
+    + '</div>'
+    + '<div style="display:flex;gap:10px;align-items:center">'
+    + '<button id="'+uid+'_pdfBtn" onclick="_tvhExportPDF(\''+uid+'\',\''+vehicle.replace(/'/g,"\\'")+'\')" style="background:rgba(255,255,255,0.15);border:1px solid rgba(255,255,255,0.35);color:#fff;font-size:13px;font-weight:600;cursor:pointer;border-radius:8px;padding:8px 18px;display:flex;align-items:center;gap:6px">&#128438; Export PDF</button>'
+    + '<button onclick="document.getElementById(\'tyreVehHistModal\').remove()" style="background:rgba(255,255,255,0.12);border:1px solid rgba(255,255,255,0.25);color:#fff;font-size:22px;cursor:pointer;border-radius:8px;width:38px;height:38px;display:flex;align-items:center;justify-content:center;font-weight:700;line-height:1">&times;</button>'
+    + '</div></div>'
+
+    // Filter bar — single row, no wrap, overflow-x scroll; outer has overflow:visible so dropdown panels aren't clipped
+    + '<div style="background:#f1f5f9;border-bottom:2px solid #e2e8f0;flex-shrink:0;overflow:visible">'
+    + '<div style="padding:10px 20px;display:flex;gap:10px;align-items:center;overflow-x:auto;overflow-y:visible">'
+
+    // Search input
+    + '<div style="position:relative;flex-shrink:0">'
+    + '<span style="position:absolute;left:10px;top:50%;transform:translateY(-50%);color:#94a3b8;font-size:14px">&#128269;</span>'
+    + '<input id="'+uid+'_q" type="text" placeholder="Search serial / brand / size…" oninput="_tvhFilter(\''+uid+'\')" style="padding:8px 12px 8px 32px;border:1.5px solid #cbd5e1;border-radius:8px;font-size:13px;outline:none;width:240px;background:#fff;transition:border .15s" onfocus="this.style.borderColor=\'#0a2d6e\'" onblur="this.style.borderColor=\'#cbd5e1\'">'
+    + '</div>'
+
+    // Divider
+    + '<div style="width:1px;height:28px;background:#cbd5e1;flex-shrink:0"></div>'
+
+    // Position checkbox dropdown
+    + '<div style="position:relative;flex-shrink:0">'
+    + '<button id="'+uid+'_posBtn" onclick="_tvhToggleDrop(\''+uid+'_posDrop\',\''+uid+'_posBtn\')" style="padding:8px 14px;border:1.5px solid #cbd5e1;border-radius:8px;font-size:13px;font-weight:600;background:#fff;cursor:pointer;display:flex;align-items:center;gap:8px;white-space:nowrap;color:#374151">&#128205; Position <span id="'+uid+'_posLbl" style="background:#0a2d6e;color:#fff;border-radius:10px;padding:1px 7px;font-size:11px;font-weight:700;display:none">0</span><span style="font-size:10px;opacity:.5">&#9660;</span></button>'
+    + '<div id="'+uid+'_posDrop" style="display:none;position:absolute;top:calc(100% + 6px);left:0;min-width:230px;background:#fff;border:1.5px solid #cbd5e1;border-radius:12px;box-shadow:0 8px 30px rgba(0,0,0,.15);z-index:99999;padding:8px 0;max-height:260px;overflow-y:auto">'
+    + '<div style="padding:6px 14px 4px;font-size:10px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.08em">Select positions</div>'
+    + _positions.map(function(v){ return '<label style="display:flex;align-items:center;gap:10px;padding:7px 14px;cursor:pointer;font-size:13px;white-space:nowrap;transition:background .1s" onmouseover="this.style.background=\'#f1f5f9\'" onmouseout="this.style.background=\'\'"><input type="checkbox" class="tvh-pos-'+uid+'" value="'+v+'" onchange="_tvhFilter(\''+uid+'\');_tvhUpdateDropLbl(\''+uid+'\',\'pos\')" style="cursor:pointer;accent-color:#0a2d6e;width:15px;height:15px"> '+v+'</label>'; }).join('')
+    + '</div></div>'
+
+    // Supplier checkbox dropdown
+    + '<div style="position:relative;flex-shrink:0">'
+    + '<button id="'+uid+'_supBtn" onclick="_tvhToggleDrop(\''+uid+'_supDrop\',\''+uid+'_supBtn\')" style="padding:8px 14px;border:1.5px solid #cbd5e1;border-radius:8px;font-size:13px;font-weight:600;background:#fff;cursor:pointer;display:flex;align-items:center;gap:8px;white-space:nowrap;color:#374151">&#128230; Supplier <span id="'+uid+'_supLbl" style="background:#0a2d6e;color:#fff;border-radius:10px;padding:1px 7px;font-size:11px;font-weight:700;display:none">0</span><span style="font-size:10px;opacity:.5">&#9660;</span></button>'
+    + '<div id="'+uid+'_supDrop" style="display:none;position:absolute;top:calc(100% + 6px);left:0;min-width:230px;background:#fff;border:1.5px solid #cbd5e1;border-radius:12px;box-shadow:0 8px 30px rgba(0,0,0,.15);z-index:99999;padding:8px 0;max-height:260px;overflow-y:auto">'
+    + '<div style="padding:6px 14px 4px;font-size:10px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.08em">Select suppliers</div>'
+    + _suppliers.map(function(v){ return '<label style="display:flex;align-items:center;gap:10px;padding:7px 14px;cursor:pointer;font-size:13px;white-space:nowrap;transition:background .1s" onmouseover="this.style.background=\'#f1f5f9\'" onmouseout="this.style.background=\'\'"><input type="checkbox" class="tvh-sup-'+uid+'" value="'+v+'" onchange="_tvhFilter(\''+uid+'\');_tvhUpdateDropLbl(\''+uid+'\',\'sup\')" style="cursor:pointer;accent-color:#0a2d6e;width:15px;height:15px"> '+v+'</label>'; }).join('')
+    + '</div></div>'
+
+    // Condition select
+    + '<select id="'+uid+'_cond" onchange="_tvhFilter(\''+uid+'\')" style="flex-shrink:0;width:140px;padding:8px 10px;border:1.5px solid #cbd5e1;border-radius:8px;font-size:13px;font-weight:600;background:#fff;color:#374151;cursor:pointer"><option value="">All Conditions</option><option>NEW</option><option>USED</option></select>'
+
+    // Status select
+    + '<select id="'+uid+'_st" onchange="_tvhFilter(\''+uid+'\')" style="flex-shrink:0;width:140px;padding:8px 10px;border:1.5px solid #cbd5e1;border-radius:8px;font-size:13px;font-weight:600;background:#fff;color:#374151;cursor:pointer"><option value="">All Statuses</option>'+_statuses.map(function(v){return '<option>'+v+'</option>';}).join('')+'</select>'
+
+    // Divider
+    + '<div style="width:1px;height:28px;background:#cbd5e1;flex-shrink:0"></div>'
+
+    // Date Fitted
+    + '<div style="flex-shrink:0">'
+    + '<input id="'+uid+'_df" type="text" placeholder="&#128197; Date Fitted" oninput="_tvhFilter(\''+uid+'\')" style="padding:8px 12px;border:1.5px solid #cbd5e1;border-radius:8px;font-size:13px;outline:none;width:150px;background:#fff" onfocus="this.style.borderColor=\'#0a2d6e\'" onblur="this.style.borderColor=\'#cbd5e1\'">'
+    + '</div>'
+
+    // Date Removed
+    + '<div style="flex-shrink:0">'
+    + '<input id="'+uid+'_dr" type="text" placeholder="&#128197; Date Removed" oninput="_tvhFilter(\''+uid+'\')" style="padding:8px 12px;border:1.5px solid #cbd5e1;border-radius:8px;font-size:13px;outline:none;width:160px;background:#fff" onfocus="this.style.borderColor=\'#0a2d6e\'" onblur="this.style.borderColor=\'#cbd5e1\'">'
+    + '</div>'
+
+    // Clear button
+    + '<button onclick="_tvhClearFilters(\''+uid+'\')" style="flex-shrink:0;padding:8px 16px;background:#fff;border:1.5px solid #fca5a5;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;color:#dc2626;white-space:nowrap">&#10005; Clear</button>'
+    + '</div></div>'
+
+    // Table
+    + '<div style="overflow:auto;flex:1;padding:0 16px 16px">'
+    + '<table style="width:100%;border-collapse:collapse;font-size:13px;white-space:nowrap">'
+    + '<thead><tr style="background:#f8fafc;border-bottom:2px solid #e2e8f0;position:sticky;top:0;z-index:2">'
+    + '<th style="padding:10px 10px;text-align:center"><input type="checkbox" id="'+uid+'_chkAll" onchange="_tvhToggleAll(\''+uid+'\')" style="cursor:pointer;width:14px;height:14px;accent-color:#0a2d6e"></th>'
+    + '<th style="padding:10px 14px;text-align:left;color:#64748b;font-size:11px;font-weight:700">#</th>'
+    + '<th style="padding:10px 14px;text-align:left;color:#64748b;font-size:11px;font-weight:700">SERIAL NO</th>'
+    + '<th style="padding:10px 14px;text-align:left;color:#64748b;font-size:11px;font-weight:700">BRAND / SIZE</th>'
+    + '<th style="padding:10px 14px;text-align:left;color:#64748b;font-size:11px;font-weight:700">POSITION</th>'
+    + '<th style="padding:10px 14px;text-align:left;color:#64748b;font-size:11px;font-weight:700">SUPPLIER</th>'
+    + '<th style="padding:10px 14px;text-align:left;color:#64748b;font-size:11px;font-weight:700">DATE FITTED</th>'
+    + '<th style="padding:10px 14px;text-align:left;color:#64748b;font-size:11px;font-weight:700">DATE REMOVED</th>'
+    + '<th style="padding:10px 14px;text-align:left;color:#64748b;font-size:11px;font-weight:700">CONDITION</th>'
+    + '<th style="padding:10px 14px;text-align:left;color:#64748b;font-size:11px;font-weight:700">STATUS</th>'
+    + '<th style="padding:10px 14px;text-align:left;color:#64748b;font-size:11px;font-weight:700">CURRENT LOCATION</th>'
+    + '</tr></thead>'
+    + '<tbody id="'+uid+'_tbody"></tbody>'
+    + '</table>'
+    + '</div></div>';
+
+  modal.addEventListener('click', function(e){ if(e.target===modal) modal.remove(); });
+  document.body.appendChild(modal);
+
+  // Move dropdown panels to document.body so they're never clipped by overflow containers
+  [uid+'_posDrop', uid+'_supDrop'].forEach(function(id){
+    var panel = document.getElementById(id);
+    if (panel) document.body.appendChild(panel);
+  });
+
+  // Clean up panels when modal is removed
+  var _origRemove = modal.remove.bind(modal);
+  modal.remove = function(){
+    [uid+'_posDrop', uid+'_supDrop'].forEach(function(id){
+      var p = document.getElementById(id); if(p) p.remove();
+    });
+    _origRemove();
+  };
+
+  // Store data on window for access by filter/export fns
+  window['_tvhRows_'+uid] = _tvhData;
+  window['_tvhVehicle_'+uid] = vehicle;
+  _tvhFilter(uid);
+}
+
+// -- BATTERY VEHICLE HISTORY --
+function openBatVehicleHistory(vehicleEncoded) {
+  var vehicle = decodeURIComponent(vehicleEncoded||'');
+  if (!vehicle) return;
+
+  var fits = (BAT_FITS||[]).filter(function(f){
+    return String(f.vehicle||'').trim().toUpperCase() === vehicle.trim().toUpperCase()
+      && (f.status||'').toUpperCase() !== 'REJECTED';
+  }).sort(function(a,b){ return (_normDateVal(a.dateFitted||'')||'').localeCompare(_normDateVal(b.dateFitted||'')||''); });
+
+  // Build data objects
+  var _bvhData = [];
+  fits.forEach(function(f){
+    var bref = String(f.batteryRef||'').trim();
+    var bat  = (BATTERIES||[]).find(function(b){ return String(b.batteryRef||'').trim() === bref; }) || {};
+    var brand    = bat.brand || f.brand || '';
+    var size     = bat.size || bat.capacity || bat.voltage || f.size || '';
+    var supplier = bat.supplier || f.supplier || '';
+    var status   = (f.status||'').toUpperCase();
+    var isClosed = status === 'CLOSED';
+    var isActive = status === 'ACTIVE';
+    var isPendRem= status === 'PENDING REMOVAL';
+
+    // NEW / USED detection — USED if this battery had a prior CLOSED fit on a different vehicle
+    var allFitsForBat = (BAT_FITS||[]).filter(function(x){ return String(x.batteryRef||'').trim() === bref; });
+    var thisFitDateMs = f.dateFitted ? _parseDateLocal(String(f.dateFitted)) : null;
+    thisFitDateMs = thisFitDateMs && !isNaN(thisFitDateMs.getTime()) ? thisFitDateMs.getTime() : 0;
+    var priorFit = allFitsForBat.filter(function(x){
+      if (x.id === f.id) return false;
+      if ((x.status||'').toUpperCase() !== 'CLOSED') return false;
+      if ((x.vehicle||'').trim().toUpperCase() === vehicle.trim().toUpperCase()) return false;
+      if (!x.vehicle) return false;
+      var removedD = x.dateRemoved ? _parseDateLocal(String(x.dateRemoved)) : null;
+      if (!removedD || isNaN(removedD.getTime())) return true;
+      return removedD.getTime() <= thisFitDateMs + (1000*60*60*24*7);
+    }).sort(function(a,b){ return (_normDateVal(b.dateFitted||'')||'').localeCompare(_normDateVal(a.dateFitted||'')||''); })[0];
+    var isUsed   = !!priorFit;
+    var usedFrom = isUsed ? (priorFit.vehicle||'') : '';
+    var condText = isUsed ? ('USED'+(usedFrom?' • from '+usedFrom:'')) : 'NEW';
+
+    // Where is battery now
+    var whereNow = '';
+    if (isClosed) {
+      var nowStatus = (bat.status||'').toUpperCase();
+      if (nowStatus === 'FITTED') {
+        var af = (BAT_FITS||[]).find(function(x){ return String(x.batteryRef||'').trim()===bref && (x.status||'').toUpperCase()==='ACTIVE'; });
+        whereNow = af ? 'On '+(af.vehicle||'truck') : 'Fitted (unknown)';
+      } else { whereNow = nowStatus || 'Unknown'; }
+    } else if (isActive) { whereNow = 'Currently here'; }
+    else if (isPendRem) { whereNow = 'Pending removal'; }
+
+    _bvhData.push({
+      bref: bref, brand: brand, size: size, brandSize: brand+(size?' '+size:''),
+      supplier: supplier, position: f.position||'',
+      dateFitted: f.dateFitted||'', dateRemoved: (isClosed||isPendRem)?f.dateRemoved||'':'',
+      dateFittedFmt: fmtDate(f.dateFitted||''), dateRemovedFmt: (isClosed||isPendRem)&&f.dateRemoved?fmtDate(f.dateRemoved):'—',
+      condText: condText, isUsed: isUsed,
+      monthsServed: isClosed?(Number(f.monthsServed||0)||0):0,
+      condAtRemoval: isClosed?(f.conditionAtRemoval||''):'',
+      statusRaw: f.status||'', isClosed: isClosed, isActive: isActive,
+      whereNow: whereNow
+    });
+  });
+
+  function _buniq(arr){ var s={}; arr.forEach(function(v){if(v)s[v]=1;}); return Object.keys(s).sort(); }
+  var _bSups  = _buniq(_bvhData.map(function(r){return r.supplier;}));
+  var _bStats = _buniq(_bvhData.map(function(r){return r.statusRaw;}));
+  var _bPos   = _buniq(_bvhData.map(function(r){return r.position;}));
+
+  var uid = 'bvh'+Date.now();
+
+  var modal = document.createElement('div');
+  modal.id  = 'batVehHistModal';
+  modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.65);z-index:9100;display:flex;align-items:stretch;justify-content:center;padding:0';
+
+  modal.innerHTML = '<div style="background:#fff;width:100%;height:100%;display:flex;flex-direction:column;overflow:hidden">'
+
+    // Header
+    + '<div style="padding:14px 24px;background:linear-gradient(135deg,#065f46,#0a2d6e);color:#fff;display:flex;align-items:center;justify-content:space-between;flex-shrink:0">'
+    + '<div style="display:flex;align-items:center;gap:14px">'
+    + '<div style="background:rgba(255,255,255,0.15);border-radius:10px;width:40px;height:40px;display:flex;align-items:center;justify-content:center;font-size:20px">&#128267;</div>'
+    + '<div><div style="font-size:18px;font-weight:800;letter-spacing:.3px">Battery History &mdash; '+vehicle+'</div>'
+    + '<div style="font-size:12px;opacity:.75;margin-top:2px" id="'+uid+'_count">'+fits.length+' fitment record'+(fits.length!==1?'s':'')+'</div></div>'
+    + '</div>'
+    + '<div style="display:flex;gap:10px;align-items:center">'
+    + '<button onclick="_bvhExportPDF(\''+uid+'\',\''+vehicle.replace(/'/g,"\\'")+'\')" style="background:rgba(255,255,255,0.15);border:1px solid rgba(255,255,255,0.35);color:#fff;font-size:13px;font-weight:600;cursor:pointer;border-radius:8px;padding:8px 18px;display:flex;align-items:center;gap:6px">&#128438; Export PDF</button>'
+    + '<button onclick="document.getElementById(\'batVehHistModal\').remove()" style="background:rgba(255,255,255,0.12);border:1px solid rgba(255,255,255,0.25);color:#fff;font-size:22px;cursor:pointer;border-radius:8px;width:38px;height:38px;display:flex;align-items:center;justify-content:center;font-weight:700;line-height:1">&times;</button>'
+    + '</div></div>'
+
+    // Filter bar
+    + '<div style="background:#f1f5f9;border-bottom:2px solid #e2e8f0;flex-shrink:0;overflow:visible">'
+    + '<div style="padding:10px 20px;display:flex;gap:10px;align-items:center;overflow-x:auto;overflow-y:visible">'
+    + '<div style="position:relative;flex-shrink:0"><span style="position:absolute;left:10px;top:50%;transform:translateY(-50%);color:#94a3b8;font-size:14px">&#128269;</span><input id="'+uid+'_q" type="text" placeholder="Search ref / brand / size…" oninput="_bvhFilter(\''+uid+'\')" style="padding:8px 12px 8px 32px;border:1.5px solid #cbd5e1;border-radius:8px;font-size:13px;outline:none;width:230px;background:#fff" onfocus="this.style.borderColor=\'#065f46\'" onblur="this.style.borderColor=\'#cbd5e1\'"></div>'
+    + '<div style="width:1px;height:28px;background:#cbd5e1;flex-shrink:0"></div>'
+
+    // Supplier dropdown
+    // Position checkbox dropdown
+    + '<div style="position:relative;flex-shrink:0"><button id="'+uid+'_posBtn" onclick="_bvhToggleDrop(\''+uid+'_posDrop\',\''+uid+'_posBtn\')" style="padding:8px 14px;border:1.5px solid #cbd5e1;border-radius:8px;font-size:13px;font-weight:600;background:#fff;cursor:pointer;display:flex;align-items:center;gap:8px;white-space:nowrap;color:#374151">&#128205; Position <span id="'+uid+'_posLbl" style="background:#065f46;color:#fff;border-radius:10px;padding:1px 7px;font-size:11px;font-weight:700;display:none">0</span><span style="font-size:10px;opacity:.5">&#9660;</span></button>'
+    + '<div id="'+uid+'_posDrop" style="display:none;position:absolute;top:calc(100% + 6px);left:0;min-width:230px;background:#fff;border:1.5px solid #cbd5e1;border-radius:12px;box-shadow:0 8px 30px rgba(0,0,0,.15);z-index:99999;padding:8px 0;max-height:260px;overflow-y:auto"><div style="padding:6px 14px 4px;font-size:10px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.08em">Select positions</div>'
+    + _bPos.map(function(v){ return '<label style="display:flex;align-items:center;gap:10px;padding:7px 14px;cursor:pointer;font-size:13px;white-space:nowrap" onmouseover="this.style.background=\'#f1f5f9\'" onmouseout="this.style.background=\'\'"><input type="checkbox" class="bvh-pos-'+uid+'" value="'+v+'" onchange="_bvhFilter(\''+uid+'\');_bvhUpdateLbl(\''+uid+'\',\'pos\')" style="cursor:pointer;accent-color:#065f46;width:15px;height:15px"> '+v+'</label>'; }).join('')
+    + '</div></div>'
+    // Supplier checkbox dropdown
+    + '<div style="position:relative;flex-shrink:0"><button id="'+uid+'_supBtn" onclick="_bvhToggleDrop(\''+uid+'_supDrop\',\''+uid+'_supBtn\')" style="padding:8px 14px;border:1.5px solid #cbd5e1;border-radius:8px;font-size:13px;font-weight:600;background:#fff;cursor:pointer;display:flex;align-items:center;gap:8px;white-space:nowrap;color:#374151">&#128230; Supplier <span id="'+uid+'_supLbl" style="background:#065f46;color:#fff;border-radius:10px;padding:1px 7px;font-size:11px;font-weight:700;display:none">0</span><span style="font-size:10px;opacity:.5">&#9660;</span></button>'
+    + '<div id="'+uid+'_supDrop" style="display:none;position:absolute;top:calc(100% + 6px);left:0;min-width:230px;background:#fff;border:1.5px solid #cbd5e1;border-radius:12px;box-shadow:0 8px 30px rgba(0,0,0,.15);z-index:99999;padding:8px 0;max-height:260px;overflow-y:auto"><div style="padding:6px 14px 4px;font-size:10px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.08em">Select suppliers</div>'
+    + _bSups.map(function(v){ return '<label style="display:flex;align-items:center;gap:10px;padding:7px 14px;cursor:pointer;font-size:13px;white-space:nowrap" onmouseover="this.style.background=\'#f1f5f9\'" onmouseout="this.style.background=\'\'"><input type="checkbox" class="bvh-sup-'+uid+'" value="'+v+'" onchange="_bvhFilter(\''+uid+'\');_bvhUpdateLbl(\''+uid+'\',\'sup\')" style="cursor:pointer;accent-color:#065f46;width:15px;height:15px"> '+v+'</label>'; }).join('')
+    + '</div></div>'
+
+    + '<select id="'+uid+'_cond" onchange="_bvhFilter(\''+uid+'\')" style="flex-shrink:0;width:145px;padding:8px 10px;border:1.5px solid #cbd5e1;border-radius:8px;font-size:13px;font-weight:600;background:#fff;color:#374151;cursor:pointer"><option value="">All Conditions</option><option>NEW</option><option>USED</option></select>'
+    + '<select id="'+uid+'_st" onchange="_bvhFilter(\''+uid+'\')" style="flex-shrink:0;width:145px;padding:8px 10px;border:1.5px solid #cbd5e1;border-radius:8px;font-size:13px;font-weight:600;background:#fff;color:#374151;cursor:pointer"><option value="">All Statuses</option>'+_bStats.map(function(v){return '<option>'+v+'</option>';}).join('')+'</select>'
+    + '<div style="width:1px;height:28px;background:#cbd5e1;flex-shrink:0"></div>'
+    + '<input id="'+uid+'_df" type="text" placeholder="&#128197; Date Fitted" oninput="_bvhFilter(\''+uid+'\')" style="flex-shrink:0;padding:8px 12px;border:1.5px solid #cbd5e1;border-radius:8px;font-size:13px;outline:none;width:145px;background:#fff" onfocus="this.style.borderColor=\'#065f46\'" onblur="this.style.borderColor=\'#cbd5e1\'">'
+    + '<input id="'+uid+'_dr" type="text" placeholder="&#128197; Date Removed" oninput="_bvhFilter(\''+uid+'\')" style="flex-shrink:0;padding:8px 12px;border:1.5px solid #cbd5e1;border-radius:8px;font-size:13px;outline:none;width:155px;background:#fff" onfocus="this.style.borderColor=\'#065f46\'" onblur="this.style.borderColor=\'#cbd5e1\'">'
+    + '<button onclick="_bvhClearFilters(\''+uid+'\')" style="flex-shrink:0;padding:8px 16px;background:#fff;border:1.5px solid #fca5a5;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;color:#dc2626;white-space:nowrap">&#10005; Clear</button>'
+    + '</div></div>'
+
+    // Table
+    + '<div style="flex:1;overflow:auto;padding:0">'
+    + '<table style="width:100%;border-collapse:collapse;min-width:900px">'
+    + '<thead style="position:sticky;top:0;z-index:10"><tr style="background:#065f46;color:#fff">'
+    + '<th style="padding:10px 10px;text-align:center;width:40px"><input type="checkbox" id="'+uid+'_chkAll" onclick="_bvhToggleAll(\''+uid+'\')" style="cursor:pointer;width:14px;height:14px;accent-color:#fff"></th>'
+    + '<th style="padding:10px 12px;text-align:center;width:40px">#</th>'
+    + '<th style="padding:10px 14px;text-align:left">Battery Ref</th>'
+    + '<th style="padding:10px 14px;text-align:left">Brand / Size</th>'
+    + '<th style="padding:10px 14px;text-align:left">Position</th>'
+    + '<th style="padding:10px 14px;text-align:left">Supplier</th>'
+    + '<th style="padding:10px 14px;text-align:left">Date Fitted</th>'
+    + '<th style="padding:10px 14px;text-align:left">Date Removed</th>'
+    + '<th style="padding:10px 14px;text-align:center">Months</th>'
+    + '<th style="padding:10px 14px;text-align:left">Condition</th>'
+    + '<th style="padding:10px 14px;text-align:left">Status</th>'
+    + '<th style="padding:10px 14px;text-align:left">Where Now</th>'
+    + '</tr></thead>'
+    + '<tbody id="'+uid+'_tbody"></tbody>'
+    + '</table></div>'
+    + '</div>';
+
+  modal.addEventListener('click', function(e){ if(e.target===modal) modal.remove(); });
+  document.body.appendChild(modal);
+
+  // Move dropdown panels to body so overflow can't clip them
+  [uid+'_posDrop', uid+'_supDrop'].forEach(function(id){
+    var p = document.getElementById(id); if(p) document.body.appendChild(p);
+  });
+  var _origRemove2 = modal.remove.bind(modal);
+  modal.remove = function(){
+    [uid+'_posDrop', uid+'_supDrop'].forEach(function(id){ var p=document.getElementById(id);if(p)p.remove(); });
+    _origRemove2();
+  };
+
+  window['_bvhRows_'+uid] = _bvhData;
+  window['_bvhVehicle_'+uid] = vehicle;
+  _bvhFilter(uid);
+}
+
+function _bvhRenderRows(uid, data) {
+  var tbody = document.getElementById(uid+'_tbody');
+  if (!tbody) return;
+  if (!data.length) {
+    tbody.innerHTML = '<tr><td colspan="11" style="text-align:center;padding:40px;color:#94a3b8;font-style:italic">No records match your filters</td></tr>';
+    return;
+  }
+  tbody.innerHTML = data.map(function(r,i){
+    var condBadge = r.isUsed
+      ? '<span style="font-size:11px;font-weight:700;color:#92400e">'+r.condText+'</span>'
+      : '<span style="font-size:11px;font-weight:700;color:#065f46">NEW</span>';
+    var stMap={'ACTIVE':'#2563eb','CLOSED':'#059669','PENDING REMOVAL':'#d97706'};
+    var stColor = stMap[r.statusRaw] || '#6b7280';
+    var stBadge = '<span style="font-size:11px;font-weight:700;color:'+stColor+'">'+r.statusRaw+'</span>';
+    var locColor = r.isActive ? '#059669' : '#475569';
+    return '<tr data-bvh-idx="'+i+'" style="border-bottom:1px solid #f1f5f9'+(i%2===0?';background:#fafafa':'')+'">'
+      + '<td style="padding:8px 10px;text-align:center"><input type="checkbox" class="bvh-chk-'+uid+'" data-idx="'+i+'" style="cursor:pointer;width:14px;height:14px;accent-color:#065f46"></td>'
+      + '<td style="padding:10px 12px;font-weight:700;color:#065f46;font-size:13px;text-align:center">'+(i+1)+'</td>'
+      + '<td style="padding:10px 14px;font-size:13px;font-family:monospace"><span style="font-weight:700;color:#065f46;cursor:pointer;text-decoration:underline;text-underline-offset:2px" onclick="openBatProfile(\''+r.bref.replace(/'/g,"\\'")+'\')" title="View battery profile">'+r.bref+'</span></td>'
+      + '<td style="padding:10px 14px;font-size:13px"><b>'+r.brand+'</b>'+(r.size?' '+r.size:'')+'</td>'
+      + '<td style="padding:10px 14px;font-size:12px;color:#475569">'+(r.position||'—')+'</td>'
+      + '<td style="padding:10px 14px;font-size:12px;color:#475569">'+(r.supplier||'—')+'</td>'
+      + '<td style="padding:10px 14px;font-size:13px">'+r.dateFittedFmt+'</td>'
+      + '<td style="padding:10px 14px;font-size:13px">'+r.dateRemovedFmt+'</td>'
+      + '<td style="padding:10px 14px;text-align:center;font-weight:700;color:#0a2d6e">'+(r.monthsServed>0?r.monthsServed+' mo':'—')+'</td>'
+      + '<td style="padding:10px 14px">'+condBadge+'</td>'
+      + '<td style="padding:10px 14px">'+stBadge+'</td>'
+      + '<td style="padding:10px 14px;font-weight:600;color:'+locColor+'">'+(r.whereNow||'—')+'</td>'
+      + '</tr>';
+  }).join('');
+}
+
+function _bvhToggleDrop(dropId, btnId) {
+  var drop = document.getElementById(dropId);
+  var btn  = document.getElementById(btnId);
+  if (!drop || !btn) return;
+  var isOpen = drop.style.display !== 'none';
+  document.querySelectorAll('[id$="_supDrop"],[id$="_posDrop"]').forEach(function(d){ d.style.display='none'; });
+  if (isOpen) return;
+  var r = btn.getBoundingClientRect();
+  drop.style.position = 'fixed';
+  drop.style.top  = (r.bottom + 6) + 'px';
+  drop.style.left = r.left + 'px';
+  drop.style.display = 'block';
+  setTimeout(function(){
+    function _close(e){ if(!drop.contains(e.target)&&e.target.id!==btnId){drop.style.display='none';document.removeEventListener('click',_close);} }
+    document.addEventListener('click', _close);
+  }, 10);
+}
+
+function _bvhUpdateLbl(uid, key) {
+  var chks = document.querySelectorAll('.bvh-'+key+'-'+uid+':checked');
+  var lbl  = document.getElementById(uid+'_'+key+'Lbl');
+  if (!lbl) return;
+  if (chks.length > 0) { lbl.style.display='inline'; lbl.textContent=chks.length; }
+  else { lbl.style.display='none'; }
+}
+
+function _bvhFilter(uid) {
+  var allRows = window['_bvhRows_'+uid] || [];
+  var q    = (document.getElementById(uid+'_q')||{}).value||'';
+  var cond = (document.getElementById(uid+'_cond')||{}).value||'';
+  var st   = (document.getElementById(uid+'_st')||{}).value||'';
+  var df   = (document.getElementById(uid+'_df')||{}).value||'';
+  var dr   = (document.getElementById(uid+'_dr')||{}).value||'';
+  var ql   = q.toLowerCase();
+  var posChecked = Array.from(document.querySelectorAll('.bvh-pos-'+uid+':checked')).map(function(c){return c.value;});
+  var supChecked = Array.from(document.querySelectorAll('.bvh-sup-'+uid+':checked')).map(function(c){return c.value;});
+  var filtered = allRows.filter(function(r){
+    if (ql && !(r.bref.toLowerCase().includes(ql)||r.brandSize.toLowerCase().includes(ql))) return false;
+    if (posChecked.length && posChecked.indexOf(r.position) === -1) return false;
+    if (supChecked.length && supChecked.indexOf(r.supplier) === -1) return false;
+    if (cond) { if ((r.isUsed?'USED':'NEW') !== cond) return false; }
+    if (st && r.statusRaw !== st) return false;
+    if (df && !r.dateFittedFmt.toLowerCase().includes(df.toLowerCase())) return false;
+    if (dr && !r.dateRemovedFmt.toLowerCase().includes(dr.toLowerCase())) return false;
+    return true;
+  });
+  window['_bvhFiltered_'+uid] = filtered;
+  _bvhRenderRows(uid, filtered);
+  var cnt = document.getElementById(uid+'_count');
+  if (cnt) cnt.textContent = filtered.length+' of '+allRows.length+' record'+(allRows.length!==1?'s':'');
+  var ca = document.getElementById(uid+'_chkAll');
+  if (ca) ca.checked = false;
+}
+
+function _bvhClearFilters(uid) {
+  var q = document.getElementById(uid+'_q'); if(q) q.value='';
+  var c = document.getElementById(uid+'_cond'); if(c) c.value='';
+  var s = document.getElementById(uid+'_st'); if(s) s.value='';
+  var d = document.getElementById(uid+'_df'); if(d) d.value='';
+  var r = document.getElementById(uid+'_dr'); if(r) r.value='';
+  document.querySelectorAll('.bvh-pos-'+uid+',.bvh-sup-'+uid).forEach(function(x){x.checked=false;});
+  _bvhUpdateLbl(uid,'pos'); _bvhUpdateLbl(uid,'sup');
+  _bvhFilter(uid);
+}
+
+function _bvhToggleAll(uid) {
+  var ca = document.getElementById(uid+'_chkAll');
+  document.querySelectorAll('.bvh-chk-'+uid).forEach(function(c){c.checked=ca.checked;});
+}
+
+function _bvhExportPDF(uid, vehicle) {
+  var filtered = window['_bvhFiltered_'+uid] || window['_bvhRows_'+uid] || [];
+  var chks = document.querySelectorAll('.bvh-chk-'+uid+':checked');
+  var rows;
+  if (chks.length > 0) {
+    var idxSet={};
+    chks.forEach(function(c){idxSet[c.dataset.idx]=1;});
+    rows = filtered.filter(function(_,i){return idxSet[i];});
+  } else { rows = filtered; }
+  if (!rows.length){toast('No rows to export','er');return;}
+  var now = new Date().toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'});
+  var tableRows = rows.map(function(r,i){
+    return '<tr>'
+      +'<td>'+(i+1)+'</td>'
+      +'<td style="font-family:monospace;font-weight:700">'+r.bref+'</td>'
+      +'<td>'+r.brand+(r.size?' '+r.size:'')+'</td>'
+      +'<td>'+(r.position||'—')+'</td>'
+      +'<td>'+(r.supplier||'—')+'</td>'
+      +'<td>'+r.dateFittedFmt+'</td>'
+      +'<td>'+r.dateRemovedFmt+'</td>'
+      +'<td style="text-align:center">'+(r.monthsServed>0?r.monthsServed+' mo':'—')+'</td>'
+      +'<td style="font-weight:700">'+(r.isUsed?'USED':'NEW')+'</td>'
+      +'<td style="font-weight:700">'+r.statusRaw+'</td>'
+      +'<td>'+(r.whereNow||'—')+'</td>'
+      +'</tr>';
+  }).join('');
+  var w=window.open('','_blank');
+  w.document.write('<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Battery History — '+vehicle+'</title>'
+    +'<style>'
+    +'@page{size:A4 landscape;margin:14mm 12mm}'
+    +'*{box-sizing:border-box;margin:0;padding:0}'
+    +'body{font-family:"Segoe UI",Arial,sans-serif;font-size:10.5px;color:#1e293b}'
+    +'.header{border:2px solid #000;padding:14px 18px;margin-bottom:14px;display:flex;justify-content:space-between;align-items:flex-end}'
+    +'.header h1{font-size:18px;font-weight:900;letter-spacing:.5px}'
+    +'.header .sub{font-size:11px;color:#555;margin-top:3px}'
+    +'table{width:100%;border-collapse:collapse}'
+    +'thead th{background:#fff;color:#000;border-bottom:2px solid #000;padding:7px 10px;text-align:left;font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.06em}'
+    +'tbody td{padding:6px 10px;border-bottom:1px solid #e5e7eb;vertical-align:middle}'
+    +'tbody tr:nth-child(even){background:#f5f5f5}'
+    +'@media print{button{display:none}}'
+    +'</style></head><body>'
+    +'<div class="header"><div><h1>&#128267; Battery History &mdash; '+vehicle+'</h1><div class="sub">Generated: '+now+' &nbsp;|&nbsp; '+rows.length+' record'+(rows.length!==1?'s':'')+'</div></div></div>'
+    +'<table><thead><tr><th>#</th><th>Battery Ref</th><th>Brand / Size</th><th>Position</th><th>Supplier</th><th>Date Fitted</th><th>Date Removed</th><th>Months</th><th>Condition</th><th>Status</th><th>Where Now</th></tr></thead><tbody>'+tableRows+'</tbody></table>'
+    +'<script>window.onload=function(){window.print();}<\/script></body></html>');
+  w.document.close();
+}
+
+function _tvhRenderRows(uid, data) {
+  var tbody = document.getElementById(uid+'_tbody');
+  if (!tbody) return;
+  if (!data.length) {
+    tbody.innerHTML = '<tr><td colspan="11" style="text-align:center;padding:28px;color:#94a3b8;font-style:italic">No records match your filters.</td></tr>';
+    return;
+  }
+  tbody.innerHTML = data.map(function(r, i) {
+    var condBadge = r.isUsed
+      ? '<span style="background:#fef3c7;color:#92400e;padding:3px 9px;border-radius:10px;font-size:11px;font-weight:700">'+r.condText+'</span>'
+      : '<span style="background:#dcfce7;color:#166534;padding:3px 9px;border-radius:10px;font-size:11px;font-weight:700">NEW</span>';
+    var stColor = r.isClosed ? 'background:#dcfce7;color:#166534' : r.isActive ? 'background:#dbeafe;color:#1e40af' : 'background:#f1f5f9;color:#475569';
+    var stBadge = '<span style="'+stColor+';padding:2px 8px;border-radius:10px;font-size:10px;font-weight:700">'+(r.isClosed?'REMOVED':r.statusRaw)+'</span>';
+    var locColor = r.whereNowText.startsWith('On ')?'#2563eb':r.whereNowText==='Currently here'?'#2563eb':r.whereNowText==='Scrapped'||r.whereNowText==='SCRAPPED'?'#dc2626':r.whereNowText==='In Store'||r.whereNowText==='IN STORE'?'#059669':'#6b7280';
+    return '<tr data-tvh-idx="'+i+'" style="border-bottom:1px solid #f1f5f9'+(i%2===0?';background:#fafafa':'')+'">'
+      + '<td style="padding:8px 10px;text-align:center"><input type="checkbox" class="tvh-chk-'+uid+'" data-idx="'+i+'" style="cursor:pointer;width:14px;height:14px;accent-color:#0a2d6e"></td>'
+      + '<td style="padding:10px 14px;font-weight:700;color:#0a2d6e;font-size:13px">'+(i+1)+'</td>'
+      + '<td style="padding:10px 14px;font-size:13px;font-family:monospace"><span style="font-weight:700;color:#0a2d6e;cursor:pointer;text-decoration:underline;text-underline-offset:2px" onclick="openTyreProfile(\''+r.serial.replace(/'/g,"\\'")+'\')" title="View tyre profile">'+r.serial+'</span></td>'
+      + '<td style="padding:10px 14px;font-size:13px"><b>'+r.brand+'</b>'+(r.size?' '+r.size:'')+'</td>'
+      + '<td style="padding:10px 14px;font-size:12px;color:#475569">'+(r.position||'—')+'</td>'
+      + '<td style="padding:10px 14px;font-size:12px;color:#475569">'+(r.supplier||'—')+'</td>'
+      + '<td style="padding:10px 14px;font-size:13px">'+r.dateFittedFmt+'</td>'
+      + '<td style="padding:10px 14px;font-size:13px">'+r.dateRemovedFmt+'</td>'
+      + '<td style="padding:10px 14px">'+condBadge+'</td>'
+      + '<td style="padding:10px 14px">'+stBadge+'</td>'
+      + '<td style="padding:10px 14px;font-weight:600;color:'+locColor+'">'+(r.whereNowText||'—')+'</td>'
+      + '</tr>';
+  }).join('');
+}
+
+function _tvhToggleDrop(dropId, btnId) {
+  var drop = document.getElementById(dropId);
+  var btn  = document.getElementById(btnId);
+  if (!drop || !btn) return;
+  var isOpen = drop.style.display !== 'none';
+  // close all other drops first
+  document.querySelectorAll('[id$="_supDrop"],[id$="_posDrop"]').forEach(function(d){ d.style.display='none'; });
+  if (isOpen) return;
+  // Position using fixed coords so overflow clipping never hides it
+  var r = btn.getBoundingClientRect();
+  drop.style.position = 'fixed';
+  drop.style.top  = (r.bottom + 6) + 'px';
+  drop.style.left = r.left + 'px';
+  drop.style.display = 'block';
+  // close when clicking outside
+  setTimeout(function(){
+    function _close(e){ if(!drop.contains(e.target)&&e.target.id!==btnId){drop.style.display='none';document.removeEventListener('click',_close);} }
+    document.addEventListener('click', _close);
+  }, 10);
+}
+
+function _tvhUpdateDropLbl(uid, key) {
+  var chks = document.querySelectorAll('.tvh-'+key+'-'+uid+':checked');
+  var lbl = document.getElementById(uid+'_'+key+'Lbl');
+  if (!lbl) return;
+  if (chks.length > 0) { lbl.style.display='inline'; lbl.textContent=chks.length; }
+  else { lbl.style.display='none'; }
+}
+
+function _tvhFilter(uid) {
+  var allRows = window['_tvhRows_'+uid] || [];
+  var q    = (document.getElementById(uid+'_q')||{}).value||'';
+  var cond = (document.getElementById(uid+'_cond')||{}).value||'';
+  var st   = (document.getElementById(uid+'_st')||{}).value||'';
+  var df   = (document.getElementById(uid+'_df')||{}).value||'';
+  var dr   = (document.getElementById(uid+'_dr')||{}).value||'';
+  var ql   = q.toLowerCase();
+  // Checkbox sets
+  var posChecked = Array.from(document.querySelectorAll('.tvh-pos-'+uid+':checked')).map(function(c){return c.value;});
+  var supChecked = Array.from(document.querySelectorAll('.tvh-sup-'+uid+':checked')).map(function(c){return c.value;});
+  var filtered = allRows.filter(function(r){
+    if (ql && !(r.serial.toLowerCase().includes(ql)||r.brandSize.toLowerCase().includes(ql))) return false;
+    if (posChecked.length && posChecked.indexOf(r.position) === -1) return false;
+    if (supChecked.length && supChecked.indexOf(r.supplier) === -1) return false;
+    if (cond) {
+      var rCond = r.isUsed ? 'USED' : 'NEW';
+      if (rCond !== cond) return false;
+    }
+    if (st && r.statusRaw !== st) return false;
+    if (df && !r.dateFittedFmt.toLowerCase().includes(df.toLowerCase())) return false;
+    if (dr && !r.dateRemovedFmt.toLowerCase().includes(dr.toLowerCase())) return false;
+    return true;
+  });
+  window['_tvhFiltered_'+uid] = filtered;
+  _tvhRenderRows(uid, filtered);
+  var cnt = document.getElementById(uid+'_count');
+  if (cnt) cnt.textContent = filtered.length+' of '+(allRows.length)+' record'+(allRows.length!==1?'s':'');
+  var ca = document.getElementById(uid+'_chkAll');
+  if (ca) ca.checked = false;
+}
+
+function _tvhClearFilters(uid) {
+  var q = document.getElementById(uid+'_q'); if(q) q.value='';
+  var cond = document.getElementById(uid+'_cond'); if(cond) cond.value='';
+  var st = document.getElementById(uid+'_st'); if(st) st.value='';
+  var df = document.getElementById(uid+'_df'); if(df) df.value='';
+  var dr = document.getElementById(uid+'_dr'); if(dr) dr.value='';
+  document.querySelectorAll('.tvh-pos-'+uid+',.tvh-sup-'+uid).forEach(function(c){ c.checked=false; });
+  _tvhUpdateDropLbl(uid,'pos'); _tvhUpdateDropLbl(uid,'sup');
+  _tvhFilter(uid);
+}
+
+function _tvhToggleAll(uid) {
+  var ca = document.getElementById(uid+'_chkAll');
+  var chks = document.querySelectorAll('.tvh-chk-'+uid);
+  chks.forEach(function(c){ c.checked = ca.checked; });
+}
+
+function _tvhExportPDF(uid, vehicle) {
+  var filtered = window['_tvhFiltered_'+uid] || window['_tvhRows_'+uid] || [];
+  // Get selected rows; if none checked, use all visible
+  var chks = document.querySelectorAll('.tvh-chk-'+uid+':checked');
+  var selected;
+  if (chks.length > 0) {
+    var idxSet = {};
+    chks.forEach(function(c){ idxSet[c.dataset.idx] = 1; });
+    selected = filtered.filter(function(r, i){ return idxSet[i] === 1 || idxSet[String(i)] === 1; });
+  } else {
+    selected = filtered;
+  }
+  if (!selected.length) { toast('No rows to export','er'); return; }
+
+  var tableRows = selected.map(function(r, i){
+    var condCell = r.isUsed
+      ? '<span class="badge">'+r.condText+'</span>'
+      : '<span class="badge">NEW</span>';
+    var stCell = r.isClosed
+      ? '<span class="badge">REMOVED</span>'
+      : r.isActive
+      ? '<span class="badge">ACTIVE</span>'
+      : '<span class="badge">'+r.statusRaw+'</span>';
+    var locColor = 'color:#111';
+    return '<tr>'
+      + '<td class="num">'+(i+1)+'</td>'
+      + '<td class="serial">'+r.serial+'</td>'
+      + '<td class="brand"><b>'+r.brand+'</b> '+r.size+'</td>'
+      + '<td class="pos">'+(r.position||'—')+'</td>'
+      + '<td class="sup">'+(r.supplier||'—')+'</td>'
+      + '<td class="date">'+r.dateFittedFmt+'</td>'
+      + '<td class="date">'+r.dateRemovedFmt+'</td>'
+      + '<td>'+condCell+'</td>'
+      + '<td>'+stCell+'</td>'
+      + '<td class="loc" style="'+locColor+'">'+(r.whereNowText||'—')+'</td>'
+      + '</tr>';
+  }).join('');
+
+  var printDate = new Date().toLocaleDateString('en-GB',{day:'2-digit',month:'long',year:'numeric'});
+  var w = window.open('','_blank');
+  var d = w.document;
+  d.write('<!DOCTYPE html><html><head><title>Tyre History - '+vehicle+'</title><style>'
+    + '@page{size:A4 landscape;margin:14mm 12mm}'
+    + '*{box-sizing:border-box;margin:0;padding:0}'
+    + 'body{font-family:"Segoe UI",Arial,sans-serif;font-size:10.5px;color:#1e293b;background:#fff}'
+    + '.header{border:2px solid #000;padding:14px 18px;display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:14px}'
+    + '.header-left h1{font-size:17px;font-weight:800;letter-spacing:.3px;margin-bottom:3px;color:#000}'
+    + '.header-left p{font-size:11px;color:#333}'
+    + '.header-right{text-align:right;font-size:11px;color:#333;line-height:1.7}'
+    + 'table{width:100%;border-collapse:collapse;font-size:10.5px}'
+    + 'thead tr{border-bottom:2px solid #000}'
+    + 'thead th{color:#000;background:#fff;padding:8px 10px;text-align:left;font-size:9.5px;font-weight:800;letter-spacing:.5px;text-transform:uppercase;white-space:nowrap;border-bottom:2px solid #000}'
+    + 'tbody tr:nth-child(even){background:#f5f5f5}'
+    + 'tbody tr:nth-child(odd){background:#fff}'
+    + 'tbody tr{border-bottom:1px solid #ddd}'
+    + 'td{padding:7px 10px;white-space:nowrap;vertical-align:middle;color:#111}'
+    + 'td.num{font-weight:700;text-align:center}'
+    + 'td.serial{font-family:monospace;font-weight:700}'
+    + '.badge{display:inline-block;font-size:10px;font-weight:700;color:#000}'
+    + 'td.loc{font-weight:600}'
+    + '.footer{margin-top:14px;padding-top:8px;border-top:1px solid #999;display:flex;justify-content:space-between;font-size:9px;color:#555}'
+    + '</style></head><body>');
+
+  d.write('<div class="header">'
+    + '<div class="header-left">'
+    + '<h1>Tyre Fitment History</h1>'
+    + '<p>Vehicle: <b>'+vehicle+'</b></p>'
+    + '</div>'
+    + '<div class="header-right">'
+    + 'Printed: '+printDate+'<br>'
+    + selected.length+' record'+(selected.length!==1?'s':'')+' exported'
+    + '</div>'
+    + '</div>');
+
+  d.write('<table><thead><tr>'
+    + '<th style="width:32px;text-align:center">#</th>'
+    + '<th>Serial No</th>'
+    + '<th>Brand / Size</th>'
+    + '<th>Position</th>'
+    + '<th>Supplier</th>'
+    + '<th>Date Fitted</th>'
+    + '<th>Date Removed</th>'
+    + '<th>Condition</th>'
+    + '<th>Status</th>'
+    + '<th>Current Location</th>'
+    + '</tr></thead><tbody>'+tableRows+'</tbody></table>');
+
+  d.write('<div class="footer"><span>AK Transport Workshop System</span><span>CONFIDENTIAL &mdash; Internal Use Only</span></div>');
+  d.write('</body></html>');
+  d.close();
+  setTimeout(function(){ w.print(); }, 500);
 }
 
 // -- TYRE PROFILE --
@@ -5765,6 +6455,7 @@ function clearStoreIssFilter() { ['SIFF1','SIFV1','SIFF2','SIFV2','SIFF3','SIFV3
 // -- TYRE PURCHASE ORDERS --
 function renderTyrePOs(statusFilter) {
   statusFilter = statusFilter || 'all';
+  window._tpoStatusFilter = statusFilter;
   var titleMap = {
     'all':'Tyre Requests',
     'FULLY RECEIVED':'Tyre Requests \u2014 Fully Received',
@@ -5788,6 +6479,11 @@ function renderTyrePOs(statusFilter) {
       + '<div class="statcard statcard-sm" style="background:#dc2626;color:#fff"><div class="scl">Not Paid</div><div class="scv">'+notPaid+'</div></div>'
       + '</div>';
   }
+  var _tpoEntryFilter = window._tpoEntryFilter || 'all';
+  html += '<div style="display:flex;align-items:center;gap:6px;margin-bottom:8px">'
+    + '<span style="font-size:11px;font-weight:700;color:#475569">Entry Type:</span>'
+    + ['all','NEW','OLD'].map(function(v){ var active=_tpoEntryFilter===v; return '<button onclick="window._tpoEntryFilter=\''+v+'\';renderTyrePOs(\''+statusFilter+'\')" style="padding:4px 12px;border-radius:20px;border:1.5px solid '+(active?'#0a2d6e':'#cbd5e1')+';background:'+(active?'#0a2d6e':'#fff')+';color:'+(active?'#fff':'#374151')+';font-size:11px;font-weight:700;cursor:pointer">'+( v==='all'?'All':v==='NEW'?'🆕 New':'📋 Old')+'</button>'; }).join('')
+    + '</div>';
   html += '<div><table><thead><tr>'
     + '<th style="width:36px"><input type="checkbox" id="tpo_chk_all" onclick="toggleAllTpo(this)" style="cursor:pointer;width:14px;height:14px;accent-color:var(--ac)"></th>'
     + '<th>Req No</th><th>Date Requested</th><th>Brand</th><th>Size</th><th>Type</th>'
@@ -5805,6 +6501,7 @@ function renderTyrePOs(statusFilter) {
     html += '<tr><td colspan="15" style="text-align:center;color:var(--t3);padding:32px">No tyre requests'+(statusFilter!=='all'?' with status: '+statusFilter:'')+'</td></tr>';
   } else {
     var filteredRows = _applyTyreFilter(filtered.slice(),'TPF',function(p){return{poNo:p.poNo||'',poDate:toISODate(p.poDate),brand:p.brand||'',size:p.size||'',supplier:p.supplier||'',lpoNo:p.lpoNo||'',requestedBy:p.requestedBy||'',status:p.status||''};}).sort(function(a,b){ return (b.poDate||'').localeCompare(a.poDate||''); });
+    if (_tpoEntryFilter !== 'all') { filteredRows = filteredRows.filter(function(p){ return (p.entryType||'NEW') === _tpoEntryFilter; }); }
     filteredRows.forEach(function(p){
       var s = (p.status||'NOT PAID').toUpperCase();
       // Recalculate status from actual quantities — overrides stale stored status
@@ -6187,16 +6884,22 @@ function _doFitReqEdit(rows){
     html+='<div style="background:#f8f9fc;border:1.5px solid #e2e2e7;border-radius:10px;padding:14px;margin-bottom:12px">'
       +'<div style="font-size:11px;font-weight:700;color:#0a2d6e;margin-bottom:10px">'+(r.reqNo||r.id||'')+' \u2014 '+(r.status||'')+' '+(locked?'\uD83D\uDD12':'')+'</div>'
       +'<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px">'
+      +'<div style="display:flex;align-items:center;justify-content:flex-end;gap:8px;margin-bottom:10px">'
+      +'<label style="font-size:11px;font-weight:700;color:#475569">Date Type:</label>'
+      +'<select id="fre_reqtype_'+r.id+'" onchange="_freToggleDate(\''+r.id+'\')" style="padding:4px 8px;border:1.5px solid #cbd5e1;border-radius:7px;font-size:11px;font-weight:700;background:#fff;cursor:pointer;color:#0a2d6e"><option value="new">\ud83c\udd95 Keep Original Date</option><option value="old">\ud83d\udccb Change Date</option></select>'
+      +'</div>'
+      +'<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px">'
       +'<div><label style="font-size:11px;font-weight:600;color:#555;display:block;margin-bottom:4px">Serial No</label><input id="fre_serial_'+r.id+'" value="'+(r.tyreSerial||'')+'" '+(locked?'readonly':'')+' style="'+(locked?fsL:fs)+'"></div>'
       +'<div><label style="font-size:11px;font-weight:600;color:#555;display:block;margin-bottom:4px">Vehicle <span style="color:#aaa;font-weight:400">(auto)</span></label><input value="'+(r.vehicle||'')+'" readonly style="'+fsL+'"></div>'
       +'<div><label style="font-size:11px;font-weight:600;color:#555;display:block;margin-bottom:4px">Position <span style="color:#aaa;font-weight:400">(auto)</span></label><input value="'+(r.position||'')+'" readonly style="'+fsL+'"></div>'
       +'<div><label style="font-size:11px;font-weight:600;color:#555;display:block;margin-bottom:4px">Job Card <span style="color:#aaa;font-weight:400">(auto)</span></label><input value="'+(r.jobCardNo||'')+'" readonly style="'+fsL+'"></div>'
       +'<div><label style="font-size:11px;font-weight:600;color:#555;display:block;margin-bottom:4px">Driver <span style="color:#aaa;font-weight:400">(auto)</span></label><input value="'+(r.driverName||'')+'" readonly style="'+fsL+'"></div>'
       +'<div><label style="font-size:11px;font-weight:600;color:#555;display:block;margin-bottom:4px">KM at Fitting <span style="color:#aaa;font-weight:400">(auto)</span></label><input value="'+(r.kmAtFitting||0)+'" readonly style="'+fsL+'"></div>'
-      +'<div style="grid-column:1/-1"><label style="font-size:11px;font-weight:600;color:#555;display:block;margin-bottom:4px">Reason Removed</label><input id="fre_reason_'+r.id+'" value="'+(r.removedReason||'')+'" '+(locked?'readonly':'')+' style="'+(locked?fsL:fs)+'"></div>'
+      +'<div><label style="font-size:11px;font-weight:600;color:#555;display:block;margin-bottom:4px">Date Fitted</label><input type="date" id="fre_date_'+r.id+'" value="'+(r.dateFitted||'')+'" readonly style="'+fsL+'"></div>'
+      +'<div style="grid-column:2/-1"><label style="font-size:11px;font-weight:600;color:#555;display:block;margin-bottom:4px">Reason Removed</label><input id="fre_reason_'+r.id+'" value="'+(r.removedReason||'')+'" '+(locked?'readonly':'')+' style="'+(locked?fsL:fs)+'"></div>'
       +'<div style="grid-column:1/-1"><label style="font-size:11px;font-weight:600;color:#555;display:block;margin-bottom:4px">Notes</label><input id="fre_notes_'+r.id+'" value="'+(r.removalNotes||'')+'" '+(locked?'readonly':'')+' style="'+(locked?fsL:fs)+'"></div>'
       +'</div>'
-      +'<div style="font-size:11px;color:#6b7280;margin-top:8px;background:#f3f4f6;padding:6px 10px;border-radius:6px">\u2139 Vehicle, Position, Job Card, Driver and KM are pulled from the tyre fitment \u2014 only Serial No and Reason Removed can be changed.</div>'
+      +'<div style="font-size:11px;color:#6b7280;margin-top:8px;background:#f3f4f6;padding:6px 10px;border-radius:6px">\u2139 Vehicle, Position, Job Card, Driver and KM are pulled from the tyre fitment. Select "Change Date" above to edit the Date Fitted.</div>'
       +(locked?'<div style="font-size:11px;color:#b45309;margin-top:6px;background:#fffbeb;padding:6px 10px;border-radius:6px">\u26a0 Record is locked (approved/rejected). Password was required.</div>':'')+'</div>';
   });
   document.getElementById('fitreq_edit_lines').innerHTML=html;
@@ -6215,7 +6918,8 @@ async function saveFitReqEdit(){
     var updated=Object.assign({},r,{
       tyreSerial:   locked?r.tyreSerial:((document.getElementById('fre_serial_'+r.id)||{value:r.tyreSerial||''}).value||r.tyreSerial||''),
       removedReason:locked?r.removedReason:((document.getElementById('fre_reason_'+r.id)||{value:r.removedReason||''}).value||r.removedReason||''),
-      removalNotes: locked?r.removalNotes:((document.getElementById('fre_notes_'+r.id)||{value:r.removalNotes||''}).value||r.removalNotes||'')
+      removalNotes: locked?r.removalNotes:((document.getElementById('fre_notes_'+r.id)||{value:r.removalNotes||''}).value||r.removalNotes||''),
+      dateFitted:   (function(){ var rt=document.getElementById('fre_reqtype_'+r.id); var de=document.getElementById('fre_date_'+r.id); return (rt&&rt.value==='old'&&de&&de.value)?de.value:r.dateFitted; })()
     });
     try{
       var res=await callAPI('updateFitRequest',{record:updated});
@@ -6353,7 +7057,7 @@ async function rejectFitment(fitId, status, serial) {
 function renderTyreGRNs() {
   document.getElementById('viewtitle').textContent = 'Goods Received Notes';
   document.getElementById('viewsub').textContent = '';
-  var html = '<div style="overflow-x:auto"><table style="min-width:max-content"><thead><tr>'
+  var html = '<div><table style="min-width:max-content"><thead><tr>'
     + '<th>GRN No</th><th>Date</th><th>PO No</th><th>Supplier</th><th>Received By</th><th>Serial No</th><th>Notes</th>'
     + '</tr></thead><tbody>';
   if (!TYRE_GRNS.length) {
@@ -6598,7 +7302,7 @@ function renderTyreScrap() {
     if(ap&&!bp)return -1; if(!ap&&bp)return 1;
     return (b.scrapDate||'').localeCompare(a.scrapDate||'');
   });
-  html += '<div style="overflow-x:auto"><table style="min-width:max-content"><thead><tr>'
+  html += '<div><table style="min-width:max-content"><thead><tr>'
     + '<th style="width:36px;text-align:center"><input type="checkbox" id="tyre_scrap_chk_all" onclick="toggleAllTyreScrap(this)" style="cursor:pointer;width:14px;height:14px"></th>'
     + '<th>Scrap No</th><th>Date</th><th>Serial No</th><th>Brand</th><th>Size</th>'
     + '<th>KM Run</th><th>Book Value</th><th>Sale Price</th><th>Profit/Loss</th>'
@@ -7005,8 +7709,8 @@ function bpoExportExcel() {
   var ids = Array.from(_bpoSelected);
   var rows = (BAT_POS||[]).filter(function(r){ return ids.includes(r.id); });
   if (!rows.length) { toast('No rows selected','er'); return; }
-  var cols    = ['poNo','poDate','brand','size','qtyOrdered','unitPrice','supplier','lpoNo','status','requestedBy','remarks'];
-  var headers = ['PO No','Date','Brand','Size','Qty Ordered','Unit Price','Supplier','LPO No','Status','Requested By','Remarks'];
+  var cols    = ['poNo','poDate','brand','size','qtyOrdered','unitPrice','supplier','lpoNo','status','requestedBy','entryType','remarks'];
+  var headers = ['PO No','Date','Brand','Size','Qty Ordered','Unit Price','Supplier','LPO No','Status','Requested By','Entry Type','Remarks'];
   var wb = XLSX.utils.book_new();
   var wsData = [headers].concat(rows.map(function(r){
     return cols.map(function(c){
@@ -7068,7 +7772,7 @@ function renderBatInventory() {
     +'<div class="statcard statcard-sm" style="background:#2563eb;color:#fff"><div class="scl">Fitted</div><div class="scv">'+fitted+'</div></div>'
     +'<div class="statcard statcard-sm" style="background:#dc2626;color:#fff"><div class="scl">Sold</div><div class="scv">'+sold+'</div></div>'
     +'</div>';
-  html+='<div style="overflow-x:auto"><table style="min-width:max-content"><thead><tr>'
+  html+='<div><table style="min-width:max-content"><thead><tr>'
     +'<th style="width:36px;text-align:center"><input type="checkbox" id="binv_chk_all" onclick="toggleAllBatInv(this)" style="cursor:pointer;width:14px;height:14px;accent-color:var(--ac)"></th>'
     +'<th>Battery Ref</th><th>Brand</th><th>Size</th><th>Supplier</th><th>Req No</th><th>LPO No</th><th>Date Received</th><th>Purchase Price</th><th>Months on Truck</th><th>Total Months in Service</th><th>Status</th><th>Vehicle</th><th>Position</th>'
     +'</tr></thead><tbody>';
@@ -7135,7 +7839,7 @@ function renderBatInventory() {
             });
             if(af){veh=af.vehicle||'';pos=af.position||'';}
           }
-          return '<td>'+(veh||'\u2014')+'</td>'
+          return '<td>'+(veh?'<span class="reqbadge" style="cursor:pointer;text-decoration:underline" onclick="openBatVehicleHistory(\''+encodeURIComponent(veh)+'\')" title="View battery history for '+veh+'">'+veh+'</span>':'\u2014')+'</td>'
                +'<td style="font-size:11px">'+(pos||'\u2014')+'</td>';
         })()
         +'</tr>';
@@ -7429,6 +8133,12 @@ function renderBatPOs(statusFilter) {
   });
   var _bpfIds=new Set(_applyBattFilter(filtered,'BPF',function(r){return{poNo:r.poNo||r.reqNo||'',poDate:r.poDate||r.date||'',brand:r.brand||'',size:r.size||r.capacity||'',capacity:r.capacity||r.size||'',voltage:r.voltage||'',supplier:r.supplier||'',lpoNo:r.lpoNo||'',requestedBy:r.requestedBy||'',status:r.status||''};}).map(function(r){return r.poNo;}));
   filtered=filtered.filter(function(r){return _bpfIds.has(r.poNo||r.reqNo||'');});
+  var _bpoEntryFilter = window._bpoEntryFilter || 'all';
+  if (_bpoEntryFilter !== 'all') { filtered = filtered.filter(function(p){ return (p.entryType||'NEW') === _bpoEntryFilter; }); }
+  html+='<div style="display:flex;align-items:center;gap:6px;margin-bottom:8px">'
+    +'<span style="font-size:11px;font-weight:700;color:#475569">Entry Type:</span>'
+    +['all','NEW','OLD'].map(function(v){ var active=_bpoEntryFilter===v; return '<button onclick="window._bpoEntryFilter=\''+v+'\';renderBatPOs(\''+statusFilter+'\')" style="padding:4px 12px;border-radius:20px;border:1.5px solid '+(active?'#1e3a5f':'#cbd5e1')+';background:'+(active?'#1e3a5f':'#fff')+';color:'+(active?'#fff':'#374151')+';font-size:11px;font-weight:700;cursor:pointer">'+( v==='all'?'All':v==='NEW'?'🆕 New':'📋 Old')+'</button>'; }).join('')
+    +'</div>';
   html+='<div><table><thead><tr>'
     +'<th style="width:36px"><input type="checkbox" id="bpo_chk_all" onclick="toggleAllBpo(this)" style="cursor:pointer;width:14px;height:14px;accent-color:var(--ac)"></th>'
     +'<th>Req No</th><th>Date</th><th>Brand</th><th>Size</th><th>Qty Ordered</th><th>Qty Received</th><th>Qty Outstanding</th><th>Unit Price</th><th>Total</th><th>Supplier</th><th>LPO No</th><th>Status</th><th>Requested By</th>'
@@ -7463,11 +8173,190 @@ function renderBatPOs(statusFilter) {
   document.getElementById('storecontent').innerHTML=html;
   bpoUpdateSelBar();
 }
+// ── TYRE PO PDF EXPORT ──
+function exportTyrePOPdf() {
+  // If user has selected rows, export only those; otherwise export all currently filtered rows
+  if (_tpoSelected && _tpoSelected.size > 0) {
+    var selectedRows = (TYRE_POS||[]).filter(function(p){ return _tpoSelected.has(p.id); });
+    _buildPOPdf(selectedRows, 'TYRE');
+    return;
+  }
+  var statusFilter = window._tpoStatusFilter || 'all';
+  var _tyrePOsActive = (TYRE_POS||[]).filter(function(p){return (p.status||'').toUpperCase()!=='DELETED';});
+  var filtered = statusFilter==='all' ? _tyrePOsActive : _tyrePOsActive.filter(function(p){
+    var s=(p.status||'').toUpperCase();
+    if(statusFilter==='FULLY RECEIVED')     return s==='FULLY RECEIVED'||s==='FULLY DELIVERED'||s==='RECEIVED';
+    if(statusFilter==='PARTIALLY RECEIVED') return s==='PARTIALLY RECEIVED'||s==='PARTIALLY DELIVERED';
+    return s===statusFilter.toUpperCase();
+  });
+  var filteredRows = _applyTyreFilter(filtered.slice(),'TPF',function(p){return{poNo:p.poNo||'',poDate:toISODate(p.poDate),brand:p.brand||'',size:p.size||'',supplier:p.supplier||'',lpoNo:p.lpoNo||'',requestedBy:p.requestedBy||'',status:p.status||''};}).sort(function(a,b){return (b.poDate||'').localeCompare(a.poDate||'');});
+  var _tpoEntryFilter = window._tpoEntryFilter || 'all';
+  if (_tpoEntryFilter!=='all') filteredRows = filteredRows.filter(function(p){return (p.entryType||'NEW')===_tpoEntryFilter;});
+  _buildPOPdf(filteredRows, 'TYRE');
+}
+
+// ── BATTERY PO PDF EXPORT ──
+function exportBatPOPdf() {
+  // If user has selected rows, export only those; otherwise export all currently filtered rows
+  if (_bpoSelected && _bpoSelected.size > 0) {
+    var selectedRows = (BAT_POS||[]).filter(function(p){ return _bpoSelected.has(p.id); });
+    _buildPOPdf(selectedRows, 'BATTERY');
+    return;
+  }
+  var statusFilter = window._batPOFilter || 'all';
+  var filtered = (BAT_POS||[]).filter(function(p){
+    if(statusFilter==='all') return true;
+    var s=(p.status||'').toUpperCase();
+    if(statusFilter==='FULLY RECEIVED') return s==='FULLY RECEIVED'||s==='FULLY DELIVERED'||s==='RECEIVED';
+    if(statusFilter==='PARTIALLY RECEIVED') return s==='PARTIALLY RECEIVED'||s==='PARTIALLY DELIVERED';
+    return s===statusFilter.toUpperCase();
+  });
+  var _bpfIds = new Set(_applyBattFilter(filtered,'BPF',function(r){return{poNo:r.poNo||r.reqNo||'',poDate:r.poDate||r.date||'',brand:r.brand||'',size:r.size||r.capacity||'',capacity:r.capacity||r.size||'',voltage:r.voltage||'',supplier:r.supplier||'',lpoNo:r.lpoNo||'',requestedBy:r.requestedBy||'',status:r.status||''};}).map(function(r){return r.poNo;}));
+  filtered = filtered.filter(function(r){return _bpfIds.has(r.poNo||r.reqNo||'');});
+  var _bpoEntryFilter = window._bpoEntryFilter || 'all';
+  if (_bpoEntryFilter!=='all') filtered = filtered.filter(function(p){return (p.entryType||'NEW')===_bpoEntryFilter;});
+  _buildPOPdf(filtered, 'BATTERY');
+}
+
+function _buildPOPdf(rows, type) {
+  var isTyre = type === 'TYRE';
+  var title  = isTyre ? 'Tyre Requisition Report' : 'Battery Requisition Report';
+  var now    = new Date();
+  var dateStr = now.toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'});
+  var timeStr = now.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'});
+
+  // Build rows HTML + compute summaries
+  var grandTotal = 0;
+  var grandQty   = 0;
+  var sizeMap    = {}; // size -> {qty, total}
+
+  var rowsHtml = rows.map(function(p){
+    var qty   = Number(p.qtyOrdered||0);
+    var price = Number(p.unitPrice||0);
+    var total = qty * price;
+    grandTotal += total;
+    grandQty   += qty;
+    var sizeKey = isTyre ? (p.tyreSize||p.size||'—') : (p.size||p.capacity||'—');
+    if (!sizeMap[sizeKey]) sizeMap[sizeKey] = {qty:0, total:0};
+    sizeMap[sizeKey].qty   += qty;
+    sizeMap[sizeKey].total += total;
+    return '<tr>'
+      +'<td>'+(p.poNo||'')+'</td>'
+      +'<td>'+fmtDate(p.poDate||p.date||'')+'</td>'
+      +'<td><b>'+(p.brand||'')+'</b></td>'
+      +'<td>'+(isTyre?(p.tyreSize||p.size||''):(p.size||p.capacity||''))+'</td>'
+      +'<td style="text-align:center">'+qty+'</td>'
+      +'<td style="text-align:right">'+fmtMoney(price)+'/=</td>'
+      +'<td style="text-align:right;font-weight:700">'+fmtMoney(total)+'/=</td>'
+      +'<td>'+(p.lpoNo||'—')+'</td>'
+      +'<td>'+(p.supplier||'—')+'</td>'
+      +'</tr>';
+  }).join('');
+
+  // Size breakdown rows
+  var sizeRows = Object.keys(sizeMap).sort().map(function(sz){
+    var d = sizeMap[sz];
+    return '<tr>'
+      +'<td colspan="2" style="text-align:left;font-weight:700">'+sz+'</td>'
+      +'<td style="text-align:center;font-weight:700">'+d.qty+' '+(isTyre?'tyre(s)':'battery(ies)')+'</td>'
+      +'<td style="text-align:right;font-weight:700">TZS '+fmtMoney(d.total)+'/=</td>'
+      +'</tr>';
+  }).join('');
+
+  var html = '<!DOCTYPE html><html><head><meta charset="utf-8">'
+    +'<title>'+title+'</title>'
+    +'<style>'
+    +'*{margin:0;padding:0;box-sizing:border-box;font-family:Arial,sans-serif}'
+    +'body{padding:24px;color:#1e293b;font-size:12px}'
+    +'.header{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:3px solid #0a2d6e;padding-bottom:14px;margin-bottom:18px}'
+    +'.co-name{font-size:20px;font-weight:900;color:#0a2d6e;letter-spacing:.04em}'
+    +'.co-sub{font-size:11px;color:#475569;margin-top:3px}'
+    +'.rpt-title{font-size:15px;font-weight:800;color:#0a2d6e;text-align:right}'
+    +'.rpt-meta{font-size:10px;color:#64748b;text-align:right;margin-top:4px}'
+    +'table{width:100%;border-collapse:collapse;margin-bottom:18px}'
+    +'th{background:#0a2d6e;color:#fff;padding:7px 8px;text-align:left;font-size:11px;font-weight:700}'
+    +'td{padding:6px 8px;border-bottom:1px solid #e2e8f0;font-size:11px;vertical-align:middle}'
+    +'tr:nth-child(even) td{background:#f8fafc}'
+    +'.summary-box{border:2px solid #0a2d6e;border-radius:8px;overflow:hidden;margin-bottom:18px}'
+    +'.summary-title{background:#0a2d6e;color:#fff;font-weight:800;font-size:12px;padding:8px 14px;letter-spacing:.06em}'
+    +'.summary-table{width:100%;border-collapse:collapse}'
+    +'.summary-table td{padding:7px 14px;border-bottom:1px solid #e2e8f0;font-size:11px}'
+    +'.summary-table tr:last-child td{border-bottom:none}'
+    +'.grand-row td{background:#f1f5f9;font-weight:800;font-size:13px;color:#0a2d6e;border-top:2px solid #0a2d6e}'
+    +'.footer{font-size:10px;color:#94a3b8;text-align:center;border-top:1px solid #e2e8f0;padding-top:10px;margin-top:4px}'
+    +'@media print{body{padding:12px}.no-print{display:none}@page{margin:10mm}}'
+    +'</style></head><body>'
+
+    // Header
+    +'<div class="header">'
+      +'<div><div class="co-name">AK TRANSPORT</div><div class="co-sub">Fleet Management — Requisition Report</div></div>'
+      +'<div><div class="rpt-title">'+title+'</div><div class="rpt-meta">Generated: '+dateStr+' '+timeStr+'</div><div class="rpt-meta">Total Records: '+rows.length+'</div></div>'
+    +'</div>'
+
+    // Print button
+    +'<div class="no-print" style="margin-bottom:14px">'
+      +'<button onclick="window.print()" style="background:#0a2d6e;color:#fff;border:none;padding:8px 20px;border-radius:7px;font-size:13px;font-weight:700;cursor:pointer">🖨 Print / Save as PDF</button>'
+      +'<button onclick="window.close()" style="margin-left:10px;background:#e2e8f0;color:#1e293b;border:none;padding:8px 16px;border-radius:7px;font-size:13px;font-weight:700;cursor:pointer">✕ Close</button>'
+    +'</div>'
+
+    // Main table
+    +'<table>'
+      +'<thead><tr>'
+        +'<th>Req No</th><th>Date</th><th>Brand</th><th>Size</th>'
+        +'<th style="text-align:center">Qty Ordered</th>'
+        +'<th style="text-align:right">Unit Price</th>'
+        +'<th style="text-align:right">Total Amount</th>'
+        +'<th>LPO No</th><th>Supplier</th>'
+      +'</tr></thead>'
+      +'<tbody>'+rowsHtml+'</tbody>'
+    +'</table>'
+
+    // Summary box
+    +'<div class="summary-box">'
+      +'<div class="summary-title">📊 SUMMARY BY SIZE</div>'
+      +'<table class="summary-table">'
+        +'<thead><tr>'
+          +'<th style="background:#1e3a5f;color:#fff;padding:6px 14px;font-size:11px">Size</th>'
+          +'<th style="background:#1e3a5f;color:#fff;padding:6px 14px;font-size:11px;text-align:center">Qty Ordered</th>'
+          +'<th style="background:#1e3a5f;color:#fff;padding:6px 14px;font-size:11px;text-align:right">Total Amount</th>'
+          +'<th style="background:#1e3a5f;color:#fff;padding:6px 14px;font-size:11px;text-align:right">% of Total</th>'
+        +'</tr></thead>'
+        +'<tbody>'
+        + Object.keys(sizeMap).sort().map(function(sz){
+            var d=sizeMap[sz];
+            var pct=grandTotal>0?((d.total/grandTotal)*100).toFixed(1):'0.0';
+            return '<tr>'
+              +'<td style="font-weight:700">'+sz+'</td>'
+              +'<td style="text-align:center;font-weight:700">'+d.qty+'</td>'
+              +'<td style="text-align:right;font-family:monospace">TZS '+fmtMoney(d.total)+'/=</td>'
+              +'<td style="text-align:right;color:#64748b">'+pct+'%</td>'
+              +'</tr>';
+          }).join('')
+        +'<tr class="grand-row">'
+          +'<td>GRAND TOTAL</td>'
+          +'<td style="text-align:center">'+grandQty+'</td>'
+          +'<td style="text-align:right;font-family:monospace">TZS '+fmtMoney(grandTotal)+'/=</td>'
+          +'<td style="text-align:right">100%</td>'
+        +'</tr>'
+        +'</tbody>'
+      +'</table>'
+    +'</div>'
+
+    // Footer
+    +'<div class="footer">This report was generated automatically by the Fleet Workshop System. For internal use only.</div>'
+    +'</body></html>';
+
+  var w = window.open('','_blank','width=1100,height=800,scrollbars=yes');
+  if (!w) { alert('Pop-up blocked. Please allow pop-ups for this page and try again.'); return; }
+  w.document.write(html);
+  w.document.close();
+}
+
 // -- BATTERY GRNS --
 function renderBatGRNs() {
   document.getElementById('viewtitle').textContent='Battery Inward (GRNs)';
   var filtered=_applyBattFilter(BAT_GRNS||[],'BGF',function(r){return{grnNo:r.grnNo||'',grnDate:fmtDate(r.grnDate)||'',poNo:r.poNo||'',supplier:r.supplier||'',receivedBy:r.receivedBy||'',brand:r.brand||'',status:''};});
-  var html='<div style="overflow-x:auto"><table style="min-width:max-content"><thead><tr>'
+  var html='<div><table style="min-width:max-content"><thead><tr>'
     +'<th>GRN No</th><th>Date</th><th>PO No</th><th>Brand</th><th>Size</th><th>Qty Received</th><th>Unit Price</th><th>Supplier</th><th>Received By</th>'
     +'</tr></thead><tbody>';
   if(!filtered.length){
@@ -7500,7 +8389,7 @@ function renderBatFitted() {
   var _bffIds=new Set(_applyBattFilter(allFits,'BFF',function(r){var _b=(BATTERIES||[]).find(function(b){return b.batteryRef===r.batteryRef;})||{};return{id:r.id||'',batteryRef:r.batteryRef||'',brand:r.brand||_b.brand||'',vehicle:r.vehicle||'',position:r.position||'',driverName:r.driverName||'',jobCardNo:r.jobCardNo||'',removedReason:r.conditionAtRemoval||r.removedReason||'',dateFitted:toISODate(r.dateFitted),dateRemoved:toISODate(r.dateRemoved),status:r.status||''};}).map(function(r){return r.id;}));
   var filtered=allFits.filter(function(r){return _bffIds.has(r.id||'');});
   var _vs=document.getElementById('viewsub');if(_vs)_vs.textContent=filtered.length+' record'+(filtered.length!==1?'s':'');
-  var html='<div style="overflow-x:auto"><table style="min-width:max-content"><thead><tr>'
+  var html='<div><table style="min-width:max-content"><thead><tr>'
     +'<th>Battery Ref</th><th>Brand</th><th>Size</th><th>Vehicle</th><th>Position</th><th>Date Fitted</th><th>Months on Truck</th><th>Total Months in Service</th><th>Date Removed</th><th>Condition</th><th>Reason Removed</th><th>Job Card</th><th>Driver</th><th>Status</th>'
     +'</tr></thead><tbody>';
   if(!filtered.length){
@@ -7562,7 +8451,7 @@ function renderBatFitRequests() {
     return{id:r.id||'',reqNo:r.reqNo||'',batteryRef:r.batteryRef||'',brand:r.brand||_b.brand||'',vehicle:r.vehicle||'',position:r.position||'',requestedBy:r.requestedBy||'',requestDate:toISODate(r.requestDate),removedReason:r.removedReason||'',status:statusLabel};
   }).map(function(r,i){return r.id||('__idx'+i);}));
   var filtered = all.filter(function(r,i){return _bqfIds.has(r.id||('__idx'+i));});
-  html+='<div style="overflow-x:auto"><table style="min-width:max-content"><thead><tr>'
+  html+='<div><table style="min-width:max-content"><thead><tr>'
     +'<th style="width:36px"><input type="checkbox" id="batfitreq_chk_all" onclick="toggleAllBatFitReq(this)" style="cursor:pointer;width:14px;height:14px;accent-color:var(--ac)"></th>'
     +'<th>Req No</th><th>Type</th><th>Battery Ref</th><th>Brand</th><th>Vehicle</th><th>Position</th><th>Reason</th><th>Date</th><th>Requested By</th><th>Status</th><th>Processed By</th><th>Processed At</th>'
     +'</tr></thead><tbody>';
@@ -7673,8 +8562,12 @@ function _doBatFitReqEdit(rows){
     var st=locked?fsL:fs;
     var lk=locked?" readonly":"";
     h+='<div style="background:#f8f9fc;border:1.5px solid #e2e2e7;border-radius:10px;padding:14px;margin-bottom:12px">'
-      +'<div style="font-size:11px;font-weight:700;color:#0a2d6e;margin-bottom:10px">'+(r.reqNo||r.id||"")
-      +" - "+(r.status||"")+(locked?" 🔒":"")+'</div>'
+      +'<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">'
+      +'<div style="font-size:11px;font-weight:700;color:#0a2d6e">'+(r.reqNo||r.id||"")+" - "+(r.status||"")+(locked?" 🔒":"")+'</div>'
+      +'<div style="display:flex;align-items:center;gap:8px">'
+      +'<label style="font-size:11px;font-weight:700;color:#475569">Date Type:</label>'
+      +'<select id="bfre_reqtype_'+r.id+'" onchange="_bfreToggleDate(\''+r.id+'\')" style="padding:4px 8px;border:1.5px solid #cbd5e1;border-radius:7px;font-size:11px;font-weight:700;background:#fff;cursor:pointer;color:#1e3a5f"><option value="new">🆕 Keep Original Date</option><option value="old">📋 Change Date</option></select>'
+      +'</div></div>'
       +'<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px">'
       +'<div><label style="font-size:11px;font-weight:600;color:#555;display:block;margin-bottom:4px">Battery Ref</label>'
       +'<input id="bfre_ref_'+r.id+'" value="'+(r.batteryRef||"")+'"  '+lk+' style="'+st+'"></div>'
@@ -7686,9 +8579,12 @@ function _doBatFitReqEdit(rows){
       +'<input value="'+(r.jobCardNo||"")+'" readonly style="'+fsL+'"></div>'
       +'<div><label style="font-size:11px;font-weight:600;color:#555;display:block;margin-bottom:4px">Driver</label>'
       +'<input value="'+(r.driverName||"")+'" readonly style="'+fsL+'"></div>'
-      +'<div><label style="font-size:11px;font-weight:600;color:#555;display:block;margin-bottom:4px">Reason Removed</label>'
+      +'<div><label style="font-size:11px;font-weight:600;color:#555;display:block;margin-bottom:4px">Date Fitted</label>'
+      +'<input type="date" id="bfre_date_'+r.id+'" value="'+(r.dateFitted||"")+'" readonly style="'+fsL+'"></div>'
+      +'<div style="grid-column:1/-1"><label style="font-size:11px;font-weight:600;color:#555;display:block;margin-bottom:4px">Reason Removed</label>'
       +'<input id="bfre_reason_'+r.id+'" value="'+(r.removedReason||"")+'"  '+lk+' style="'+st+'"></div>'
       +'</div>'
+      +'<div style="font-size:11px;color:#6b7280;margin-top:8px;background:#f3f4f6;padding:6px 10px;border-radius:6px">ℹ Select "Change Date" above to edit the Date Fitted.</div>'
       +(locked?'<div style="font-size:11px;color:#b45309;margin-top:6px;background:#fffbeb;padding:6px 10px;border-radius:6px">⚠ Locked record.- password required.</div>':"")
       +'</div>';
   });
@@ -7708,7 +8604,8 @@ async function saveBatFitReqEdit(){
     var locked=s==="ACTIVE"||s==="CLOSED"||s==="REJECTED";
     var updated=Object.assign({},r,{
       batteryRef:locked?r.batteryRef:((document.getElementById("bfre_ref_"+r.id)||{value:r.batteryRef||""}).value||r.batteryRef||""),
-      removedReason:locked?r.removedReason:((document.getElementById("bfre_reason_"+r.id)||{value:r.removedReason||""}).value||r.removedReason||"")
+      removedReason:locked?r.removedReason:((document.getElementById("bfre_reason_"+r.id)||{value:r.removedReason||""}).value||r.removedReason||""),
+      dateFitted:(function(){ var rt=document.getElementById("bfre_reqtype_"+r.id); var de=document.getElementById("bfre_date_"+r.id); return (rt&&rt.value==="old"&&de&&de.value)?de.value:r.dateFitted; })()
     });
     try{
       var res=await callAPI("updateBattFitment",{record:updated});
@@ -7989,7 +8886,7 @@ function renderBatRemHold() {
     +'</div>';
   var _bhfIds = new Set(_applyBattFilter(all,'BHF',function(r){var _b=(BATTERIES||[]).find(function(b){return b.batteryRef===r.batteryRef;})||{};return{id:r.id||'',batteryRef:r.batteryRef||'',brand:r.brand||_b.brand||'',vehicle:r.vehicle||'',position:r.position||'',requestedBy:r.requestedBy||'',requestDate:toISODate(r.requestDate),removedReason:r.removedReason||'',status:r.status||''};}).map(function(r,i){return r.id||('__idx'+i);}));
   var filtered = all.filter(function(r,i){return _bhfIds.has(r.id||('__idx'+i));});
-  html+='<div style="overflow-x:auto"><table style="min-width:max-content"><thead><tr>'
+  html+='<div><table style="min-width:max-content"><thead><tr>'
     +'<th style="width:36px;text-align:center"><input type="checkbox" id="bat_rh_chk_all" onclick="toggleAllBatRH(this)" style="cursor:pointer;width:14px;height:14px"></th>'+'<th>Type</th><th>Req No</th><th>Battery Ref</th><th>Brand</th><th>Vehicle</th><th>Position</th><th>Reason</th><th>Date</th><th>Requested By</th><th>Status</th><th>Processed By</th><th>Processed At</th>'
     +(isAdmin?'<th>Action</th>':'')
     +'</tr></thead><tbody>';
@@ -8223,7 +9120,7 @@ function renderBatSales() {
     if(ap&&!bp)return -1; if(!ap&&bp)return 1;
     return (b.saleDate||'').localeCompare(a.saleDate||'');
   });
-  html+='<div style="overflow-x:auto"><table style="min-width:max-content"><thead><tr>'
+  html+='<div><table style="min-width:max-content"><thead><tr>'
     +'<th style="width:36px;text-align:center"><input type="checkbox" id="batsale_chk_all" onclick="toggleAllBatSales(this)" style="cursor:pointer;width:14px;height:14px"></th>'
     +'<th>Sale No</th><th>Date</th><th>Battery Ref</th><th>Brand</th><th>Size</th>'
     +'<th>Months</th><th>Purchase Price</th><th>Sale Price</th><th>P&L</th>'
@@ -8980,6 +9877,8 @@ function openBatPOForm() {
   var modal = document.getElementById('batPOmodal');
   if (!modal) { toast('Battery PO form not found','er'); return; }
   modal.classList.remove('hidden');
+  var reqType = document.getElementById('bpo_req_type');
+  if (reqType) { reqType.value = 'new'; onBpoReqTypeChange(); }
   document.getElementById('bpo_date').value = todayStr();
   document.getElementById('bpo_reqby').value = CURRENT_USER ? CURRENT_USER.name||CURRENT_USER.username : '';
   document.getElementById('bpo_expdelivery').value = '';
@@ -9058,11 +9957,13 @@ async function saveBatPO() {
   for (var j=0; j<linesList.length; j++) {
     try {
       var poNo = 'BPO-'+String(_bpoMax+j+1).padStart(6,'0');
+      var _bpoReqType = (document.getElementById('bpo_req_type')||{value:'new'}).value;
       var rec = Object.assign({},linesList[j],{
         id:'BPO-'+Date.now()+'-'+j, poNo:poNo,
         poDate:poDate, requestedBy:reqBy,
         expectedDelivery:expDel, status:status,
-        qtyReceived:0, qtyOutstanding:linesList[j].qtyOrdered
+        qtyReceived:0, qtyOutstanding:linesList[j].qtyOrdered,
+        entryType:_bpoReqType==='old'?'OLD':'NEW'
       });
       var res = await callAPI('addBatteryPO',{record:rec});
       if(res&&res.success!==false){
@@ -9290,6 +10191,9 @@ function openFitBatteryForm() {
   var modal = document.getElementById('fitBatmodal');
   if (!modal) return;
   modal.classList.remove('hidden');
+  // Reset request type to New
+  var reqType = document.getElementById('fit_bat_req_type');
+  if (reqType) { reqType.value = 'new'; onFitBatReqTypeChange(); }
   document.getElementById('fit_bat_date').value = todayStr();
   document.getElementById('fit_bat_jc').value = '';
   document.getElementById('fit_bat_driver').value = '';
@@ -9924,6 +10828,8 @@ function refreshBatSaleOpts() {
 function openTyrePOForm() {
   if (!can('tyre_create')) { toast('No permission to create tyre requests', 'er'); return; }
   document.getElementById('tyrePOmodal').classList.remove('hidden');
+  var reqType = document.getElementById('tpo_req_type');
+  if (reqType) { reqType.value = 'new'; onTpoReqTypeChange(); }
   document.getElementById('tpo_date').value = todayStr();
   var reqByEl=document.getElementById('tpo_reqby');if(reqByEl)reqByEl.value='';
   document.getElementById('tpo_expdelivery').value = '';
@@ -10260,11 +11166,120 @@ async function saveTyreGRN() {
   if(btn){btn.disabled=false;btn.textContent='💾 Confirm Inward';}
 }
 
+function onTpoReqTypeChange() {
+  var type = document.getElementById('tpo_req_type').value;
+  var dateEl = document.getElementById('tpo_date');
+  var banner = document.getElementById('tpo_old_req_banner');
+  if (type === 'old') {
+    dateEl.removeAttribute('readonly');
+    dateEl.style.background = '#fffbeb';
+    dateEl.style.borderColor = '#f59e0b';
+    dateEl.value = '';
+    if (banner) banner.style.display = 'flex';
+  } else {
+    dateEl.value = todayStr();
+    dateEl.style.background = '';
+    dateEl.style.borderColor = '';
+    if (banner) banner.style.display = 'none';
+  }
+}
+
+function onBpoReqTypeChange() {
+  var type = document.getElementById('bpo_req_type').value;
+  var dateEl = document.getElementById('bpo_date');
+  var banner = document.getElementById('bpo_old_req_banner');
+  if (type === 'old') {
+    dateEl.removeAttribute('readonly');
+    dateEl.style.background = '#fffbeb';
+    dateEl.style.borderColor = '#f59e0b';
+    dateEl.value = '';
+    if (banner) banner.style.display = 'flex';
+  } else {
+    dateEl.value = todayStr();
+    dateEl.style.background = '';
+    dateEl.style.borderColor = '';
+    if (banner) banner.style.display = 'none';
+  }
+}
+
+function _freToggleDate(rid) {
+  var type = document.getElementById('fre_reqtype_'+rid).value;
+  var dateEl = document.getElementById('fre_date_'+rid);
+  if (!dateEl) return;
+  if (type === 'old') {
+    dateEl.removeAttribute('readonly');
+    dateEl.style.background = '#fffbeb';
+    dateEl.style.borderColor = '#f59e0b';
+    dateEl.style.color = '#92400e';
+  } else {
+    dateEl.setAttribute('readonly', true);
+    dateEl.style.background = '#f5f5f7';
+    dateEl.style.borderColor = '';
+    dateEl.style.color = '#444';
+  }
+}
+
+function _bfreToggleDate(rid) {
+  var type = document.getElementById('bfre_reqtype_'+rid).value;
+  var dateEl = document.getElementById('bfre_date_'+rid);
+  if (!dateEl) return;
+  if (type === 'old') {
+    dateEl.removeAttribute('readonly');
+    dateEl.style.background = '#fffbeb';
+    dateEl.style.borderColor = '#f59e0b';
+    dateEl.style.color = '#92400e';
+  } else {
+    dateEl.setAttribute('readonly', true);
+    dateEl.style.background = '#f5f5f7';
+    dateEl.style.borderColor = '';
+    dateEl.style.color = '#444';
+  }
+}
+
+function onFitReqTypeChange() {
+  var type = document.getElementById('fit_req_type').value;
+  var dateEl = document.getElementById('fit_date');
+  var banner = document.getElementById('fit_old_req_banner');
+  if (type === 'old') {
+    dateEl.removeAttribute('readonly');
+    dateEl.style.background = '#fffbeb';
+    dateEl.style.borderColor = '#f59e0b';
+    dateEl.value = '';
+    if (banner) { banner.style.display = 'flex'; }
+  } else {
+    dateEl.value = todayStr();
+    dateEl.style.background = '';
+    dateEl.style.borderColor = '';
+    if (banner) { banner.style.display = 'none'; }
+  }
+}
+
+function onFitBatReqTypeChange() {
+  var type = document.getElementById('fit_bat_req_type').value;
+  var dateEl = document.getElementById('fit_bat_date');
+  var banner = document.getElementById('fit_bat_old_req_banner');
+  if (type === 'old') {
+    dateEl.removeAttribute('readonly');
+    dateEl.style.background = '#fffbeb';
+    dateEl.style.borderColor = '#f59e0b';
+    dateEl.value = '';
+    if (banner) { banner.style.display = 'flex'; }
+  } else {
+    dateEl.value = todayStr();
+    dateEl.style.background = '';
+    dateEl.style.borderColor = '';
+    if (banner) { banner.style.display = 'none'; }
+  }
+}
+
 function openFitTyreForm() {
   if (!can('tyre_create')) { toast('No permission to fit tyres', 'er'); return; }
   var modal = document.getElementById('tyreFitmodal');
   if (!modal) return;
   modal.classList.remove('hidden');
+  // Reset request type to New
+  var reqType = document.getElementById('fit_req_type');
+  if (reqType) { reqType.value = 'new'; onFitReqTypeChange(); }
   document.getElementById('fit_date').value = todayStr();
   document.getElementById('fit_reqby').value = CURRENT_USER ? CURRENT_USER.name||CURRENT_USER.username : '';
   document.getElementById('fit_km').value = '';
@@ -10449,8 +11464,9 @@ async function saveTyrePO() {
   var created=0, failed=0;
   var tpoResults = await Promise.all(lines.map(function(line,_ti){
     var poNo='TPO-'+String(_tpoMax+_ti+1).padStart(6,'0');
+    var _tpoReqType = (document.getElementById('tpo_req_type')||{value:'new'}).value;
     var rec = Object.assign({},line,{poNo:poNo,poDate:poDate,requestedBy:reqBy,expectedDelivery:expDel,status:status,
-      qtyReceived:0,qtyOutstanding:line.qtyOrdered});
+      qtyReceived:0,qtyOutstanding:line.qtyOrdered,entryType:_tpoReqType==='old'?'OLD':'NEW'});
     return callAPI('saveTyrePO',{record:rec}).then(function(res){
       if(res&&res.success){ return {ok:true}; }
       return {ok:false,err:res&&res.error?res.error:'unknown error'};
@@ -12657,7 +13673,7 @@ function renderStoreIssuances() {
   });
 
   var cols = 13;
-  var table = '<div style="overflow-x:auto"><table style="min-width:max-content"><thead><tr>'
+  var table = '<div><table style="min-width:max-content"><thead><tr>'
     + '<th style="width:36px;text-align:center"><input type="checkbox" id="iss_req_chk_all" onclick="toggleAllIssReq(this)" style="cursor:pointer;width:14px;height:14px;accent-color:var(--ac)"></th>'
     + '<th>Issue No</th><th>Date Issued</th><th>Issued By</th><th>Parts</th><th>LPO No</th><th>Qty</th><th>Truck</th><th>Job Card</th><th>Driver</th><th>Status</th><th>Date Processed</th><th>Processed By</th>'
     + '</tr></thead><tbody>';
@@ -13572,8 +14588,8 @@ function tpoExportExcel() {
   var ids = Array.from(_tpoSelected);
   var rows = (TYRE_POS||[]).filter(function(r){ return ids.includes(r.id); });
   if (!rows.length) { toast('No rows selected','er'); return; }
-  var cols    = ['poNo','poDate','brand','tyreSize','qtyOrdered','unitPrice','supplier','lpoNo','status','requestedBy','remarks'];
-  var headers = ['PO No','Date','Brand','Size','Qty Ordered','Unit Price','Supplier','LPO No','Status','Requested By','Remarks'];
+  var cols    = ['poNo','poDate','brand','tyreSize','qtyOrdered','unitPrice','supplier','lpoNo','status','requestedBy','entryType','remarks'];
+  var headers = ['PO No','Date','Brand','Size','Qty Ordered','Unit Price','Supplier','LPO No','Status','Requested By','Entry Type','Remarks'];
   var wb = XLSX.utils.book_new();
   var wsData = [headers].concat(rows.map(function(r){
     return cols.map(function(c){
@@ -16262,22 +17278,38 @@ function previewJobCard(id) {
     var tyre=(TYRES||[]).find(function(t){return t.serialNo===f.tyreSerial;})||{};
     var pp=Number(tyre.purchasePrice||0);
     var desc=(tyre.brand||f.brand||'TYRE')+' '+(tyre.size||f.size||'')+' - '+(f.position||'');
-    // Check if previously fitted on a different job card — label as USED, pro-rate cost by remaining warranty (1 year)
+    // Determine NEW vs USED:
+    // USED = tyre has any CLOSED fitment record (was removed from a truck before)
+    //        OR was first fitted more than 90 days before this job card's fitment date
     var tyreSerial=String(f.tyreSerial||'').trim();
+    var allTyreFitsForSerial=(TYRE_FITS||[]).filter(function(x){return String(x.tyreSerial||'').trim()===tyreSerial;});
+    var hasClosedFit=allTyreFitsForSerial.some(function(x){return (x.status||'').toUpperCase()==='CLOSED';});
+    // Find earliest fitment date across all records for this tyre
+    var earliestTyreFitD=null;
+    allTyreFitsForSerial.forEach(function(x){var d=x.dateFitted?_parseDateLocal(String(x.dateFitted)):null;if(d&&!isNaN(d.getTime())&&(!earliestTyreFitD||d<earliestTyreFitD))earliestTyreFitD=d;});
+    var thisJobFitD=f.dateFitted?_parseDateLocal(String(f.dateFitted)):null;
+    // Age from first ever fitting to TODAY (not to job fit date) — catches long-running active fitments
+    var tyreAgeTodayDays=earliestTyreFitD?Math.floor((new Date()-earliestTyreFitD)/(1000*60*60*24)):0;
     var priorTyreFit=(TYRE_FITS||[]).find(function(x){
       return String(x.tyreSerial||'').trim()===tyreSerial
         && x.id!==f.id
         && (x.jobCardNo||'').toUpperCase()!==(f.jobCardNo||'').toUpperCase()
         && x.jobCardNo;
     });
-    if(priorTyreFit){
-      desc=desc.trim()+' - USED - Transferred from '+(priorTyreFit.vehicle||priorTyreFit.jobCardNo||'Unknown');
-      var priorTyreFitDate=priorTyreFit.dateFitted?_parseDateLocal(String(priorTyreFit.dateFitted)):null;
+    var isTyreUsed=hasClosedFit||!!priorTyreFit||(tyreAgeTodayDays>90);
+    if(isTyreUsed){
+      // Find the best reference truck — prefer closed fit, then prior fit on different JC, then any other fit
+      var _refTyreFit=allTyreFitsForSerial.find(function(x){return (x.status||'').toUpperCase()==='CLOSED'&&x.id!==f.id;})||priorTyreFit||allTyreFitsForSerial.find(function(x){return x.id!==f.id;});
+      var usedFrom=_refTyreFit?(_refTyreFit.vehicle||_refTyreFit.jobCardNo||'Unknown'):null;
+      desc=desc.trim()+' - USED'+(usedFrom?' - Transferred from '+usedFrom:'');
+      var priorTyreFitDate=earliestTyreFitD;
       if(priorTyreFitDate&&!isNaN(priorTyreFitDate.getTime())){
         var tyreAgedays=Math.floor((new Date()-priorTyreFitDate)/(1000*60*60*24));
         var tyreRemaining=365-tyreAgedays;
         pp=Math.max(120000,tyreRemaining>0?Math.round(pp*(tyreRemaining/365)):0);
       } else {pp=120000;}
+    } else {
+      desc=desc.trim()+' - NEW';
     }
     return {description:desc.trim(),qty:1,unitPrice:pp,cost:pp};
   });
@@ -16308,22 +17340,33 @@ function previewJobCard(id) {
     })||{};
     var pp=Number(bat.purchasePrice||bat.unitPrice||po.unitPrice||0);
     var desc=(bat.brand||'BATTERY')+' '+(bat.size||bat.capacity||'')+' - '+(f.position||'');
-    // Check if previously fitted on a different job card — label as USED, pro-rate cost by remaining warranty (1 year)
+    // Determine NEW vs USED: USED = any CLOSED fitment OR prior fit on different job card OR first fitted >90 days before this
     var ref=String(f.batteryRef||'').trim();
+    var allBatFitsForRef=(BAT_FITS||[]).filter(function(x){return String(x.batteryRef||'').trim()===ref;});
+    var hasBatClosedFit=allBatFitsForRef.some(function(x){return (x.status||'').toUpperCase()==='CLOSED';});
+    var earliestBatFitD=null;
+    allBatFitsForRef.forEach(function(x){var d=x.dateFitted?_parseDateLocal(String(x.dateFitted)):null;if(d&&!isNaN(d.getTime())&&(!earliestBatFitD||d<earliestBatFitD))earliestBatFitD=d;});
+    var thisBatJobFitD=f.dateFitted?_parseDateLocal(String(f.dateFitted)):null;
+    var batAgeTodayDays=earliestBatFitD?Math.floor((new Date()-earliestBatFitD)/(1000*60*60*24)):0;
     var priorBatFit=(BAT_FITS||[]).find(function(x){
       return String(x.batteryRef||'').trim()===ref
         && x.id!==f.id
         && (x.jobCardNo||'').toUpperCase()!==(f.jobCardNo||'').toUpperCase()
         && x.jobCardNo;
     });
-    if(priorBatFit){
-      desc=desc.trim()+' - USED - Transferred from '+(priorBatFit.vehicle||priorBatFit.jobCardNo||'Unknown');
-      var priorFitDate=priorBatFit.dateFitted?_parseDateLocal(String(priorBatFit.dateFitted)):null;
+    var isBatUsed=hasBatClosedFit||!!priorBatFit||(batAgeTodayDays>90);
+    if(isBatUsed){
+      var _refBatFit=allBatFitsForRef.find(function(x){return (x.status||'').toUpperCase()==='CLOSED'&&x.id!==f.id;})||priorBatFit||allBatFitsForRef.find(function(x){return x.id!==f.id;});
+      var batUsedFrom=_refBatFit?(_refBatFit.vehicle||_refBatFit.jobCardNo||'Unknown'):null;
+      desc=desc.trim()+' - USED'+(batUsedFrom?' - Transferred from '+batUsedFrom:'');
+      var priorFitDate=earliestBatFitD;
       if(priorFitDate&&!isNaN(priorFitDate.getTime())){
         var agedays=Math.floor((new Date()-priorFitDate)/(1000*60*60*24));
         var remaining=365-agedays;
         pp=Math.max(120000,remaining>0?Math.round(pp*(remaining/365)):0);
       } else {pp=120000;}
+    } else {
+      desc=desc.trim()+' - NEW';
     }
     return {description:desc.trim(),qty:1,unitPrice:pp,cost:pp};
   });
@@ -16750,23 +17793,17 @@ function calcJCTotal(jCode, jNo) {
     // Exclude if dateFitted older than 3 months (historical/backdated)
     var tyreFitD = f.dateFitted ? _parseDateLocal(String(f.dateFitted)) : null;
     if (!tyreFitD || isNaN(tyreFitD.getTime()) || tyreFitD < _jcTyre3mAgo) return;
-    // Exclude cost if used/transferred from another truck (cost = 0)
+    // Determine USED: any CLOSED fit, prior fit on different JC, or first fitted >90 days ago
     var serial = String(f.tyreSerial||'').trim();
-    var tyreUsed = (TYRE_FITS||[]).some(function(x){
-      return String(x.tyreSerial||'').trim() === serial
-        && x.id !== f.id
-        && (x.jobCardNo||'').toUpperCase() !== (f.jobCardNo||'').toUpperCase()
-        && x.jobCardNo;
-    });
+    var allTFits=(TYRE_FITS||[]).filter(function(x){return String(x.tyreSerial||'').trim()===serial;});
+    var hasClosedTF=allTFits.some(function(x){return (x.status||'').toUpperCase()==='CLOSED';});
+    var priorTyreF=allTFits.find(function(x){return x.id!==f.id&&(x.jobCardNo||'').toUpperCase()!==(f.jobCardNo||'').toUpperCase()&&x.jobCardNo;});
+    var earliestTFD=null;
+    allTFits.forEach(function(x){var d=x.dateFitted?_parseDateLocal(String(x.dateFitted)):null;if(d&&!isNaN(d.getTime())&&(!earliestTFD||d<earliestTFD))earliestTFD=d;});
+    var tAgeTodayDays=earliestTFD?Math.floor((new Date()-earliestTFD)/(1000*60*60*24)):0;
+    var tyreUsed=hasClosedTF||!!priorTyreF||(tAgeTodayDays>90);
     if (tyreUsed) {
-      // Pro-rate cost by remaining warranty (1 year from original fit date)
-      var priorTyreF=(TYRE_FITS||[]).find(function(x){
-        return String(x.tyreSerial||'').trim()===serial
-          && x.id!==f.id
-          && (x.jobCardNo||'').toUpperCase()!==(f.jobCardNo||'').toUpperCase()
-          && x.jobCardNo;
-      });
-      var priorTyreFD=priorTyreF&&priorTyreF.dateFitted?_parseDateLocal(String(priorTyreF.dateFitted)):null;
+      var priorTyreFD=earliestTFD;
       if(priorTyreFD&&!isNaN(priorTyreFD.getTime())){
         var tAge=Math.floor((new Date()-priorTyreFD)/(1000*60*60*24));
         var tRem=365-tAge;
@@ -16793,23 +17830,17 @@ function calcJCTotal(jCode, jNo) {
     // Exclude if dateFitted older than 3 months (historical/backdated)
     var batFitD = f.dateFitted ? _parseDateLocal(String(f.dateFitted)) : null;
     if (!batFitD || isNaN(batFitD.getTime()) || batFitD < _jcBat3mAgo) return;
-    // Exclude cost if used/transferred from another truck (cost = 0)
+    // Determine USED: any CLOSED fit, prior fit on different JC, or first fitted >90 days ago
     var ref = String(f.batteryRef||'').trim();
-    var batUsed = (BAT_FITS||[]).some(function(x){
-      return String(x.batteryRef||'').trim() === ref
-        && x.id !== f.id
-        && (x.jobCardNo||'').toUpperCase() !== (f.jobCardNo||'').toUpperCase()
-        && x.jobCardNo;
-    });
+    var allBFits=(BAT_FITS||[]).filter(function(x){return String(x.batteryRef||'').trim()===ref;});
+    var hasClosedBF=allBFits.some(function(x){return (x.status||'').toUpperCase()==='CLOSED';});
+    var priorBatF=allBFits.find(function(x){return x.id!==f.id&&(x.jobCardNo||'').toUpperCase()!==(f.jobCardNo||'').toUpperCase()&&x.jobCardNo;});
+    var earliestBFD=null;
+    allBFits.forEach(function(x){var d=x.dateFitted?_parseDateLocal(String(x.dateFitted)):null;if(d&&!isNaN(d.getTime())&&(!earliestBFD||d<earliestBFD))earliestBFD=d;});
+    var bAgeTodayDays=earliestBFD?Math.floor((new Date()-earliestBFD)/(1000*60*60*24)):0;
+    var batUsed=hasClosedBF||!!priorBatF||(bAgeTodayDays>90);
     if (batUsed) {
-      // Pro-rate cost by remaining warranty (1 year from original fit date)
-      var priorBatF=(BAT_FITS||[]).find(function(x){
-        return String(x.batteryRef||'').trim()===ref
-          && x.id!==f.id
-          && (x.jobCardNo||'').toUpperCase()!==(f.jobCardNo||'').toUpperCase()
-          && x.jobCardNo;
-      });
-      var priorBatFD=priorBatF&&priorBatF.dateFitted?_parseDateLocal(String(priorBatF.dateFitted)):null;
+      var priorBatFD=earliestBFD;
       if(priorBatFD&&!isNaN(priorBatFD.getTime())){
         var bAge=Math.floor((new Date()-priorBatFD)/(1000*60*60*24));
         var bRem=365-bAge;
@@ -16987,22 +18018,33 @@ function downloadJCPDFById(id) {
     var tyre=(TYRES||[]).find(function(t){return t.serialNo===f.tyreSerial;})||{};
     var pp=Number(tyre.purchasePrice||0);
     var desc=(tyre.brand||f.brand||'TYRE')+' '+(tyre.size||f.size||'')+' - '+(f.position||'');
-    // Check if previously fitted on a different job card — label as USED, pro-rate cost by remaining warranty (1 year)
+    // Determine NEW vs USED: USED = any CLOSED fitment OR prior fit on different job card OR first fitted >90 days before this
     var tyreSerial2=String(f.tyreSerial||'').trim();
+    var allTyreFitsForSerial2=(TYRE_FITS||[]).filter(function(x){return String(x.tyreSerial||'').trim()===tyreSerial2;});
+    var hasClosedFit2=allTyreFitsForSerial2.some(function(x){return (x.status||'').toUpperCase()==='CLOSED';});
+    var earliestTyreFitD2=null;
+    allTyreFitsForSerial2.forEach(function(x){var d=x.dateFitted?_parseDateLocal(String(x.dateFitted)):null;if(d&&!isNaN(d.getTime())&&(!earliestTyreFitD2||d<earliestTyreFitD2))earliestTyreFitD2=d;});
+    var thisJobFitD2=f.dateFitted?_parseDateLocal(String(f.dateFitted)):null;
+    var tyreAgeTodayDays2=earliestTyreFitD2?Math.floor((new Date()-earliestTyreFitD2)/(1000*60*60*24)):0;
     var priorTyreFit2=(TYRE_FITS||[]).find(function(x){
       return String(x.tyreSerial||'').trim()===tyreSerial2
         && x.id!==f.id
         && (x.jobCardNo||'').toUpperCase()!==(f.jobCardNo||'').toUpperCase()
         && x.jobCardNo;
     });
-    if(priorTyreFit2){
-      desc=desc.trim()+' - USED - Transferred from '+(priorTyreFit2.vehicle||priorTyreFit2.jobCardNo||'Unknown');
-      var priorTyreFitDate2=priorTyreFit2.dateFitted?_parseDateLocal(String(priorTyreFit2.dateFitted)):null;
+    var isTyreUsed2=hasClosedFit2||!!priorTyreFit2||(tyreAgeTodayDays2>90);
+    if(isTyreUsed2){
+      var _refTyreFit2=allTyreFitsForSerial2.find(function(x){return (x.status||'').toUpperCase()==='CLOSED'&&x.id!==f.id;})||priorTyreFit2||allTyreFitsForSerial2.find(function(x){return x.id!==f.id;});
+      var usedFrom2=_refTyreFit2?(_refTyreFit2.vehicle||_refTyreFit2.jobCardNo||'Unknown'):null;
+      desc=desc.trim()+' - USED'+(usedFrom2?' - Transferred from '+usedFrom2:'');
+      var priorTyreFitDate2=earliestTyreFitD2;
       if(priorTyreFitDate2&&!isNaN(priorTyreFitDate2.getTime())){
         var tyreAgedays2=Math.floor((new Date()-priorTyreFitDate2)/(1000*60*60*24));
         var tyreRemaining2=365-tyreAgedays2;
         pp=Math.max(120000,tyreRemaining2>0?Math.round(pp*(tyreRemaining2/365)):0);
       } else {pp=120000;}
+    } else {
+      desc=desc.trim()+' - NEW';
     }
     return {description:desc.trim(),qty:1,unitPrice:pp,cost:pp};
   });
@@ -17040,14 +18082,33 @@ function downloadJCPDFById(id) {
         && (x.jobCardNo||'').toUpperCase()!==(f.jobCardNo||'').toUpperCase()
         && x.jobCardNo;
     });
-    if(priorBatFit2){
-      desc=desc.trim()+' - USED - Transferred from '+(priorBatFit2.vehicle||priorBatFit2.jobCardNo||'Unknown');
-      var priorBatFitDate2=priorBatFit2.dateFitted?_parseDateLocal(String(priorBatFit2.dateFitted)):null;
+    // Determine NEW vs USED: USED = any CLOSED fitment OR prior fit on different job card OR first fitted >90 days before this
+    var ref2=String(f.batteryRef||'').trim();
+    var allBatFitsForRef2=(BAT_FITS||[]).filter(function(x){return String(x.batteryRef||'').trim()===ref2;});
+    var hasBatClosedFit2=allBatFitsForRef2.some(function(x){return (x.status||'').toUpperCase()==='CLOSED';});
+    var earliestBatFitD2=null;
+    allBatFitsForRef2.forEach(function(x){var d=x.dateFitted?_parseDateLocal(String(x.dateFitted)):null;if(d&&!isNaN(d.getTime())&&(!earliestBatFitD2||d<earliestBatFitD2))earliestBatFitD2=d;});
+    var thisBatJobFitD2=f.dateFitted?_parseDateLocal(String(f.dateFitted)):null;
+    var batAgeTodayDays2=earliestBatFitD2?Math.floor((new Date()-earliestBatFitD2)/(1000*60*60*24)):0;
+    var priorBatFit2=(BAT_FITS||[]).find(function(x){
+      return String(x.batteryRef||'').trim()===ref2
+        && x.id!==f.id
+        && (x.jobCardNo||'').toUpperCase()!==(f.jobCardNo||'').toUpperCase()
+        && x.jobCardNo;
+    });
+    var isBatUsed2=hasBatClosedFit2||!!priorBatFit2||(batAgeTodayDays2>90);
+    if(isBatUsed2){
+      var _refBatFit2=allBatFitsForRef2.find(function(x){return (x.status||'').toUpperCase()==='CLOSED'&&x.id!==f.id;})||priorBatFit2||allBatFitsForRef2.find(function(x){return x.id!==f.id;});
+      var batUsedFrom2=_refBatFit2?(_refBatFit2.vehicle||_refBatFit2.jobCardNo||'Unknown'):null;
+      desc=desc.trim()+' - USED'+(batUsedFrom2?' - Transferred from '+batUsedFrom2:'');
+      var priorBatFitDate2=earliestBatFitD2;
       if(priorBatFitDate2&&!isNaN(priorBatFitDate2.getTime())){
         var batAgedays2=Math.floor((new Date()-priorBatFitDate2)/(1000*60*60*24));
         var batRemaining2=365-batAgedays2;
         pp=Math.max(120000,batRemaining2>0?Math.round(pp*(batRemaining2/365)):0);
       } else {pp=120000;}
+    } else {
+      desc=desc.trim()+' - NEW';
     }
     return {description:desc.trim(),qty:1,unitPrice:pp,cost:pp};
   });
@@ -19626,6 +20687,7 @@ history.pushState(null, '', window.location.href);
   <div style="width:1px;background:rgba(255,255,255,.3);height:18px;flex-shrink:0"></div>
   <button onclick="tpoExportExcel()" style="background:rgba(255,255,255,.18);border:1px solid rgba(255,255,255,.3);color:#fff;padding:6px 14px;border-radius:7px;cursor:pointer;font-size:12px;font-weight:600">⬇ Export Excel</button>
   <button onclick="tpoPrintForm()" style="background:rgba(255,255,255,.18);border:1px solid rgba(255,255,255,.3);color:#fff;padding:6px 14px;border-radius:7px;cursor:pointer;font-size:12px;font-weight:600">🖨 Print Form</button>
+  <button onclick="exportTyrePOPdf()" style="background:rgba(239,68,68,.85);border:1px solid rgba(255,255,255,.3);color:#fff;padding:6px 14px;border-radius:7px;cursor:pointer;font-size:12px;font-weight:600">📄 Export PDF</button>
   <button id="tpo_edit_btn" onclick="openTpoBulkEdit()" style="background:rgba(255,255,255,.18);border:1px solid rgba(255,255,255,.3);color:#fff;padding:6px 14px;border-radius:7px;cursor:pointer;font-size:12px;font-weight:600">✏ Edit Selected</button>
   <button id="tpo_del_btn" onclick="deleteTpoSelected()" style="background:rgba(185,28,28,.7);border:1px solid rgba(255,255,255,.3);color:#fff;padding:6px 14px;border-radius:7px;cursor:pointer;font-size:12px;font-weight:600">🗑 Delete Selected</button>
   <button onclick="tpoClearSelection()" style="background:none;border:none;color:rgba(255,255,255,.7);cursor:pointer;font-size:20px;line-height:1;padding:0 4px">✕</button>
@@ -19637,6 +20699,7 @@ history.pushState(null, '', window.location.href);
   <div style="width:1px;background:rgba(255,255,255,.3);height:18px;flex-shrink:0"></div>
   <button onclick="bpoExportExcel()" style="background:rgba(255,255,255,.18);border:1px solid rgba(255,255,255,.3);color:#fff;padding:6px 14px;border-radius:7px;cursor:pointer;font-size:12px;font-weight:600">⬇ Export Excel</button>
   <button onclick="bpoPrintForm()" style="background:rgba(255,255,255,.18);border:1px solid rgba(255,255,255,.3);color:#fff;padding:6px 14px;border-radius:7px;cursor:pointer;font-size:12px;font-weight:600">&#128424; Print Form</button>
+  <button onclick="exportBatPOPdf()" style="background:rgba(239,68,68,.85);border:1px solid rgba(255,255,255,.3);color:#fff;padding:6px 14px;border-radius:7px;cursor:pointer;font-size:12px;font-weight:600">📄 Export PDF</button>
   <button id="bpo_edit_btn" onclick="openBpoBulkEdit()" style="background:rgba(255,255,255,.18);border:1px solid rgba(255,255,255,.3);color:#fff;padding:6px 14px;border-radius:7px;cursor:pointer;font-size:12px;font-weight:600">&#9999; Edit Selected</button>
   <button id="bpo_delete_btn" onclick="deleteBpoSelected()" style="background:rgba(185,28,28,.7);border:1px solid rgba(255,255,255,.3);color:#fff;padding:6px 14px;border-radius:7px;cursor:pointer;font-size:12px;font-weight:600">&#128465; Delete Selected</button>
   <button onclick="bpoClearSelection()" style="background:none;border:none;color:rgba(255,255,255,.7);cursor:pointer;font-size:20px;line-height:1;padding:0 4px">&times;</button>
@@ -19780,7 +20843,16 @@ history.pushState(null, '', window.location.href);
     <div style="flex:1;overflow-y:auto;padding:16px 24px">
       <!-- Request Details -->
       <div style="background:#f0f4ff;border:1.5px solid rgba(10,45,110,.15);border-radius:10px;padding:14px 18px;margin-bottom:16px">
-        <div style="font-size:10px;font-weight:700;color:var(--ac);text-transform:uppercase;letter-spacing:.08em;margin-bottom:12px">&#128203; Request Details</div>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+          <div style="font-size:10px;font-weight:700;color:var(--ac);text-transform:uppercase;letter-spacing:.08em">&#128203; Request Details</div>
+          <div style="display:flex;align-items:center;gap:8px">
+            <label style="font-size:11px;font-weight:700;color:#475569">Request Type:</label>
+            <select id="bpo_req_type" onchange="onBpoReqTypeChange()" style="padding:5px 10px;border:1.5px solid #cbd5e1;border-radius:8px;font-size:12px;font-weight:700;background:#fff;cursor:pointer;color:#1e3a5f">
+              <option value="new">🆕 New Request</option>
+              <option value="old">📋 Old Request</option>
+            </select>
+          </div>
+        </div>
         <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:14px">
           <div class="formgroup"><label>Request Date *</label><input type="date" id="bpo_date"></div>
           <div class="formgroup"><label>Requested By *</label><input type="text" id="bpo_reqby" placeholder="Staff name..." style="text-transform:uppercase"></div>
@@ -19791,6 +20863,10 @@ history.pushState(null, '', window.location.href);
               <option value="PAID NOT RECEIVED">PAID NOT RECEIVED</option>
             </select>
           </div>
+        </div>
+        <div id="bpo_old_req_banner" style="display:none;align-items:center;gap:10px;margin-top:10px;padding:8px 14px;background:#fffbeb;border:1.5px solid #f59e0b;border-radius:8px;font-size:12px;font-weight:700;color:#92400e">
+          <span style="font-size:16px">📋</span>
+          <span>Historical Record Mode — You are backdating this request. Date field is editable. All other fields follow the normal workflow.</span>
         </div>
       </div>
       <!-- Order Lines -->
@@ -19982,7 +21058,16 @@ history.pushState(null, '', window.location.href);
 
       <!-- Request Details -->
       <div style="background:#f0f4ff;border:1.5px solid rgba(10,45,110,.15);border-radius:10px;padding:14px 18px;margin-bottom:16px">
-        <div style="font-size:10px;font-weight:700;color:var(--ac);text-transform:uppercase;letter-spacing:.08em;margin-bottom:12px">📋 Request Details</div>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+          <div style="font-size:10px;font-weight:700;color:var(--ac);text-transform:uppercase;letter-spacing:.08em">📋 Request Details</div>
+          <div style="display:flex;align-items:center;gap:8px">
+            <label style="font-size:11px;font-weight:700;color:#475569">Request Type:</label>
+            <select id="tpo_req_type" onchange="onTpoReqTypeChange()" style="padding:5px 10px;border:1.5px solid #cbd5e1;border-radius:8px;font-size:12px;font-weight:700;background:#fff;cursor:pointer;color:#0a2d6e">
+              <option value="new">🆕 New Request</option>
+              <option value="old">📋 Old Request</option>
+            </select>
+          </div>
+        </div>
         <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:14px">
           <div class="formgroup">
             <label>Request Date *</label>
@@ -20003,6 +21088,10 @@ history.pushState(null, '', window.location.href);
               <option value="PAID NOT RECEIVED">PAID NOT RECEIVED</option>
             </select>
           </div>
+        </div>
+        <div id="tpo_old_req_banner" style="display:none;align-items:center;gap:10px;margin-top:10px;padding:8px 14px;background:#fffbeb;border:1.5px solid #f59e0b;border-radius:8px;font-size:12px;font-weight:700;color:#92400e">
+          <span style="font-size:16px">📋</span>
+          <span>Historical Record Mode — You are backdating this request. Date field is editable. All other fields follow the normal workflow.</span>
         </div>
       </div>
 
