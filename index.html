@@ -10825,6 +10825,11 @@ function getSelectedRows() {
 function exportSelectedExcel() {
   var rows = getSelectedRows();
   if (!rows.length) { toast('No rows to export','er'); return; }
+  rows = rows.slice().sort(function(a,b){
+    var da=_normDateVal(a.dateRequested||'')||(a.dateRequested||'');
+    var db=_normDateVal(b.dateRequested||'')||(b.dateRequested||'');
+    return da.localeCompare(db);
+  });
   var hd = ['Req No','Date Requested','Truck','Vehicle Type','Driver','Priority','Job Card','LPO No','Description','Qty','Unit Price','Total Amount','Supplier','Date Received','Status','Payment Mode','Category','Requested By','Date Issued','Remarks'];
   var ks = ['reqNo','dateRequested','truck','vehicleType','driverName','priority','jobCardNo','lpoNo','description','qty','unitPrice','cost','supplier','dateReceived','status','paymentMode','category','requestedBy','dateIssued','remarks'];
   var wsData = [hd];
@@ -10847,6 +10852,12 @@ function exportSelectedExcel() {
 function exportSelectedPDF() {
   var rows = getSelectedRows();
   if (!rows.length) { toast('No rows selected','er'); return; }
+  // Sort oldest date first → newest last
+  rows = rows.slice().sort(function(a,b){
+    var da=_normDateVal(a.dateRequested||'')||(a.dateRequested||'');
+    var db=_normDateVal(b.dateRequested||'')||(b.dateRequested||'');
+    return da.localeCompare(db);
+  });
   // Build requisition form HTML
   var formRows = rows.map(function(r, i) {
     return '<tr style="border-bottom:1px solid #e0e0e0">'
@@ -14630,6 +14641,12 @@ function sreqExportExcel() {
   var ids = Array.from(_sreqSelected);
   var rows = (STORE_REQS||[]).filter(function(r){ return ids.includes(r.id); });
   if (!rows.length) { toast('No rows selected','er'); return; }
+  // Sort oldest date first → newest last (normalize to YYYY-MM-DD for correct ordering)
+  rows = rows.slice().sort(function(a,b){
+    var da = _normDateVal(a.dateRequested||'') || (a.dateRequested||'');
+    var db = _normDateVal(b.dateRequested||'') || (b.dateRequested||'');
+    return da.localeCompare(db);
+  });
   var cols = ['reqNo','dateRequested','description','qty','unitPrice','cost','supplier','lpoNo','status','paymentMode','priority','requestedBy','dateReceived','dateIssued','remarks'];
   var headers = ['Req No','Date','Description','Qty','Unit Price','Total','Supplier','LPO No','Status','Payment','Priority','Requested By','Date Received','Date Issued','Remarks'];
   var wb = XLSX.utils.book_new();
