@@ -10380,6 +10380,22 @@ async function saveFitBattery(){
     // Check position not already occupied locally
     var occBat=(BATTERIES||[]).find(function(b){return (b.status||'').toUpperCase()==='FITTED'&&(b.currentVehicle||'').toUpperCase()===vehicle.toUpperCase()&&(b.currentPosition||'').toUpperCase()===position.toUpperCase()&&String(b.batteryRef||'').trim()!==batRef;});
     if(occBat){toast('Line '+(i+1)+': '+position+' on '+vehicle+' already has battery '+occBat.batteryRef+'. Remove it first.','er');return;}
+    // Check fit date does not conflict with last removal on same vehicle+position
+    var _batPosHistory=(BAT_FITS||[]).filter(function(f){
+      return (f.vehicle||'').toUpperCase()===vehicle.toUpperCase()
+          && (f.position||'').toUpperCase()===position.toUpperCase()
+          && (f.status||'').toUpperCase()==='CLOSED'
+          && (f.dateRemoved||'');
+    }).sort(function(a,b){return (b.dateRemoved||'').localeCompare(a.dateRemoved||'');});
+    if(_batPosHistory.length){
+      var _batLastRem=_batPosHistory[0];
+      var _batLastRemDate=toISODate(_batLastRem.dateRemoved);
+      var _batFitDate=toISODate(dateFitted);
+      if(_batFitDate && _batLastRemDate && _batFitDate < _batLastRemDate){
+        toast('Line '+(i+1)+': Date conflict on '+position+'. Previous battery ('+(_batLastRem.batteryRef||'unknown')+') was only removed on '+fmtDate(_batLastRemDate)+'. Fit date cannot be earlier than this.','er');
+        return;
+      }
+    }
     // Check same battery not already in lines
     if(batLines.some(function(l){return l.batRef===batRef;})){toast('Line '+(i+1)+': Battery '+batRef+' already added in another line.','er');return;}
     var pendBFit=(BAT_FITS||[]).find(function(f){return String(f.batteryRef||'').trim()===batRef&&(f.status||'').toUpperCase()==='PENDING ISSUANCE';});
@@ -11501,6 +11517,21 @@ async function saveFitTyre() {
     // Check position not already occupied locally
     var occTyre=(TYRES||[]).find(function(t){return t.status==='FITTED'&&(t.currentVehicle||'').toUpperCase()===(vehicle||'').toUpperCase()&&(t.currentPosition||'').toUpperCase()===position.toUpperCase();});
     if(occTyre){toast('Line '+(i+1)+': '+position+' on '+vehicle+' already has tyre '+occTyre.serialNo+'. Remove it first.','er');return;}
+    // Check fit date does not overlap with a previous tyre on the same position
+    var _posHistory=(TYRE_FITS||[]).filter(function(f){
+      return (f.vehicle||'').toUpperCase()===(vehicle||'').toUpperCase()
+          && (f.position||'').toUpperCase()===position.toUpperCase()
+          && (f.status||'').toUpperCase()==='CLOSED'
+          && (f.dateRemoved||'');
+    }).sort(function(a,b){return (b.dateRemoved||'').localeCompare(a.dateRemoved||'');});
+    if(_posHistory.length){
+      var _lastRemoval=_posHistory[0];
+      var _lastRemDate=toISODate(_lastRemoval.dateRemoved);
+      if(dateFit && _lastRemDate && dateFit < _lastRemDate){
+        toast('Line '+(i+1)+': Date conflict on '+position+'. Previous tyre ('+(_lastRemoval.tyreSerial||'unknown')+') was only removed on '+fmtDate(_lastRemDate)+'. Fit date cannot be earlier than this.','er');
+        return;
+      }
+    }
     // Check same tyre not already in lines
     if(fitLines.some(function(l){return l.serial===serial;})){toast('Line '+(i+1)+': Tyre '+serial+' already added in another line.','er');return;}
     var pendFit=(TYRE_FITS||[]).find(function(f){return f.tyreSerial===serial&&(f.status||'').toUpperCase()==='PENDING ISSUANCE';});
