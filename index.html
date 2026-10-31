@@ -2287,7 +2287,7 @@ function switchView(v){
   // hide mechHistArea for all other views
   var _mha = document.getElementById('mechHistArea');
   if(_mha) _mha.style.display = 'none';
-  if(v==='storeinv')        { renderStoreInventory();                      return; }
+  if(v==='storeinv')        { renderStoreInventory(); _loadStoreMinLevels(function(){ renderStoreInventory(); }); return; }
   if(v==='storereq'||v==='storercv') { renderStoreRequisition('all');      return; }
   if(v==='storereq_rcv')    { renderStoreRequisition('RECEIVED');           return; }
   if(v==='storereq_oh')     { renderStoreRequisition('ON HOLD');            return; }
@@ -13307,7 +13307,8 @@ function _applySINVFilters(rows){
   if (_invTab === 'detailed') {
     _groupedQty = {};
     STORE_INVENTORY.forEach(function(r){
-      var k = (r.partName||'').toUpperCase();
+      var k = (r.partName||'').trim().toUpperCase();
+      if (!k) return; // skip blank part names
       _groupedQty[k] = (_groupedQty[k]||0) + Number(r.qtyOnHand||0);
     });
   }
@@ -13347,39 +13348,34 @@ function _invStatus(qtyOnHand, minLevel) {
   return {label:'OK', color:'#065f46', bg:'#d1fae5', dot:'#059669'};
 }
 
-async function _loadStoreMinLevels() {
-  try {
-    var r = await callAPI('getMinLevels', {});
-    if (r && r.minLevels) {
-      STORE_MIN_LEVELS = {};
-      Object.keys(r.minLevels).forEach(function(k){
-        STORE_MIN_LEVELS[k.toUpperCase()] = Number(r.minLevels[k]||0);
-      });
-    }
-  } catch(e) {}
+function _loadStoreMinLevels(cb) {
+  // Load from dedicated STORE_MIN_LEVELS sheet via Apps Script
+  callAPI('getMinLevels').then(function(res) {
+    if (res && res.minLevels) STORE_MIN_LEVELS = res.minLevels;
+    if (cb) cb();
+  }).catch(function() { if (cb) cb(); });
 }
 
-async function saveStoreMinLevel(partName, minLevel) {
-  var key = partName.toUpperCase();
-  var oldVal = STORE_MIN_LEVELS[key] || 0;
-  STORE_MIN_LEVELS[key] = Number(minLevel)||0;
-  try {
-    await callAPI('saveMinLevel', { partName: partName, minLevel: Number(minLevel)||0 });
-    toast('Min level updated ✓','ok');
-    renderStoreInventory(_invTab);
-  } catch(e) {
-    STORE_MIN_LEVELS[key] = oldVal;
-    toast('Failed to save min level: '+e.message,'er');
-  }
+function saveStoreMinLevel(partName, minLevel) {
+  var key = (partName||'').trim().toUpperCase();
+  var newVal = Number(minLevel)||0;
+  // Update in-memory and re-render immediately
+  STORE_MIN_LEVELS[key] = newVal;
+  renderStoreInventory(_invTab);
+  // Save to Google Sheet
+  callAPI('saveMinLevel', {partName: partName, minLevel: newVal}).then(function(res) {
+    if (res && res.error) {
+      toast('Failed to save: '+res.error, 'er');
+    } else {
+      toast('Min level saved ✓', 'ok');
+    }
+  }).catch(function(e) {
+    toast('Failed to save: '+(e.message||e), 'er');
+  });
 }
 
 function renderStoreInventory(tab) {
   if (tab && tab !== '__filter__') _invTab = tab;
-  // Load min levels in background if not yet attempted — render immediately with what we have
-  if (!window._storeMinLevelsLoaded) {
-    window._storeMinLevelsLoaded = true;
-    _loadStoreMinLevels().then(function(){ renderStoreInventory(_invTab); });
-  }
   try {
   // Show F2/F3 for summary only
   document.querySelectorAll('.sinv-det-only').forEach(function(e){e.style.display=_invTab==='detailed'?'flex':'none';});
@@ -13389,7 +13385,8 @@ function renderStoreInventory(tab) {
   // Stat cards - count unique part names and low/out stock
   var _invGroups = {};
   STORE_INVENTORY.forEach(function(r){
-    var name = (r.partName||'').toUpperCase();
+    var name = (r.partName||'').trim().toUpperCase();
+    if (!name) return; // skip blank part names
     if (!_invGroups[name]) _invGroups[name] = { qty: 0, min: STORE_MIN_LEVELS[name]||0 };
     _invGroups[name].qty += Number(r.qtyOnHand||0);
   });
@@ -13427,7 +13424,8 @@ function renderStoreInventory(tab) {
     // Group by part name — use STORE_MIN_LEVELS for min level (not per-batch value)
     var grouped = {};
     STORE_INVENTORY.forEach(function(r){
-      var name = (r.partName||'').toUpperCase();
+      var name = (r.partName||'').trim().toUpperCase();
+      if (!name) return; // skip blank part names
       if (!grouped[name]) grouped[name] = { partName: name, qtyOnHand: 0, minStockLevel: STORE_MIN_LEVELS[name]||0 };
       grouped[name].qtyOnHand += Number(r.qtyOnHand||0);
     });
@@ -13478,11 +13476,12 @@ function renderStoreInventory(tab) {
     // Pre-compute grouped totals per part name \u2014 status reflects TOTAL qty across all batches
     var _detGroupedQty = {};
     STORE_INVENTORY.forEach(function(r){
-      var k = (r.partName||'').toUpperCase();
+      var k = (r.partName||'').trim().toUpperCase();
+      if (!k) return; // skip blank part names
       _detGroupedQty[k] = (_detGroupedQty[k]||0) + Number(r.qtyOnHand||0);
     });
 
-    var detailed = STORE_INVENTORY.map(function(r){
+    var detailed = STORE_INVENTORY.filter(function(r){ return (r.partName||'').trim() !== ''; }).map(function(r){
       var reqNo = ''; var dateReceived = ''; var qtyReceived = ''; var supplierDisplay = (r.supplier||''); var lpoDisplay = (r.partCode||'');
       var mSreq = (r.remarks||'').match(/SREQ-\d+/i);
       var mSpm  = (r.remarks||'').match(/SPM-\d+/i);
@@ -19780,7 +19779,7 @@ function _finishLoad(ok) {
           else if (view==='bat_grns') renderBatGRNs();
           else if (view==='spm_requests') renderSpareMovements('all');
           else if (view==='spm_hold') renderSpareMovements('PENDING');
-          else if (view==='storeinv'||view==='store_inventory') renderStoreInventory();
+          else if (view==='storeinv'||view==='store_inventory') { renderStoreInventory(); _loadStoreMinLevels(function(){ renderStoreInventory(); }); }
           else if (view==='storereq'||view==='store_reqs') renderStoreRequisition('all');
           else if (view==='storereq_rcv') renderStoreRequisition('RECEIVED');
           else if (view==='storereq_pnr') renderStoreRequisition('PAID NOT RECEIVED');
