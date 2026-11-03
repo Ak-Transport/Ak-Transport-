@@ -17644,7 +17644,7 @@ function attachSigned(id, input) {
   const file = input.files[0];
   if (!file) return;
   if (file.type !== 'application/pdf') { toast('Please select a PDF file', 'er'); return; }
-  if (file.size > 5 * 1024 * 1024) { toast('File too large (max 5MB for upload)', 'er'); return; }
+  if (file.size > 35 * 1024 * 1024) { toast('File too large (max 35MB for upload)', 'er'); return; }
   const j = JOBCARDS.find(x => x.id === id);
   if (!j) return;
   toast('Uploading... please wait', 'in');
