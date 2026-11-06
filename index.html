@@ -2041,6 +2041,35 @@ function paintTable(append) {
 function loadMore(){currentPage++;paintTable(true);}
 
 // -- BUILD ROW --
+function _rowSpareWarnCheck(r) {
+  // Returns warning info if this row should show the recent-fitment amber highlight.
+  // Only for NOT PAID or PAID NOT RECEIVED status, and only for SPAREPARTS list items.
+  var st = (r.status||'').toUpperCase();
+  if (st !== 'NOT PAID' && st !== 'PAID NOT RECEIVED') return null;
+  var desc = (r.description||'').trim();
+  if (!desc) return null;
+  var inList = (SPAREPARTS||[]).some(function(p){ return p.name === desc && p.status !== 'INACTIVE'; });
+  if (!inList) return null;
+  var truck = (r.truck||'').trim().toUpperCase();
+  if (!truck) return null;
+  var cutoff = new Date(); cutoff.setFullYear(cutoff.getFullYear() - 1);
+  var cutoffStr = cutoff.toISOString().substring(0,10);
+  // Find OTHER records (not this one) for same vehicle + same description within 12 months that are NOT also NOT PAID / PAID NOT RECEIVED
+  var matches = (ALL||[]).filter(function(x){
+    if (x.id === r.id) return false;
+    if ((x.truck||'').trim().toUpperCase() !== truck) return false;
+    if ((x.description||'').trim().toUpperCase() !== desc.toUpperCase()) return false;
+    var d = x.dateReceived || x.dateRequested || '';
+    if (d < cutoffStr) return false;
+    return true;
+  }).sort(function(a,b){
+    return (b.dateReceived||b.dateRequested||'').localeCompare(a.dateReceived||a.dateRequested||'');
+  });
+  if (!matches.length) return null;
+  var last = matches[0];
+  return { lastDate: last.dateReceived||last.dateRequested||'', lastReqNo: last.reqNo||'' };
+}
+
 function buildRow(r,isRO){
   const sc={'RECEIVED':'sR','RECEIVED NOT ISSUED':'sRNP','ON HOLD':'sOH','PAID NOT RECEIVED':'sPNR','NOT PAID':'sNR'};
   const desc=r.description||'';
@@ -2050,26 +2079,33 @@ function buildRow(r,isRO){
   const ph=`<span style="font-size:12px;font-weight:${phWeight};color:${phColor}">${r.priority||''}</span>`;
   const canER=canEditReq(r),canDR=canDeleteReq(r);
   const ac=isRO?'':`<td style="white-space:nowrap;overflow:visible;max-width:none">${canER?`<button class="actbtn e ws-action" onclick="editRecord('${r.id}')">✏ Edit</button>`:''} ${canDR?`<button class="actbtn d ws-action" onclick="deleteRecord('${r.id}')">🗑</button>`:''} ${r.status==='RECEIVED'?'<span style="font-size:9px;opacity:.4">🔒</span>':''}</td>`;
-  return `<tr data-id="${r.id}">
-    <td style="text-align:center;width:36px"><input type="checkbox" class="row-chk" data-id="${r.id}" onchange="onRowCheck(this)" style="cursor:pointer;width:14px;height:14px;accent-color:var(--ac)"></td>
-    <td><span class="reqbadge">${r.reqNo||''}</span></td>
-    <td>${fd(r.dateRequested)}</td><td><b title="${r.truck||''}">${r.truck||''}</b></td>
-    <td style="color:var(--t2);font-size:10px" title="${r.vehicleType||''}">${r.vehicleType||''}</td>
-    <td title="${r.driverName||''}">${r.driverName||''}</td><td>${ph}</td>
-    <td style="color:var(--t2);font-size:10px" title="${r.jobCardNo||''}">${r.jobCardNo||''}</td>
-    <td style="color:var(--t2);font-size:10px;font-family:monospace" title="${r.lpoNo||''}">${r.lpoNo||''}</td>
-    <td title="${desc}">${desc.length>28?desc.substring(0,28)+'…':desc}</td>
-    <td style="font-family:monospace">${r.qty||''}</td>
-    <td style="font-family:monospace">${r.unitPrice?Number(r.unitPrice).toLocaleString():''}</td>
-    <td style="font-family:monospace;color:var(--ac);font-weight:600">${r.cost?Number(r.cost).toLocaleString():''}</td>
-    <td title="${r.supplier||''}">${r.supplier||''}</td><td>${fd(r.dateReceived)}</td>
-    <td><span class="sb ${sc[r.status]||''}">${r.status||''}</span></td>
-    <td style="color:var(--t2);font-size:10px" title="${r.paymentMode||''}">${r.paymentMode||''}</td>
-    <td style="color:var(--t2);font-size:10px" title="${r.category||''}">${r.category||''}</td>
-    <td style="color:var(--t2);font-size:10px" title="${r.requestedBy||''}">${r.requestedBy||''}</td>
-    <td style="color:var(--t2);font-size:10px">${fd(r.dateIssued)}</td>
-    <td style="color:var(--t2);font-size:11px;min-width:80px" title="${r.remarks||''}">${(r.remarks||'').length>25?(r.remarks||'').substring(0,25)+'…':(r.remarks||'')}</td>
-    ${(function(){var i=getJCInfo(r.jobCardNo);return '<td style="font-size:12px" title="'+(i.orderStatus||'')+'">'+i.orderStatus+'</td><td style="font-size:12px;color:var(--t2)" title="'+(i.clientName||'')+'">'+i.clientName+'</td>';})()}
+  // Recent-fitment warning check
+  const warnInfo = _rowSpareWarnCheck(r);
+  const wBg = warnInfo ? 'background:#fef3c7!important;' : '';
+  const rowStyle = warnInfo ? 'outline:2px solid #f59e0b;outline-offset:-2px;' : '';
+  const descCell = warnInfo
+    ? `<td title="${desc}" style="${wBg}max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"><span title="⚠ Last req: ${fd(warnInfo.lastDate)} (${warnInfo.lastReqNo})" style="display:inline-flex;align-items:center;gap:4px"><span style="color:#d97706;font-size:13px">⚠️</span>${desc.length>22?desc.substring(0,22)+'…':desc}</span></td>`
+    : `<td title="${desc}">${desc.length>28?desc.substring(0,28)+'…':desc}</td>`;
+  return `<tr data-id="${r.id}" style="${rowStyle}">
+    <td style="${wBg}text-align:center;width:36px"><input type="checkbox" class="row-chk" data-id="${r.id}" onchange="onRowCheck(this)" style="cursor:pointer;width:14px;height:14px;accent-color:var(--ac)"></td>
+    <td style="${wBg}"><span class="reqbadge">${r.reqNo||''}</span></td>
+    <td style="${wBg}">${fd(r.dateRequested)}</td><td style="${wBg}"><b title="${r.truck||''}">${r.truck||''}</b></td>
+    <td style="${wBg}color:var(--t2);font-size:10px" title="${r.vehicleType||''}">${r.vehicleType||''}</td>
+    <td style="${wBg}" title="${r.driverName||''}">${r.driverName||''}</td><td style="${wBg}">${ph}</td>
+    <td style="${wBg}color:var(--t2);font-size:10px" title="${r.jobCardNo||''}">${r.jobCardNo||''}</td>
+    <td style="${wBg}color:var(--t2);font-size:10px;font-family:monospace" title="${r.lpoNo||''}">${r.lpoNo||''}</td>
+    ${descCell}
+    <td style="${wBg}font-family:monospace">${r.qty||''}</td>
+    <td style="${wBg}font-family:monospace">${r.unitPrice?Number(r.unitPrice).toLocaleString():''}</td>
+    <td style="${wBg}font-family:monospace;color:var(--ac);font-weight:600">${r.cost?Number(r.cost).toLocaleString():''}</td>
+    <td style="${wBg}" title="${r.supplier||''}">${r.supplier||''}</td><td style="${wBg}">${fd(r.dateReceived)}</td>
+    <td style="${wBg}"><span class="sb ${sc[r.status]||''}">${r.status||''}</span></td>
+    <td style="${wBg}color:var(--t2);font-size:10px" title="${r.paymentMode||''}">${r.paymentMode||''}</td>
+    <td style="${wBg}color:var(--t2);font-size:10px" title="${r.category||''}">${r.category||''}</td>
+    <td style="${wBg}color:var(--t2);font-size:10px" title="${r.requestedBy||''}">${r.requestedBy||''}</td>
+    <td style="${wBg}color:var(--t2);font-size:10px">${fd(r.dateIssued)}</td>
+    <td style="${wBg}color:var(--t2);font-size:11px;min-width:80px" title="${r.remarks||''}">${(r.remarks||'').length>25?(r.remarks||'').substring(0,25)+'…':(r.remarks||'')}</td>
+    ${(function(){var i=getJCInfo(r.jobCardNo);return '<td style="'+wBg+'font-size:12px" title="'+(i.orderStatus||'')+'">'+i.orderStatus+'</td><td style="'+wBg+'font-size:12px;color:var(--t2)" title="'+(i.clientName||'')+'">'+i.clientName+'</td>';})()}
     ${ac}</tr>`;
 }
 
@@ -6623,27 +6659,43 @@ function renderTyreRemHold() {
           + 'onclick="confirmReject(\''+f.id+'\',\''+f.status+'\',\''+f.tyreSerial+'\')">\u2715 Reject</button>'
           + '</td>'
         : (isAdmin ? '<td>\u2014</td>' : '');
-      var rowBg = isPend?(isIss?'#fffbeb':'#fff5f5'):isApproved?'#f0fdf4':isRejected?'#fef2f2':'';
+      // Recent-fitment warning for PENDING REMOVAL rows
+      var tyreRemWarn = null;
+      if (!isIss && s === 'PENDING REMOVAL') {
+        var _trCutoff = new Date(); _trCutoff.setFullYear(_trCutoff.getFullYear()-1);
+        var _trCutoffStr = _trCutoff.toISOString().substring(0,10);
+        var _trFits = (TYRE_FITS||[]).filter(function(x){
+          if (x.id === f.id) return false;
+          if ((x.vehicle||'').trim().toUpperCase() !== (f.vehicle||'').trim().toUpperCase()) return false;
+          if ((x.position||'').trim().toUpperCase() !== (f.position||'').trim().toUpperCase()) return false;
+          var xs = (x.status||'').toUpperCase();
+          if (xs !== 'ACTIVE' && xs !== 'CLOSED') return false;
+          return (x.dateFitted||'') >= _trCutoffStr;
+        }).sort(function(a,b){ return (b.dateFitted||'').localeCompare(a.dateFitted||''); });
+        if (_trFits.length) tyreRemWarn = { dateFitted: _trFits[0].dateFitted||'' };
+      }
+      var rowBgColor = tyreRemWarn ? '#fef3c7' : isPend?(isIss?'#fffbeb':'#fff5f5'):isApproved?'#f0fdf4':isRejected?'#fef2f2':'';
+      var rowExtraStyle = tyreRemWarn ? 'outline:2px solid #f59e0b;outline-offset:-2px;' : '';
+      var twBg = tyreRemWarn ? 'background:#fef3c7!important;' : (rowBgColor ? 'background:'+rowBgColor+';' : '');
       var trIsChk2=_tyreRemHoldSelected.has(f.id);
-      html += '<tr data-fitid="'+f.id+'" style="background:'+rowBg+'">'
-        + '<td style="text-align:center"><input type="checkbox" class="tyre-rh-chk" data-id="'+f.id+'" onchange="onTyreRemHoldCheck(this)" '+(trIsChk2?'checked':'')+' style="cursor:pointer;width:14px;height:14px;accent-color:var(--ac)"></td>'
-        + '<td>'+typeLabel+'</td>'
-        + '<td><span class="reqbadge" style="cursor:pointer;text-decoration:underline" data-tyre-serial="'+encodeURIComponent(f.tyreSerial||'')+'" onclick="openTyreProfile(decodeURIComponent(this.dataset.tyreSerial))" title="View Tyre Profile">'+f.tyreSerial+'</span></td>'
-        + '<td><b>'+(tyre.brand||f.brand||'\u2014')+'</b></td>'
-        + '<td>'+(tyre.size||f.size||'\u2014')+'</td>'
-        + '<td><b style="color:var(--ac)">'+(f.vehicle||'\u2014')+'</b></td>'
-        + '<td style="font-size:11px">'+(f.position||'\u2014')+'</td>'
-        + '<td>'+fmtDate(isIss?(f.dateFitted||''):(f.dateRemoved||f.dateFitted||''))+'</td>'
-        + '<td style="text-align:right;font-family:monospace">'+(isIss?fmtMoney(f.kmAtFitting||0):fmtMoney(f.kmAtRemoval||0))+' KM</td>'
-        + '<td>'+(f.driverName||'\u2014')+'</td>'
-        + '<td style="font-family:monospace">'+(f.jobCardNo||'\u2014')+'</td>'
-
-        + '<td style="font-size:11px">'+(isIss?'\u2014':(f.removedReason||'\u2014'))+'</td>'
-        + '<td style="font-size:11px;max-width:160px">'+(isIss?'\u2014':(f.removalNotes||'\u2014'))+'</td>'
-        + '<td style="font-size:11px">'+(isIss?'\u2014':(f.nextStatus||'\u2014'))+'</td>'
-        + '<td>'+statusBadge+'</td>'
-        + '<td style="font-size:11px">'+processedBy+'</td>'
-        + '<td style="font-size:11px">'+processedAt+'</td>'
+      html += '<tr data-fitid="'+f.id+'" style="'+rowExtraStyle+'">'
+        + '<td style="'+twBg+'text-align:center"><input type="checkbox" class="tyre-rh-chk" data-id="'+f.id+'" onchange="onTyreRemHoldCheck(this)" '+(trIsChk2?'checked':'')+' style="cursor:pointer;width:14px;height:14px;accent-color:var(--ac)"></td>'
+        + '<td style="'+twBg+'">'+typeLabel+'</td>'
+        + '<td style="'+twBg+'"><span class="reqbadge" style="cursor:pointer;text-decoration:underline" data-tyre-serial="'+encodeURIComponent(f.tyreSerial||'')+'" onclick="openTyreProfile(decodeURIComponent(this.dataset.tyreSerial))" title="View Tyre Profile">'+f.tyreSerial+'</span></td>'
+        + '<td style="'+twBg+'"><b>'+(tyre.brand||f.brand||'\u2014')+'</b></td>'
+        + '<td style="'+twBg+'">'+(tyre.size||f.size||'\u2014')+'</td>'
+        + '<td style="'+twBg+'"><b style="color:var(--ac)">'+(f.vehicle||'\u2014')+'</b></td>'
+        + '<td style="'+twBg+'font-size:11px">'+(tyreRemWarn?'<span title="\u26a0 Fitted '+fd(tyreRemWarn.dateFitted)+' \u2014 within 12 months" style="display:inline-flex;align-items:center;gap:3px"><span style="color:#d97706">\u26a0\ufe0f</span>'+(f.position||'\u2014')+'</span>':(f.position||'\u2014'))+'</td>'
+        + '<td style="'+twBg+'">'+fmtDate(isIss?(f.dateFitted||''):(f.dateRemoved||f.dateFitted||''))+'</td>'
+        + '<td style="'+twBg+'text-align:right;font-family:monospace">'+(isIss?fmtMoney(f.kmAtFitting||0):fmtMoney(f.kmAtRemoval||0))+' KM</td>'
+        + '<td style="'+twBg+'">'+(f.driverName||'\u2014')+'</td>'
+        + '<td style="'+twBg+'font-family:monospace">'+(f.jobCardNo||'\u2014')+'</td>'
+        + '<td style="'+twBg+'font-size:11px">'+(isIss?'\u2014':(f.removedReason||'\u2014'))+'</td>'
+        + '<td style="'+twBg+'font-size:11px;max-width:160px">'+(isIss?'\u2014':(f.removalNotes||'\u2014'))+'</td>'
+        + '<td style="'+twBg+'font-size:11px">'+(isIss?'\u2014':(f.nextStatus||'\u2014'))+'</td>'
+        + '<td style="'+twBg+'">'+statusBadge+'</td>'
+        + '<td style="'+twBg+'font-size:11px">'+processedBy+'</td>'
+        + '<td style="'+twBg+'font-size:11px">'+processedAt+'</td>'
         + actions
         + '</tr>';
     });
@@ -8914,25 +8966,42 @@ function renderBatRemHold() {
       var typeLabel=isIssBR?'ISSUANCE':'REMOVAL';
       var bat=(BATTERIES||[]).find(function(b){return b.batteryRef===f.batteryRef;})||{};
       var processedBy=isApproved?(f.approvedBy||''):(isRejected?(f.rejectedBy||''):'');
-      var scRow=isPendIss?'#fffbeb':isPendRem?'#fff5f5':isApproved?'#f0fdf4':isRejected?'#fef2f2':'';
+      // Recent-fitment warning for PENDING REMOVAL battery rows
+      var batRemWarn = null;
+      if (isPendRem) {
+        var _brCutoff = new Date(); _brCutoff.setFullYear(_brCutoff.getFullYear()-1);
+        var _brCutoffStr = _brCutoff.toISOString().substring(0,10);
+        var _brFits = (BAT_FITS||[]).filter(function(x){
+          if (x.id === f.id) return false;
+          if ((x.vehicle||'').trim().toUpperCase() !== (f.vehicle||'').trim().toUpperCase()) return false;
+          if ((x.position||'').trim().toUpperCase() !== (f.position||'').trim().toUpperCase()) return false;
+          var xs = (x.status||'').toUpperCase();
+          if (xs !== 'ACTIVE' && xs !== 'CLOSED') return false;
+          return (x.dateFitted||'') >= _brCutoffStr;
+        }).sort(function(a,b){ return (b.dateFitted||'').localeCompare(a.dateFitted||''); });
+        if (_brFits.length) batRemWarn = { dateFitted: _brFits[0].dateFitted||'' };
+      }
+      var scRow=batRemWarn?'#fef3c7':isPendIss?'#fffbeb':isPendRem?'#fff5f5':isApproved?'#f0fdf4':isRejected?'#fef2f2':'';
+      var batRowExtra=batRemWarn?'outline:2px solid #f59e0b;outline-offset:-2px;':'';
+      var bwBg=batRemWarn?'background:#fef3c7!important;':(scRow?'background:'+scRow+';':'');
       var sc=isPend?'sOH':isApproved?'sR':'sNR';
       var statusLabel=isApproved?'APPROVED':isRejected?'REJECTED':(f.status||'');
       var rhIsChk=_batRemHoldSelected.has(f.id);
-      html+='<tr data-fitid="'+f.id+'" style="background:'+scRow+'">'
-        +'<td style="text-align:center"><input type="checkbox" class="bat-rh-chk" data-id="'+f.id+'" onchange="onBatRemHoldCheck(this)" '+(rhIsChk?'checked':'')+' style="cursor:pointer;width:14px;height:14px;accent-color:var(--ac)"></td>'
-        +'<td><span style="font-size:10px;background:'+(typeLabel==='ISSUANCE'?'#fef3c7':'#fee2e2')+';color:'+(typeLabel==='ISSUANCE'?'#92400e':'#991b1b')+';padding:2px 8px;border-radius:20px;font-weight:700">'+typeLabel+'</span></td>'
-        +'<td style="font-family:monospace;font-size:11px">'+(f.reqNo||f.id||'')+'</td>'
-        +'<td><span class="reqbadge" style="cursor:pointer;text-decoration:underline" onclick="openBatProfile(&apos;'+(f.batteryRef||'')+'&apos;)" title="View Battery Profile">'+(f.batteryRef||'')+'</span></td>'
-        +'<td>'+(bat.brand||bat.size||'')+'</td>'
-        +'<td><b style="color:var(--ac)">'+(f.vehicle||'')+'</b></td>'
-        +'<td style="font-size:11px">'+(f.position||'\u2014')+'</td>'
-        +'<td style="font-size:11px">'+(isIssBR?'\u2014':(f.removedReason||'\u2014'))+'</td>'
-        +'<td style="font-size:11px">'+fmtDate(f.requestDate||f.dateFitted)+'</td>'
-        +'<td>'+(f.requestedBy||'\u2014')+'</td>'
-        +'<td><span class="sb '+sc+'">'+statusLabel+'</span></td>'
-        +'<td style="font-size:11px">'+(processedBy||'\u2014')+'</td>'
-        +'<td style="font-size:11px">'+fmtDateTime(isApproved?(f.approvedAt||''):(isRejected?(f.rejectedAt||''):''))+'</td>'
-        +(isAdmin?'<td>'+(isPend?'<button class="bat-approve-btn" onclick="confirmBatApproval(&#39;'+f.id+'&#39;,&#39;'+(isPendIss?'true':'false')+'&#39;)" style="background:#059669;color:#fff;border:none;padding:4px 10px;border-radius:6px;cursor:pointer;font-size:11px;font-weight:600;margin-right:4px">✓ Approve</button><button class="bat-reject-btn" onclick="confirmBatReject(&#39;'+f.id+'&#39;)" style="background:#dc2626;color:#fff;border:none;padding:4px 10px;border-radius:6px;cursor:pointer;font-size:11px;font-weight:600">✕ Reject</button>':'-')+'</td>':'')
+      html+='<tr data-fitid="'+f.id+'" style="'+batRowExtra+'">'
+        +'<td style="'+bwBg+'text-align:center"><input type="checkbox" class="bat-rh-chk" data-id="'+f.id+'" onchange="onBatRemHoldCheck(this)" '+(rhIsChk?'checked':'')+' style="cursor:pointer;width:14px;height:14px;accent-color:var(--ac)"></td>'
+        +'<td style="'+bwBg+'"><span style="font-size:10px;background:'+(typeLabel==='ISSUANCE'?'#fef3c7':'#fee2e2')+';color:'+(typeLabel==='ISSUANCE'?'#92400e':'#991b1b')+';padding:2px 8px;border-radius:20px;font-weight:700">'+typeLabel+'</span></td>'
+        +'<td style="'+bwBg+'font-family:monospace;font-size:11px">'+(f.reqNo||f.id||'')+'</td>'
+        +'<td style="'+bwBg+'"><span class="reqbadge" style="cursor:pointer;text-decoration:underline" onclick="openBatProfile(&apos;'+(f.batteryRef||'')+'&apos;)" title="View Battery Profile">'+(f.batteryRef||'')+'</span></td>'
+        +'<td style="'+bwBg+'">'+(bat.brand||bat.size||'')+'</td>'
+        +'<td style="'+bwBg+'"><b style="color:var(--ac)">'+(f.vehicle||'')+'</b></td>'
+        +'<td style="'+bwBg+'font-size:11px">'+(batRemWarn?'<span title="\u26a0 Fitted '+fd(batRemWarn.dateFitted)+' \u2014 within 12 months" style="display:inline-flex;align-items:center;gap:3px"><span style="color:#d97706">\u26a0\ufe0f</span>'+(f.position||'\u2014')+'</span>':(f.position||'\u2014'))+'</td>'
+        +'<td style="'+bwBg+'font-size:11px">'+(isIssBR?'\u2014':(f.removedReason||'\u2014'))+'</td>'
+        +'<td style="'+bwBg+'font-size:11px">'+fmtDate(f.requestDate||f.dateFitted)+'</td>'
+        +'<td style="'+bwBg+'">'+(f.requestedBy||'\u2014')+'</td>'
+        +'<td style="'+bwBg+'"><span class="sb '+sc+'">'+statusLabel+'</span></td>'
+        +'<td style="'+bwBg+'font-size:11px">'+(processedBy||'\u2014')+'</td>'
+        +'<td style="'+bwBg+'font-size:11px">'+fmtDateTime(isApproved?(f.approvedAt||''):(isRejected?(f.rejectedAt||''):''))+'</td>'
+        +(isAdmin?'<td style="'+bwBg+'">'+(isPend?'<button class="bat-approve-btn" onclick="confirmBatApproval(&#39;'+f.id+'&#39;,&#39;'+(isPendIss?'true':'false')+'&#39;)" style="background:#059669;color:#fff;border:none;padding:4px 10px;border-radius:6px;cursor:pointer;font-size:11px;font-weight:600;margin-right:4px">✓ Approve</button><button class="bat-reject-btn" onclick="confirmBatReject(&#39;'+f.id+'&#39;)" style="background:#dc2626;color:#fff;border:none;padding:4px 10px;border-radius:6px;cursor:pointer;font-size:11px;font-weight:600">✕ Reject</button>':'-')+'</td>':'')
         +'</tr>';
     });
   }
@@ -10634,7 +10703,7 @@ function addRemoveTyreLine() {
   var remSel=document.getElementById("rem_ser_"+n);
   if(remSel&&typeof TomSelect!=="undefined"&&!remSel.tomselect){
     new TomSelect(remSel,{allowEmptyOption:true,placeholder:"Search tyre serial...",dropdownParent:"body",maxOptions:500,
-      onChange:function(val){refreshRemTyreOpts("rem_ser_"+n,val);}});
+      onChange:function(val){refreshRemTyreOpts("rem_ser_"+n,val); _showTyreRemWarn(n);}});
   }
 }
 
@@ -10767,7 +10836,7 @@ function addRemoveBatLine() {
   var div = document.createElement('div');
   div.id = 'rem_bat_line_'+n;
   div.style.cssText = 'display:grid;grid-template-columns:2fr 1fr 1.5fr 1fr;gap:8px;align-items:center;padding:8px;background:#fff;border:1.5px solid #e2e2e7;border-radius:9px';
-  div.innerHTML = '<select id="rem_bat_ref_'+n+'" onchange="refreshRemBatOpts()" style="'+fs+'">'+batOpts+'</select>'
+  div.innerHTML = '<select id="rem_bat_ref_'+n+'" onchange="refreshRemBatOpts();_showBatRemWarn('+n+')" style="'+fs+'">'+batOpts+'</select>'
     + '<select id="rem_bat_cond_'+n+'" style="'+fs+'"><option value="GOOD">GOOD</option><option value="WEAK">WEAK</option><option value="DEAD">DEAD</option></select>'
     + '<select id="rem_bat_rsn_'+n+'" style="'+fs+'"><option value="">Select reason...</option><option value="ROTATION">ROTATION</option><option value="DAMAGED">DAMAGED</option><option value="END OF LIFE">END OF LIFE</option></select>'
     + '<div style="display:flex;gap:6px;align-items:center">'
@@ -12124,6 +12193,10 @@ function onMRTruckSelect(plate) {
       _populateMrDriver();
     }
   }
+  // Re-check warnings for all existing lines when truck changes
+  for (var _mri = 1; _mri <= _mrLineCount; _mri++) {
+    if (document.getElementById('mr_line_' + _mri)) _showSpareWarn('mr', _mri, plate);
+  }
 }
 
 function onMRJCSelect() {
@@ -12222,6 +12295,143 @@ function addMRLine() {
 }
 
 
+// ── RECENT FITMENT WARNING HELPERS ───────────────────────────────────────────
+// Returns warning object {found, lastDate, lastReqNo} if same part was recently
+// requisitioned for same vehicle (within 12 months), from SPAREPARTS list only.
+function _checkSparePartWarning(truck, descValue) {
+  if (!truck || !descValue || descValue === '__custom__') return { found: false };
+  // Only flag if the value is from the SPAREPARTS list (not manually typed)
+  var inList = (SPAREPARTS||[]).some(function(p){ return p.name === descValue && p.status !== 'INACTIVE'; });
+  if (!inList) return { found: false };
+  var truckUC = truck.trim().toUpperCase();
+  var descUC  = descValue.trim().toUpperCase();
+  var cutoff  = new Date(); cutoff.setFullYear(cutoff.getFullYear() - 1);
+  var cutoffStr = cutoff.toISOString().substring(0,10);
+  // Look through ALL (requisitions) for same vehicle + same description within 12mo
+  var matches = (ALL||[]).filter(function(r){
+    if ((r.truck||'').trim().toUpperCase() !== truckUC) return false;
+    if ((r.description||'').trim().toUpperCase() !== descUC) return false;
+    var d = r.dateReceived || r.dateRequested || '';
+    return d >= cutoffStr;
+  }).sort(function(a,b){
+    return (b.dateReceived||b.dateRequested||'').localeCompare(a.dateReceived||a.dateRequested||'');
+  });
+  if (!matches.length) return { found: false };
+  var last = matches[0];
+  return { found: true, lastDate: last.dateReceived||last.dateRequested||'', lastReqNo: last.reqNo||'' };
+}
+
+// Show or clear the spare-part warning banner inside a requisition line card.
+// prefix = 'mr', 'ssr', or 'fr'; n = line number; truck = current vehicle value.
+function _showSpareWarn(prefix, n, truck) {
+  var bannerId = prefix + '_warn_' + n;
+  var existing = document.getElementById(bannerId);
+  var card = document.getElementById(prefix === 'mr' ? 'mr_line_' + n : prefix === 'ssr' ? 'ssr_line_' + n : 'fr_line_' + n);
+  if (!card) return;
+  var descEl  = document.getElementById(prefix + '_desc_' + n);
+  var descTxt = document.getElementById(prefix + '_desc_txt_' + n);
+  var descVal = '';
+  if (descTxt && descTxt.style.display !== 'none') descVal = descTxt.value.trim();
+  else if (descEl && descEl.tomselect) descVal = descEl.tomselect.getValue() || '';
+  else if (descEl) descVal = descEl.value || '';
+  // Remove banner first
+  if (existing) existing.remove();
+  if (!descVal || descVal === '__custom__') return;
+  var truckVal = truck || '';
+  if (!truckVal) {
+    // Try to read truck from form header for multi-line forms
+    var trEl = document.getElementById(prefix === 'mr' ? 'mr_truck' : prefix === 'ssr' ? 'ssr_truck' : 'fr_truck_' + n);
+    if (trEl && trEl.tomselect) truckVal = trEl.tomselect.getValue() || '';
+    else if (trEl) truckVal = trEl.value || '';
+  }
+  var w = _checkSparePartWarning(truckVal, descVal);
+  if (!w.found) return;
+  var banner = document.createElement('div');
+  banner.id = bannerId;
+  banner.style.cssText = 'margin-top:8px;padding:8px 12px;background:#fffbeb;border:1.5px solid #f59e0b;border-radius:8px;display:flex;align-items:center;gap:8px;font-size:12px;color:#92400e;font-weight:600';
+  banner.innerHTML = '<span style="font-size:15px">⚠️</span> This part was already requisitioned for this vehicle on <b>' + fd(w.lastDate) + '</b>'
+    + (w.lastReqNo ? ' (<span style="font-family:monospace">' + w.lastReqNo + '</span>)' : '') + ' — within the last 12 months.';
+  card.appendChild(banner);
+}
+
+// Check tyre removal warning: same vehicle + same position fitted within 12 months.
+// Returns {found, dateFitted, reqNo}
+function _checkTyreRemoveWarning(tyreSerial) {
+  if (!tyreSerial) return { found: false };
+  var tyre = (TYRES||[]).find(function(t){ return String(t.serialNo||'').trim() === tyreSerial.trim(); });
+  if (!tyre || !tyre.currentVehicle || !tyre.currentPosition) return { found: false };
+  var veh = tyre.currentVehicle.trim().toUpperCase();
+  var pos = tyre.currentPosition.trim().toUpperCase();
+  var cutoff = new Date(); cutoff.setFullYear(cutoff.getFullYear() - 1);
+  var cutoffStr = cutoff.toISOString().substring(0,10);
+  // Find the most recent ACTIVE fitment for same vehicle + position within 12 months
+  var fits = (TYRE_FITS||[]).filter(function(f){
+    if ((f.vehicle||'').trim().toUpperCase() !== veh) return false;
+    if ((f.position||'').trim().toUpperCase() !== pos) return false;
+    var s = (f.status||'').toUpperCase();
+    if (s !== 'ACTIVE' && s !== 'PENDING REMOVAL') return false;
+    var d = f.dateFitted || '';
+    return d >= cutoffStr;
+  }).sort(function(a,b){ return (b.dateFitted||'').localeCompare(a.dateFitted||''); });
+  if (!fits.length) return { found: false };
+  var last = fits[0];
+  return { found: true, dateFitted: last.dateFitted||'', vehicle: tyre.currentVehicle, position: tyre.currentPosition };
+}
+
+// Show or clear tyre removal warning for a rem_line_N div.
+function _showTyreRemWarn(n) {
+  var bannerId = 'rem_tyre_warn_' + n;
+  var div = document.getElementById('rem_line_' + n);
+  if (!div) return;
+  var existing = document.getElementById(bannerId);
+  if (existing) existing.remove();
+  var serEl = document.getElementById('rem_ser_' + n);
+  var serial = serEl && serEl.tomselect ? serEl.tomselect.getValue() : (serEl ? serEl.value : '');
+  if (!serial) return;
+  var w = _checkTyreRemoveWarning(serial);
+  if (!w.found) return;
+  var banner = document.createElement('div');
+  banner.id = bannerId;
+  banner.style.cssText = 'margin-top:6px;grid-column:1/-1;padding:7px 12px;background:#fffbeb;border:1.5px solid #f59e0b;border-radius:8px;display:flex;align-items:center;gap:8px;font-size:12px;color:#92400e;font-weight:600';
+  banner.innerHTML = '<span style="font-size:14px">⚠️</span> <b>' + w.position + '</b> on <b>' + w.vehicle + '</b> was fitted on <b>' + fd(w.dateFitted) + '</b> — within the last 12 months.';
+  div.appendChild(banner);
+}
+
+// Check battery removal warning: same vehicle + same position fitted within 12 months.
+function _checkBatRemoveWarning(batRef) {
+  if (!batRef) return { found: false };
+  var fitData = (BAT_FITS||[]).filter(function(f){
+    var s = (f.status||'').toUpperCase();
+    if (s !== 'ACTIVE' && s !== 'PENDING REMOVAL') return false;
+    return String(f.batteryRef||'').trim() === batRef.trim();
+  }).sort(function(a,b){ return (b.dateFitted||'').localeCompare(a.dateFitted||''); })[0];
+  if (!fitData || !fitData.vehicle || !fitData.position) return { found: false };
+  var cutoff = new Date(); cutoff.setFullYear(cutoff.getFullYear() - 1);
+  var cutoffStr = cutoff.toISOString().substring(0,10);
+  if ((fitData.dateFitted||'') < cutoffStr) return { found: false };
+  return { found: true, dateFitted: fitData.dateFitted||'', vehicle: fitData.vehicle, position: fitData.position };
+}
+
+// Show or clear battery removal warning for rem_bat_line_N.
+function _showBatRemWarn(n) {
+  var bannerId = 'rem_bat_warn_' + n;
+  var div = document.getElementById('rem_bat_line_' + n);
+  if (!div) return;
+  var existing = document.getElementById(bannerId);
+  if (existing) existing.remove();
+  var refEl = document.getElementById('rem_bat_ref_' + n);
+  var batRef = refEl ? refEl.value : '';
+  if (!batRef) return;
+  var w = _checkBatRemoveWarning(batRef);
+  if (!w.found) return;
+  var banner = document.createElement('div');
+  banner.id = bannerId;
+  banner.style.cssText = 'margin-top:6px;grid-column:1/-1;padding:7px 12px;background:#fffbeb;border:1.5px solid #f59e0b;border-radius:8px;display:flex;align-items:center;gap:8px;font-size:12px;color:#92400e;font-weight:600';
+  banner.innerHTML = '<span style="font-size:14px">⚠️</span> <b>' + w.position + '</b> on <b>' + w.vehicle + '</b> was fitted on <b>' + fd(w.dateFitted) + '</b> — within the last 12 months.';
+  div.appendChild(banner);
+}
+// ── END RECENT FITMENT WARNING HELPERS ───────────────────────────────────────
+
 function onMRDescChange(n){
   var s=document.getElementById('mr_desc_'+n);
   var t=document.getElementById('mr_desc_txt_'+n);
@@ -12235,6 +12445,7 @@ function onMRDescChange(n){
     t.style.display='none';
     s.style.display='block';
   }
+  _showSpareWarn('mr', n, '');
 }
 function onMRSupChange(n){
   var s=document.getElementById('mr_sup_'+n),t=document.getElementById('mr_sup_txt_'+n);
@@ -12519,6 +12730,8 @@ function onSSRLineTruckChange(n, plate) {
     };
     if(!DRIVERS.length){ _loadAllDrivers().then(function(){ _populateSSRDriver(); }); } else { _populateSSRDriver(); }
   }
+  // Re-check warning for this line when truck changes
+  _showSpareWarn('ssr', n, plate);
 }
 
 function onSSRJCLineSelect(n){
@@ -12541,6 +12754,7 @@ function onSSRDescChange(n){
   if(!s||!t) return;
   if(s.value==='__custom__'){ s.style.display='none'; t.style.display='block'; t.style.height='38px'; t.focus(); }
   else { t.style.display='none'; s.style.display='block'; }
+  _showSpareWarn('ssr', n, '');
 }
 
 function calcSSRLine(n){
@@ -13157,6 +13371,8 @@ function onFRTruckChange(n, plate) {
     if(!DRIVERS.length){ _loadAllDrivers().then(function(){ _populateFRDriver(); }); }
     else { _populateFRDriver(); }
   }
+  // Re-check warning when truck changes
+  _showSpareWarn('fr', n, plate);
 }
 
 function onFRJCSelect(n){
@@ -13177,6 +13393,7 @@ function onFRDescChange(n){
   if(!s||!t) return;
   if(s.value==='__custom__'){s.style.display='none';t.style.display='block';t.style.height='38px';t.focus();}
   else{t.style.display='none';s.style.display='block';}
+  _showSpareWarn('fr', n, '');
 }
 function calcFRLine(n){
   var qty=parseFloat((document.getElementById('fr_qty_'+n)||{}).value)||0;
