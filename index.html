@@ -2048,7 +2048,7 @@ function _rowSpareWarnCheck(r) {
   if (st !== 'NOT PAID' && st !== 'PAID NOT RECEIVED') return null;
   var desc = (r.description||'').trim();
   if (!desc) return null;
-  var inList = (SPAREPARTS||[]).some(function(p){ return p.name === desc && p.status !== 'INACTIVE'; });
+  var inList = (SPAREPARTS||[]).some(function(p){ return (p.name||'').toUpperCase() === desc.toUpperCase() && p.status !== 'INACTIVE'; });
   if (!inList) return null;
   var truck = (r.truck||'').trim().toUpperCase();
   if (!truck) return null;
@@ -12301,7 +12301,7 @@ function addMRLine() {
 function _checkSparePartWarning(truck, descValue) {
   if (!truck || !descValue || descValue === '__custom__') return { found: false };
   // Only flag if the value is from the SPAREPARTS list (not manually typed)
-  var inList = (SPAREPARTS||[]).some(function(p){ return p.name === descValue && p.status !== 'INACTIVE'; });
+  var inList = (SPAREPARTS||[]).some(function(p){ return (p.name||'').toUpperCase() === (descValue||'').toUpperCase() && p.status !== 'INACTIVE'; });
   if (!inList) return { found: false };
   var truckUC = truck.trim().toUpperCase();
   var descUC  = descValue.trim().toUpperCase();
