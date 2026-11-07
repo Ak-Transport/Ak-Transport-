@@ -2052,13 +2052,15 @@ function _rowSpareWarnCheck(r) {
   if (!inList) return null;
   var truck = (r.truck||'').trim().toUpperCase();
   if (!truck) return null;
-  var cutoff = new Date(); cutoff.setFullYear(cutoff.getFullYear() - 1);
+  var cutoff = new Date(); cutoff.setFullYear(cutoff.getFullYear() - 3);
   var cutoffStr = cutoff.toISOString().substring(0,10);
   // Find OTHER records (not this one) for same vehicle + same description within 12 months that are NOT also NOT PAID / PAID NOT RECEIVED
   var matches = (ALL||[]).filter(function(x){
     if (x.id === r.id) return false;
     if ((x.truck||'').trim().toUpperCase() !== truck) return false;
     if ((x.description||'').trim().toUpperCase() !== desc.toUpperCase()) return false;
+    var xs = (x.status||'').toUpperCase();
+    if (xs === 'NOT PAID' || xs === 'ON HOLD') return false;
     var d = x.dateReceived || x.dateRequested || '';
     if (d < cutoffStr) return false;
     return true;
@@ -6662,7 +6664,7 @@ function renderTyreRemHold() {
       // Recent-fitment warning for PENDING REMOVAL rows
       var tyreRemWarn = null;
       if (!isIss && s === 'PENDING REMOVAL') {
-        var _trCutoff = new Date(); _trCutoff.setFullYear(_trCutoff.getFullYear()-1);
+        var _trCutoff = new Date(); _trCutoff.setFullYear(_trCutoff.getFullYear()-3);
         var _trCutoffStr = _trCutoff.toISOString().substring(0,10);
         var _trFits = (TYRE_FITS||[]).filter(function(x){
           if (x.id === f.id) return false;
@@ -6829,13 +6831,30 @@ function printFitRequests(){
     var bs=(tyre.brand||r.brand||'')+(tyre.size?' '+tyre.size:'');
     var s=(r.status||'').toUpperCase();
     var type=s==='PENDING ISSUANCE'||s==='ACTIVE'?'ISSUANCE':'REMOVAL';
+    var tyreWarn=null;
+    if(type==='REMOVAL'){
+      var _veh=(r.vehicle||'').trim().toUpperCase();
+      var _pos=(r.position||'').trim().toUpperCase();
+      var _cut=new Date();_cut.setFullYear(_cut.getFullYear()-3);
+      var _cutStr=_cut.toISOString().substring(0,10);
+      var _prev=(TYRE_FITS||[]).filter(function(x){
+        if(x.id===r.id)return false;
+        if((x.vehicle||'').trim().toUpperCase()!==_veh)return false;
+        if((x.position||'').trim().toUpperCase()!==_pos)return false;
+        var xs=(x.status||'').toUpperCase();
+        if(xs!=='ACTIVE'&&xs!=='CLOSED')return false;
+        return (x.dateFitted||'')>=_cutStr;
+      }).sort(function(a,b){return (b.dateFitted||'').localeCompare(a.dateFitted||'');});
+      if(_prev.length)tyreWarn={dateFitted:_prev[0].dateFitted||''};
+    }
+    var posCell=(r.position||'')+(tyreWarn?'<div style="margin-top:3px;font-size:9px;color:#92400e;font-weight:600">⚠ Last fitted: '+fd(tyreWarn.dateFitted)+'</div>':'');
     tblRows+='<tr>'
       +'<td style="text-align:center">'+(i+1)+'</td>'
       +'<td style="font-family:monospace">'+(r.reqNo||r.id||'')+'</td>'
       +'<td>'+type+'</td>'
       +'<td style="font-family:monospace">'+(r.tyreSerial||'')+'</td>'
       +'<td>'+bs+'</td>'
-      +'<td>'+(r.position||'')+'</td>'
+      +'<td>'+posCell+'</td>'
       +'<td style="font-weight:700">'+(r.vehicle||'')+'</td>'
       +'<td>'+(r.jobCardNo||'')+'</td>'
       +'<td>'+(r.driverName||'')+'</td>'
@@ -8845,13 +8864,30 @@ function printBatFitRequests(){
   rows.forEach(function(r,i){
     var s=(r.status||'').toUpperCase();
     var type=s==='PENDING ISSUANCE'||s==='ACTIVE'?'ISSUANCE':'REMOVAL';
+    var batWarn=null;
+    if(type==='REMOVAL'){
+      var _veh=(r.vehicle||'').trim().toUpperCase();
+      var _pos=(r.position||'').trim().toUpperCase();
+      var _cut=new Date();_cut.setFullYear(_cut.getFullYear()-3);
+      var _cutStr=_cut.toISOString().substring(0,10);
+      var _prev=(BAT_FITS||[]).filter(function(x){
+        if(x.id===r.id)return false;
+        if((x.vehicle||'').trim().toUpperCase()!==_veh)return false;
+        if((x.position||'').trim().toUpperCase()!==_pos)return false;
+        var xs=(x.status||'').toUpperCase();
+        if(xs!=='ACTIVE'&&xs!=='CLOSED')return false;
+        return (x.dateFitted||'')>=_cutStr;
+      }).sort(function(a,b){return (b.dateFitted||'').localeCompare(a.dateFitted||'');});
+      if(_prev.length)batWarn={dateFitted:_prev[0].dateFitted||''};
+    }
+    var posCell=(r.position||'')+(batWarn?'<div style="margin-top:3px;font-size:9px;color:#92400e;font-weight:600">⚠ Last fitted: '+fd(batWarn.dateFitted)+'</div>':'');
     tblRows+='<tr>'
       +'<td style="text-align:center">'+(i+1)+'</td>'
       +'<td style="font-family:monospace">'+(r.reqNo||r.id||'')+'</td>'
       +'<td>'+type+'</td>'
       +'<td style="font-family:monospace">'+(r.batteryRef||'')+'</td>'
       +'<td style="font-weight:700">'+(r.vehicle||'')+'</td>'
-      +'<td>'+(r.position||'')+'</td>'
+      +'<td>'+posCell+'</td>'
       +'<td>'+(r.jobCardNo||'')+'</td>'
       +'<td>'+(r.driverName||'')+'</td>'
       +'<td>'+(r.removedReason||'')+'</td>'
@@ -8969,7 +9005,7 @@ function renderBatRemHold() {
       // Recent-fitment warning for PENDING REMOVAL battery rows
       var batRemWarn = null;
       if (isPendRem) {
-        var _brCutoff = new Date(); _brCutoff.setFullYear(_brCutoff.getFullYear()-1);
+        var _brCutoff = new Date(); _brCutoff.setFullYear(_brCutoff.getFullYear()-3);
         var _brCutoffStr = _brCutoff.toISOString().substring(0,10);
         var _brFits = (BAT_FITS||[]).filter(function(x){
           if (x.id === f.id) return false;
@@ -11976,6 +12012,9 @@ function exportSelectedPDF() {
   });
   // Build requisition form HTML
   var formRows = rows.map(function(r, i) {
+    var warnInfo = _rowSpareWarnCheck(r);
+    var descCell = (r.description||'')
+      + (warnInfo ? '<div style="margin-top:3px;font-size:9px;color:#92400e;font-weight:600">⚠ Last req: ' + fd(warnInfo.lastDate) + ' (' + warnInfo.lastReqNo + ')</div>' : '');
     return '<tr style="border-bottom:1px solid #e0e0e0">'
       + '<td style="padding:6px;font-size:10px;text-align:center">' + (i+1) + '</td>'
       + '<td style="padding:6px;font-size:10px;font-weight:600">' + (r.reqNo||'') + '</td>'
@@ -11983,7 +12022,7 @@ function exportSelectedPDF() {
       + '<td style="padding:6px;font-size:10px;font-weight:600">' + (r.truck||'') + '</td>'
       + '<td style="padding:6px;font-size:10px;color:#0a2d6e">' + (r.jobCardNo||'') + '</td>'
       + '<td style="padding:6px;font-size:10px">' + (r.driverName||'') + '</td>'
-      + '<td style="padding:6px;font-size:10px">' + (r.description||'') + '</td>'
+      + '<td style="padding:6px;font-size:10px">' + descCell + '</td>'
       + '<td style="padding:6px;font-size:10px;text-align:center">' + (r.qty||'') + '</td>'
       + '<td style="padding:6px;font-size:10px;text-align:right">' + (r.unitPrice ? Number(r.unitPrice).toLocaleString() : '') + '</td>'
       + '<td style="padding:6px;font-size:10px;text-align:right;font-weight:600">' + (r.cost ? Number(r.cost).toLocaleString() : '') + '</td>'
@@ -12305,12 +12344,14 @@ function _checkSparePartWarning(truck, descValue) {
   if (!inList) return { found: false };
   var truckUC = truck.trim().toUpperCase();
   var descUC  = descValue.trim().toUpperCase();
-  var cutoff  = new Date(); cutoff.setFullYear(cutoff.getFullYear() - 1);
+  var cutoff  = new Date(); cutoff.setFullYear(cutoff.getFullYear() - 3);
   var cutoffStr = cutoff.toISOString().substring(0,10);
   // Look through ALL (requisitions) for same vehicle + same description within 12mo
   var matches = (ALL||[]).filter(function(r){
     if ((r.truck||'').trim().toUpperCase() !== truckUC) return false;
     if ((r.description||'').trim().toUpperCase() !== descUC) return false;
+    var rs = (r.status||'').toUpperCase();
+    if (rs === 'NOT PAID' || rs === 'ON HOLD') return false;
     var d = r.dateReceived || r.dateRequested || '';
     return d >= cutoffStr;
   }).sort(function(a,b){
@@ -12362,7 +12403,7 @@ function _checkTyreRemoveWarning(tyreSerial) {
   if (!tyre || !tyre.currentVehicle || !tyre.currentPosition) return { found: false };
   var veh = tyre.currentVehicle.trim().toUpperCase();
   var pos = tyre.currentPosition.trim().toUpperCase();
-  var cutoff = new Date(); cutoff.setFullYear(cutoff.getFullYear() - 1);
+  var cutoff = new Date(); cutoff.setFullYear(cutoff.getFullYear() - 3);
   var cutoffStr = cutoff.toISOString().substring(0,10);
   // Find the most recent ACTIVE fitment for same vehicle + position within 12 months
   var fits = (TYRE_FITS||[]).filter(function(f){
@@ -12406,7 +12447,7 @@ function _checkBatRemoveWarning(batRef) {
     return String(f.batteryRef||'').trim() === batRef.trim();
   }).sort(function(a,b){ return (b.dateFitted||'').localeCompare(a.dateFitted||''); })[0];
   if (!fitData || !fitData.vehicle || !fitData.position) return { found: false };
-  var cutoff = new Date(); cutoff.setFullYear(cutoff.getFullYear() - 1);
+  var cutoff = new Date(); cutoff.setFullYear(cutoff.getFullYear() - 3);
   var cutoffStr = cutoff.toISOString().substring(0,10);
   if ((fitData.dateFitted||'') < cutoffStr) return { found: false };
   return { found: true, dateFitted: fitData.dateFitted||'', vehicle: fitData.vehicle, position: fitData.position };
