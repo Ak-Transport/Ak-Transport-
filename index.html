@@ -6675,19 +6675,14 @@ function renderTyreRemHold() {
           + '</td>'
         : (isAdmin ? '<td>\u2014</td>' : '');
       // Recent-fitment warning for PENDING REMOVAL rows
+      // Warn if this tyre was fitted recently (within 1 year) based on its own dateFitted
       var tyreRemWarn = null;
-      if (!isIss && s === 'PENDING REMOVAL') {
-        var _trCutoff = new Date(); _trCutoff.setFullYear(_trCutoff.getFullYear()-3);
+      if (!isIss && s === 'PENDING REMOVAL' && (f.dateFitted||'').trim()) {
+        var _trCutoff = new Date(); _trCutoff.setFullYear(_trCutoff.getFullYear()-1);
         var _trCutoffStr = _trCutoff.toISOString().substring(0,10);
-        var _trFits = (TYRE_FITS||[]).filter(function(x){
-          if (x.id === f.id) return false;
-          if ((x.vehicle||'').trim().toUpperCase() !== (f.vehicle||'').trim().toUpperCase()) return false;
-          if ((x.position||'').trim().toUpperCase() !== (f.position||'').trim().toUpperCase()) return false;
-          var xs = (x.status||'').toUpperCase();
-          if (xs !== 'ACTIVE' && xs !== 'CLOSED') return false;
-          return (x.dateFitted||'') >= _trCutoffStr;
-        }).sort(function(a,b){ return (b.dateFitted||'').localeCompare(a.dateFitted||''); });
-        if (_trFits.length) tyreRemWarn = { dateFitted: _trFits[0].dateFitted||'' };
+        if (f.dateFitted >= _trCutoffStr) {
+          tyreRemWarn = { dateFitted: f.dateFitted };
+        }
       }
       var rowBgColor = tyreRemWarn ? '#fef3c7' : isPend?(isIss?'#fffbeb':'#fff5f5'):isApproved?'#f0fdf4':isRejected?'#fef2f2':'';
       var rowExtraStyle = tyreRemWarn ? 'outline:2px solid #f59e0b;outline-offset:-2px;' : '';
@@ -6700,7 +6695,7 @@ function renderTyreRemHold() {
         + '<td style="'+twBg+'"><b>'+(tyre.brand||f.brand||'\u2014')+'</b></td>'
         + '<td style="'+twBg+'">'+(tyre.size||f.size||'\u2014')+'</td>'
         + '<td style="'+twBg+'"><b style="color:var(--ac)">'+(f.vehicle||'\u2014')+'</b></td>'
-        + '<td style="'+twBg+'font-size:11px">'+(tyreRemWarn?'<span title="\u26a0 Fitted '+fd(tyreRemWarn.dateFitted)+' \u2014 within 12 months" style="display:inline-flex;align-items:center;gap:3px"><span style="color:#d97706">\u26a0\ufe0f</span>'+(f.position||'\u2014')+'</span>':(f.position||'\u2014'))+'</td>'
+        + '<td style="'+twBg+'font-size:11px">'+(tyreRemWarn?'<span title="\u26a0 Last fitted on: '+fd(tyreRemWarn.dateFitted)+'" style="display:inline-flex;align-items:center;gap:3px"><span style="color:#d97706">\u26a0\ufe0f</span>'+(f.position||'\u2014')+'</span>':(f.position||'\u2014'))+'</td>'
         + '<td style="'+twBg+'">'+fmtDate(isIss?(f.dateFitted||''):(f.dateRemoved||f.dateFitted||''))+'</td>'
         + '<td style="'+twBg+'text-align:right;font-family:monospace">'+(isIss?fmtMoney(f.kmAtFitting||0):fmtMoney(f.kmAtRemoval||0))+' KM</td>'
         + '<td style="'+twBg+'">'+(f.driverName||'\u2014')+'</td>'
@@ -6765,6 +6760,16 @@ function renderTyreFitRequests() {
       var isPend = s==='PENDING ISSUANCE'||s==='PENDING REMOVAL';
       var isApproved = s==='ACTIVE'||s==='CLOSED';
       var isRejected = s==='REJECTED';
+      // Recent-fitment warning for PENDING REMOVAL rows in Fitment/Removal Requests view
+      // Warn if this tyre was fitted recently (within 1 year) based on its own dateFitted
+      var frTyreWarn = null;
+      if (!isIss && s === 'PENDING REMOVAL' && (f.dateFitted||'').trim()) {
+        var _frCutoff = new Date(); _frCutoff.setFullYear(_frCutoff.getFullYear()-1);
+        var _frCutoffStr = _frCutoff.toISOString().substring(0,10);
+        if (f.dateFitted >= _frCutoffStr) {
+          frTyreWarn = { dateFitted: f.dateFitted };
+        }
+      }
       var typeBadge = isIss
         ? '<span style="background:#fef3c7;color:#92400e;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700">ISSUANCE</span>'
         : '<span style="background:#fee2e2;color:#991b1b;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700">REMOVAL</span>';
@@ -6772,27 +6777,29 @@ function renderTyreFitRequests() {
         ? '<span class="sb sOH">'+statusLabel+'</span>'
         : isApproved ? '<span class="sb sR">APPROVED</span>'
         : '<span class="sb sNR">REJECTED</span>';
-      var rowBg = isPend?(isIss?'#fffbeb':'#fff5f5'):isApproved?'#f0fdf4':isRejected?'#fef2f2':'';
+      var rowBg = frTyreWarn ? '#fef3c7' : isPend?(isIss?'#fffbeb':'#fff5f5'):isApproved?'#f0fdf4':isRejected?'#fef2f2':'';
+      var frRowExtra = frTyreWarn ? 'outline:2px solid #f59e0b;outline-offset:-2px;' : '';
+      var frWBg = frTyreWarn ? 'background:#fef3c7!important;' : (rowBg ? 'background:'+rowBg+';' : '');
       var search = [f.reqNo||'',typeLabel,f.tyreSerial||'',brandSize,f.vehicle||'',f.position||'',f.jobCardNo||'',f.driverName||'',f.removedReason||'',f.removalNotes||'',f.requestedBy||'',statusLabel].join(' ').toLowerCase();
-      html += '<tr data-search="'+search+'" style="background:'+rowBg+'">'
-        + '<td style="text-align:center"><input type="checkbox" class="fitreq-chk" data-id="'+f.id+'" onchange="onFitReqCheck(this)" '+(isChk?'checked':'')+' style="cursor:pointer;width:14px;height:14px;accent-color:var(--ac)"></td>'
-        + '<td style="font-family:monospace;font-size:11px"><span class="reqbadge">'+(f.reqNo||f.id||'')+'</span></td>'
-        + '<td>'+typeBadge+'</td>'
-        + '<td><span class="reqbadge" style="cursor:pointer;text-decoration:underline" data-tyre-serial="'+encodeURIComponent(f.tyreSerial||'')+'" onclick="openTyreProfile(decodeURIComponent(this.dataset.tyreSerial))" title="View Tyre Profile">'+(f.tyreSerial||'')+'</span></td>'
-        + '<td><b>'+(tyre.brand||f.brand||'\u2014')+'</b></td>'
-        + '<td>'+(tyre.size||f.size||'\u2014')+'</td>'
-        + '<td><b style="color:var(--ac)">'+(f.vehicle||'')+'</b></td>'
-        + '<td style="font-size:11px">'+(f.position||'\u2014')+'</td>'
-        + '<td style="font-family:monospace">'+(f.jobCardNo||'\u2014')+'</td>'
-        + '<td>'+(f.driverName||'\u2014')+'</td>'
-        + '<td style="font-size:11px">'+(f.removedReason||'\u2014')+'</td>'
-        + '<td style="font-size:11px;max-width:160px">'+(f.removalNotes||'\u2014')+'</td>'
-        + '<td style="font-size:11px">'+(isIss?'\u2014':(f.nextStatus||'\u2014'))+'</td>'
-        + '<td>'+(f.requestedBy||'\u2014')+'</td>'
-        + '<td style="font-size:11px">'+fmtDate(f.requestDate||f.dateFitted)+'</td>'
-        + '<td>'+statusBadge+'</td>'
-        + '<td style="font-size:11px">'+(processedBy||'\u2014')+'</td>'
-        + '<td style="font-size:11px">'+fmtDateTime(isApproved?(f.approvedAt||''):(f.rejectedAt||''))+'</td>'
+      html += '<tr data-search="'+search+'" style="'+frRowExtra+(rowBg&&!frTyreWarn?'background:'+rowBg:'')+'">'
+        + '<td style="'+frWBg+'text-align:center"><input type="checkbox" class="fitreq-chk" data-id="'+f.id+'" onchange="onFitReqCheck(this)" '+(isChk?'checked':'')+' style="cursor:pointer;width:14px;height:14px;accent-color:var(--ac)"></td>'
+        + '<td style="'+frWBg+'font-family:monospace;font-size:11px"><span class="reqbadge">'+(f.reqNo||f.id||'')+'</span></td>'
+        + '<td style="'+frWBg+'">'+typeBadge+'</td>'
+        + '<td style="'+frWBg+'"><span class="reqbadge" style="cursor:pointer;text-decoration:underline" data-tyre-serial="'+encodeURIComponent(f.tyreSerial||'')+'" onclick="openTyreProfile(decodeURIComponent(this.dataset.tyreSerial))" title="View Tyre Profile">'+(f.tyreSerial||'')+'</span></td>'
+        + '<td style="'+frWBg+'"><b>'+(tyre.brand||f.brand||'\u2014')+'</b></td>'
+        + '<td style="'+frWBg+'">'+(tyre.size||f.size||'\u2014')+'</td>'
+        + '<td style="'+frWBg+'"><b style="color:var(--ac)">'+(f.vehicle||'')+'</b></td>'
+        + '<td style="'+frWBg+'font-size:11px">'+(frTyreWarn?'<span title="\u26a0 Last fitted on: '+fd(frTyreWarn.dateFitted)+'" style="display:inline-flex;align-items:center;gap:3px"><span style="color:#d97706">\u26a0\ufe0f</span>'+(f.position||'\u2014')+'</span>':(f.position||'\u2014'))+'</td>'
+        + '<td style="'+frWBg+'font-family:monospace">'+(f.jobCardNo||'\u2014')+'</td>'
+        + '<td style="'+frWBg+'">'+(f.driverName||'\u2014')+'</td>'
+        + '<td style="'+frWBg+'font-size:11px">'+(f.removedReason||'\u2014')+'</td>'
+        + '<td style="'+frWBg+'font-size:11px;max-width:160px">'+(f.removalNotes||'\u2014')+'</td>'
+        + '<td style="'+frWBg+'font-size:11px">'+(isIss?'\u2014':(f.nextStatus||'\u2014'))+'</td>'
+        + '<td style="'+frWBg+'">'+(f.requestedBy||'\u2014')+'</td>'
+        + '<td style="'+frWBg+'font-size:11px">'+fmtDate(f.requestDate||f.dateFitted)+'</td>'
+        + '<td style="'+frWBg+'">'+statusBadge+'</td>'
+        + '<td style="'+frWBg+'font-size:11px">'+(processedBy||'\u2014')+'</td>'
+        + '<td style="'+frWBg+'font-size:11px">'+fmtDateTime(isApproved?(f.approvedAt||''):(f.rejectedAt||''))+'</td>'
         + '</tr>';
     });
   }
@@ -6845,22 +6852,12 @@ function printFitRequests(){
     var s=(r.status||'').toUpperCase();
     var type=s==='PENDING ISSUANCE'||s==='ACTIVE'?'ISSUANCE':'REMOVAL';
     var tyreWarn=null;
-    if(type==='REMOVAL'){
-      var _veh=(r.vehicle||'').trim().toUpperCase();
-      var _pos=(r.position||'').trim().toUpperCase();
-      var _cut=new Date();_cut.setFullYear(_cut.getFullYear()-3);
+    if(type==='REMOVAL'&&(r.dateFitted||'').trim()){
+      var _cut=new Date();_cut.setFullYear(_cut.getFullYear()-1);
       var _cutStr=_cut.toISOString().substring(0,10);
-      var _prev=(TYRE_FITS||[]).filter(function(x){
-        if(x.id===r.id)return false;
-        if((x.vehicle||'').trim().toUpperCase()!==_veh)return false;
-        if((x.position||'').trim().toUpperCase()!==_pos)return false;
-        var xs=(x.status||'').toUpperCase();
-        if(xs!=='ACTIVE'&&xs!=='CLOSED')return false;
-        return (x.dateFitted||'')>=_cutStr;
-      }).sort(function(a,b){return (b.dateFitted||'').localeCompare(a.dateFitted||'');});
-      if(_prev.length)tyreWarn={dateFitted:_prev[0].dateFitted||''};
+      if(r.dateFitted>=_cutStr)tyreWarn={dateFitted:r.dateFitted};
     }
-    var posCell=(r.position||'')+(tyreWarn?'<div style="margin-top:3px;font-size:9px;color:#92400e;font-weight:600">⚠ Last fitted: '+fd(tyreWarn.dateFitted)+'</div>':'');
+    var posCell=(r.position||'')+(tyreWarn?'<div style="margin-top:3px;font-size:9px;color:#92400e;font-weight:600">⚠ Last fitted on: '+fd(tyreWarn.dateFitted)+'</div>':'');
     tblRows+='<tr>'
       +'<td style="text-align:center">'+(i+1)+'</td>'
       +'<td style="font-family:monospace">'+(r.reqNo||r.id||'')+'</td>'
@@ -8558,20 +8555,36 @@ function renderBatFitRequests() {
       var processedBy=s==='ACTIVE'||s==='CLOSED'?(f.approvedBy||''):(f.rejectedBy||'');
       var isLocked=s==='ACTIVE'||s==='CLOSED'||s==='REJECTED';
       var isChk=_batFitReqSelected.has(f.id);
-      html+='<tr data-fitid="'+f.id+'">'
-        +'<td style="text-align:center"><input type="checkbox" class="batfitreq-chk" data-id="'+f.id+'" onchange="onBatFitReqCheck(this)" '+(isChk?'checked':'')+' style="cursor:pointer;width:14px;height:14px;accent-color:var(--ac)"></td>'
-        +'<td style="font-family:monospace;font-size:11px"><span class="reqbadge">'+(f.reqNo||f.id||'')+'</span></td>'
-        +'<td><span style="font-size:10px;background:'+(isIss?'#fef3c7':'#fee2e2')+';color:'+(isIss?'#92400e':'#991b1b')+';padding:2px 8px;border-radius:20px;font-weight:700">'+typeLabel+'</span></td>'
-        +'<td><span class="reqbadge" style="cursor:pointer;text-decoration:underline" onclick="openBatProfile(&apos;'+(f.batteryRef||'')+'&apos;)" title="View Battery Profile">'+(f.batteryRef||'')+'</span></td>'
-        +'<td>'+(bat.brand||'')+'</td>'
-        +'<td><b style="color:var(--ac)">'+(f.vehicle||'')+'</b></td>'
-        +'<td style="font-size:11px">'+(f.position||'\u2014')+'</td>'
-        +'<td style="font-size:11px">'+(isIss?'\u2014':(f.removedReason||'\u2014'))+'</td>'
-        +'<td style="font-size:11px">'+fmtDate(f.requestDate||f.dateFitted)+'</td>'
-        +'<td>'+(f.requestedBy||'\u2014')+'</td>'
-        +'<td><span class="sb '+sc+'">'+statusLabel+'</span></td>'
-        +'<td style="font-size:11px">'+(processedBy||'\u2014')+'</td>'
-        +'<td style="font-size:11px">'+fmtDateTime(s==='ACTIVE'||s==='CLOSED'?(f.approvedAt||''):(f.rejectedAt||''))+'</td>'
+      // Recent-fitment warning for PENDING REMOVAL rows in Battery Fit Requests view
+      // Warn if this battery was fitted recently (within 1 year) based on its own dateFitted
+      var bfrWarn = null;
+      if (!isIss && s === 'PENDING REMOVAL' && (f.dateFitted||'').trim()) {
+        var _bfrCutoff = new Date(); _bfrCutoff.setFullYear(_bfrCutoff.getFullYear()-1);
+        var _bfrCutoffStr = _bfrCutoff.toISOString().substring(0,10);
+        if (f.dateFitted >= _bfrCutoffStr) {
+          bfrWarn = { dateFitted: f.dateFitted };
+        }
+      }
+      var isPendBfr=s==='PENDING ISSUANCE'||s==='PENDING REMOVAL';
+      var isApprovedBfr=s==='ACTIVE'||s==='CLOSED';
+      var isRejectedBfr=s==='REJECTED';
+      var bfrRowBg=bfrWarn?'#fef3c7':isPendBfr?(isIss?'#fffbeb':'#fff5f5'):isApprovedBfr?'#f0fdf4':isRejectedBfr?'#fef2f2':'';
+      var bfrRowExtra=bfrWarn?'outline:2px solid #f59e0b;outline-offset:-2px;':'';
+      var bfrWBg=bfrWarn?'background:#fef3c7!important;':(bfrRowBg?'background:'+bfrRowBg+';':'');
+      html+='<tr data-fitid="'+f.id+'" style="'+bfrRowExtra+(bfrRowBg&&!bfrWarn?'background:'+bfrRowBg:'')+'">'
+        +'<td style="'+bfrWBg+'text-align:center"><input type="checkbox" class="batfitreq-chk" data-id="'+f.id+'" onchange="onBatFitReqCheck(this)" '+(isChk?'checked':'')+' style="cursor:pointer;width:14px;height:14px;accent-color:var(--ac)"></td>'
+        +'<td style="'+bfrWBg+'font-family:monospace;font-size:11px"><span class="reqbadge">'+(f.reqNo||f.id||'')+'</span></td>'
+        +'<td style="'+bfrWBg+'"><span style="font-size:10px;background:'+(isIss?'#fef3c7':'#fee2e2')+';color:'+(isIss?'#92400e':'#991b1b')+';padding:2px 8px;border-radius:20px;font-weight:700">'+typeLabel+'</span></td>'
+        +'<td style="'+bfrWBg+'"><span class="reqbadge" style="cursor:pointer;text-decoration:underline" onclick="openBatProfile(&apos;'+(f.batteryRef||'')+'&apos;)" title="View Battery Profile">'+(f.batteryRef||'')+'</span></td>'
+        +'<td style="'+bfrWBg+'">'+(bat.brand||'')+'</td>'
+        +'<td style="'+bfrWBg+'"><b style="color:var(--ac)">'+(f.vehicle||'')+'</b></td>'
+        +'<td style="'+bfrWBg+'font-size:11px">'+(bfrWarn?'<span title="\u26a0 Last fitted on: '+fd(bfrWarn.dateFitted)+'" style="display:inline-flex;align-items:center;gap:3px"><span style="color:#d97706">\u26a0\ufe0f</span>'+(f.position||'\u2014')+'</span>':(f.position||'\u2014'))+'</td>'
+        +'<td style="'+bfrWBg+'font-size:11px">'+(isIss?'\u2014':(f.removedReason||'\u2014'))+'</td>'
+        +'<td style="'+bfrWBg+'font-size:11px">'+fmtDate(f.requestDate||f.dateFitted)+'</td>'
+        +'<td style="'+bfrWBg+'">'+(f.requestedBy||'\u2014')+'</td>'
+        +'<td style="'+bfrWBg+'"><span class="sb '+sc+'">'+statusLabel+'</span></td>'
+        +'<td style="'+bfrWBg+'font-size:11px">'+(processedBy||'\u2014')+'</td>'
+        +'<td style="'+bfrWBg+'font-size:11px">'+fmtDateTime(s==='ACTIVE'||s==='CLOSED'?(f.approvedAt||''):(f.rejectedAt||''))+'</td>'
         +'</tr>';
     });
   }
@@ -8878,22 +8891,12 @@ function printBatFitRequests(){
     var s=(r.status||'').toUpperCase();
     var type=s==='PENDING ISSUANCE'||s==='ACTIVE'?'ISSUANCE':'REMOVAL';
     var batWarn=null;
-    if(type==='REMOVAL'){
-      var _veh=(r.vehicle||'').trim().toUpperCase();
-      var _pos=(r.position||'').trim().toUpperCase();
-      var _cut=new Date();_cut.setFullYear(_cut.getFullYear()-3);
+    if(type==='REMOVAL'&&(r.dateFitted||'').trim()){
+      var _cut=new Date();_cut.setFullYear(_cut.getFullYear()-1);
       var _cutStr=_cut.toISOString().substring(0,10);
-      var _prev=(BAT_FITS||[]).filter(function(x){
-        if(x.id===r.id)return false;
-        if((x.vehicle||'').trim().toUpperCase()!==_veh)return false;
-        if((x.position||'').trim().toUpperCase()!==_pos)return false;
-        var xs=(x.status||'').toUpperCase();
-        if(xs!=='ACTIVE'&&xs!=='CLOSED')return false;
-        return (x.dateFitted||'')>=_cutStr;
-      }).sort(function(a,b){return (b.dateFitted||'').localeCompare(a.dateFitted||'');});
-      if(_prev.length)batWarn={dateFitted:_prev[0].dateFitted||''};
+      if(r.dateFitted>=_cutStr)batWarn={dateFitted:r.dateFitted};
     }
-    var posCell=(r.position||'')+(batWarn?'<div style="margin-top:3px;font-size:9px;color:#92400e;font-weight:600">⚠ Last fitted: '+fd(batWarn.dateFitted)+'</div>':'');
+    var posCell=(r.position||'')+(batWarn?'<div style="margin-top:3px;font-size:9px;color:#92400e;font-weight:600">⚠ Last fitted on: '+fd(batWarn.dateFitted)+'</div>':'');
     tblRows+='<tr>'
       +'<td style="text-align:center">'+(i+1)+'</td>'
       +'<td style="font-family:monospace">'+(r.reqNo||r.id||'')+'</td>'
@@ -9016,19 +9019,14 @@ function renderBatRemHold() {
       var bat=(BATTERIES||[]).find(function(b){return b.batteryRef===f.batteryRef;})||{};
       var processedBy=isApproved?(f.approvedBy||''):(isRejected?(f.rejectedBy||''):'');
       // Recent-fitment warning for PENDING REMOVAL battery rows
+      // Warn if this battery was fitted recently (within 1 year) based on its own dateFitted
       var batRemWarn = null;
-      if (isPendRem) {
-        var _brCutoff = new Date(); _brCutoff.setFullYear(_brCutoff.getFullYear()-3);
+      if (isPendRem && (f.dateFitted||'').trim()) {
+        var _brCutoff = new Date(); _brCutoff.setFullYear(_brCutoff.getFullYear()-1);
         var _brCutoffStr = _brCutoff.toISOString().substring(0,10);
-        var _brFits = (BAT_FITS||[]).filter(function(x){
-          if (x.id === f.id) return false;
-          if ((x.vehicle||'').trim().toUpperCase() !== (f.vehicle||'').trim().toUpperCase()) return false;
-          if ((x.position||'').trim().toUpperCase() !== (f.position||'').trim().toUpperCase()) return false;
-          var xs = (x.status||'').toUpperCase();
-          if (xs !== 'ACTIVE' && xs !== 'CLOSED') return false;
-          return (x.dateFitted||'') >= _brCutoffStr;
-        }).sort(function(a,b){ return (b.dateFitted||'').localeCompare(a.dateFitted||''); });
-        if (_brFits.length) batRemWarn = { dateFitted: _brFits[0].dateFitted||'' };
+        if (f.dateFitted >= _brCutoffStr) {
+          batRemWarn = { dateFitted: f.dateFitted };
+        }
       }
       var scRow=batRemWarn?'#fef3c7':isPendIss?'#fffbeb':isPendRem?'#fff5f5':isApproved?'#f0fdf4':isRejected?'#fef2f2':'';
       var batRowExtra=batRemWarn?'outline:2px solid #f59e0b;outline-offset:-2px;':'';
@@ -9043,7 +9041,7 @@ function renderBatRemHold() {
         +'<td style="'+bwBg+'"><span class="reqbadge" style="cursor:pointer;text-decoration:underline" onclick="openBatProfile(&apos;'+(f.batteryRef||'')+'&apos;)" title="View Battery Profile">'+(f.batteryRef||'')+'</span></td>'
         +'<td style="'+bwBg+'">'+(bat.brand||bat.size||'')+'</td>'
         +'<td style="'+bwBg+'"><b style="color:var(--ac)">'+(f.vehicle||'')+'</b></td>'
-        +'<td style="'+bwBg+'font-size:11px">'+(batRemWarn?'<span title="\u26a0 Fitted '+fd(batRemWarn.dateFitted)+' \u2014 within 12 months" style="display:inline-flex;align-items:center;gap:3px"><span style="color:#d97706">\u26a0\ufe0f</span>'+(f.position||'\u2014')+'</span>':(f.position||'\u2014'))+'</td>'
+        +'<td style="'+bwBg+'font-size:11px">'+(batRemWarn?'<span title="\u26a0 Last fitted on: '+fd(batRemWarn.dateFitted)+'" style="display:inline-flex;align-items:center;gap:3px"><span style="color:#d97706">\u26a0\ufe0f</span>'+(f.position||'\u2014')+'</span>':(f.position||'\u2014'))+'</td>'
         +'<td style="'+bwBg+'font-size:11px">'+(isIssBR?'\u2014':(f.removedReason||'\u2014'))+'</td>'
         +'<td style="'+bwBg+'font-size:11px">'+fmtDate(f.requestDate||f.dateFitted)+'</td>'
         +'<td style="'+bwBg+'">'+(f.requestedBy||'\u2014')+'</td>'
