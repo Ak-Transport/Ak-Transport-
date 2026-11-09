@@ -2048,7 +2048,13 @@ function _rowSpareWarnCheck(r) {
   if (st !== 'NOT PAID' && st !== 'PAID NOT RECEIVED') return null;
   var desc = (r.description||'').trim();
   if (!desc) return null;
-  var inList = (SPAREPARTS||[]).some(function(p){ return (p.name||'').toUpperCase() === desc.toUpperCase() && p.status !== 'INACTIVE'; });
+  var descU = desc.toUpperCase();
+  var inList = (SPAREPARTS||[]).some(function(p){
+    if (p.status === 'INACTIVE') return false;
+    var pn = (p.name||'').toUpperCase();
+    // Exact match OR one contains the other (handles "AXLE NO. 1" vs "AXLE 1" variations)
+    return pn === descU || pn.indexOf(descU) !== -1 || descU.indexOf(pn) !== -1;
+  });
   if (!inList) return null;
   var truck = (r.truck||'').trim().toUpperCase();
   if (!truck) return null;
@@ -2058,7 +2064,8 @@ function _rowSpareWarnCheck(r) {
   var matches = (ALL||[]).filter(function(x){
     if (x.id === r.id) return false;
     if ((x.truck||'').trim().toUpperCase() !== truck) return false;
-    if ((x.description||'').trim().toUpperCase() !== desc.toUpperCase()) return false;
+    var xd = (x.description||'').trim().toUpperCase();
+    if (xd !== descU && xd.indexOf(descU) === -1 && descU.indexOf(xd) === -1) return false;
     var xs = (x.status||'').toUpperCase();
     if (xs === 'NOT PAID' || xs === 'ON HOLD') return false;
     var d = x.dateReceived || x.dateRequested || '';
@@ -4254,6 +4261,17 @@ function doEdit(r){
   setVal('f_unit_price', r.unitPrice);
   setVal('f_cost', r.cost);
   setVal('f_desc', r.description);
+  // Sync the spare parts dropdown to match the saved description
+  (function(){
+    var sel = document.getElementById('f_desc_select');
+    if (!sel || !r.description) return;
+    // Try exact match first, then contains match
+    var descU = r.description.toUpperCase();
+    var matched = Array.from(sel.options).find(function(o){
+      return o.value.toUpperCase() === descU || o.value.toUpperCase().indexOf(descU) !== -1 || descU.indexOf(o.value.toUpperCase()) !== -1;
+    });
+    if (matched) sel.value = matched.value;
+  })();
 
   // Tom Select dropdowns
   setSelect('f_truck', r.truck);
@@ -5135,12 +5153,7 @@ function onDescSelect() {
   const sel = document.getElementById('f_desc_select');
   const inp = document.getElementById('f_desc');
   if (!sel || !inp) return;
-  if (sel.value && sel.value !== '__custom__') {
-    inp.value = sel.value;
-  } else if (sel.value === '__custom__') {
-    inp.value = '';
-    inp.focus();
-  }
+  inp.value = sel.value || '';
 }
 
 
@@ -20210,7 +20223,7 @@ history.pushState(null, '', window.location.href);
       <div class="formgroup"><label>LPO No</label><input type="text" id="f_lpo" placeholder="e.g. PO-001234 or PY-001234" oninput="validateLPO(this)" style="text-transform:uppercase"></div>
       <div class="formgroup full"><label>Description / Spare Part <span style="color:#f87171">*</span></label>
         <select id="f_desc_select" onchange="onDescSelect()" style="margin-bottom:6px"><option value="">&#8212; Select from spare parts list &#8212;</option></select>
-        <input type="text" id="f_desc" placeholder="Type description or select from list above">
+        <input type="text" id="f_desc" style="display:none" readonly>
       </div>
       <div class="formgroup"><label>Qty <span style="color:#f87171">*</span></label><input type="number" id="f_qty" min="0" oninput="calcTotal()"></div>
         <div class="formgroup"><label>Unit Price <span style="color:#f87171">*</span></label><input type="text" id="f_unit_price" oninput="calcTotal()" onblur="fmtNum(this)" placeholder="e.g. 100,000.00"></div>
