@@ -20121,7 +20121,16 @@ function _finishLoad(ok) {
               drivers:              function(){ return _loadAllDrivers(); },
               vehicles:             function(){ return wsFbRead('/vehicles','/ak_trips').then(function(r){ if(r&&r.records) VEHICLES=r.records; }); },
               mechanics:            function(){ return wsFbRead('/mechanics').then(function(r){ if(r&&r.records) MECHANICS=r.records; }); },
-              mechanicAssignments:  function(){ return wsFbRead('/mechanicAssignments').then(function(r){ if(r&&r.records) MECH_ASSIGNMENTS=r.records; }); },
+              mechanicAssignments:  function(){ return wsFbRead('/mechanicAssignments').then(function(r){
+                if(r&&r.records){
+                  // Normalise date fields to YYYY-MM-DD to prevent UTC midnight off-by-one display bug
+                  MECH_ASSIGNMENTS=r.records.map(function(a){
+                    if(a.assignedDate)  a.assignedDate  = toISODate(a.assignedDate);
+                    if(a.completedDate) a.completedDate = toISODate(a.completedDate);
+                    return a;
+                  });
+                }
+              }); },
             };
             var fn = colFetchMap[collectionName];
             if (fn) fn().catch(function(){});
@@ -22112,7 +22121,7 @@ function openMechHistory(mechId) {
   var m = MECHANICS.find(function(x){ return x.id === mechId; });
   if (!m) return;
   var assigns = MECH_ASSIGNMENTS.filter(function(a){ return a.mechanicId === mechId; })
-    .sort(function(a,b){ return new Date(b.assignedDate||0) - new Date(a.assignedDate||0); });
+    .sort(function(a,b){ return (b.assignedDate||'').localeCompare(a.assignedDate||''); });
 
   // Check for recurring issues
   var taskMap = {};
@@ -22142,7 +22151,7 @@ function openMechHistory(mechId) {
         + '<td style="padding:8px 10px;font-weight:600">' + esc(a.vehicle||'') + '</td>'
         + '<td style="padding:8px 10px">' + esc(a.task||'') + (recur ? ' <span style="font-size:10px;color:#d97706" title="Recurring issue">⚠️ Recurring</span>' : '') + '</td>'
         + '<td style="padding:8px 10px">' + (a.assignedDate?fmtDate(a.assignedDate):'—') + '</td>'
-        + '<td style="padding:8px 10px">' + esc(a.completedDate||'—') + '</td>'
+        + '<td style="padding:8px 10px">' + (a.completedDate?fmtDate(a.completedDate):'—') + '</td>'
         + '<td style="padding:8px 10px"><span style="background:' + (a.status==='COMPLETED'?'#dcfce7':a.status==='IN PROGRESS'?'#dbeafe':'#f3f4f6') + ';color:' + (a.status==='COMPLETED'?'#166534':a.status==='IN PROGRESS'?'#1d4ed8':'#374151') + ';padding:2px 7px;border-radius:20px;font-size:10px;font-weight:700">' + esc(a.status||'') + '</span></td>'
         + '</tr>';
     });
@@ -22326,7 +22335,11 @@ async function saveAssignment() {
         if (updRes && updRes.error) {
           // ID mismatch — re-fetch from sheet and retry with correct ID
           var fresh = await callAPI('getMechanicAssignments');
-          if (fresh && fresh.records) MECH_ASSIGNMENTS = fresh.records;
+          if (fresh && fresh.records) MECH_ASSIGNMENTS = fresh.records.map(function(a){
+            if(a.assignedDate)  a.assignedDate  = toISODate(a.assignedDate);
+            if(a.completedDate) a.completedDate = toISODate(a.completedDate);
+            return a;
+          });
           var match = MECH_ASSIGNMENTS.find(function(a){
             return (a.jobCardNo||'') === (record.jobCardNo||'')
               && (a.mechanicId||'') === (record.mechanicId||'')
@@ -22353,7 +22366,11 @@ async function saveAssignment() {
         }
         // Re-fetch after add so IDs always match server
         callAPI('getMechanicAssignments').then(function(r2){
-          if (r2 && r2.records && r2.records.length) MECH_ASSIGNMENTS = r2.records;
+          if (r2 && r2.records && r2.records.length) MECH_ASSIGNMENTS = r2.records.map(function(a){
+            if(a.assignedDate)  a.assignedDate  = toISODate(a.assignedDate);
+            if(a.completedDate) a.completedDate = toISODate(a.completedDate);
+            return a;
+          });
         });
       }
     } catch(e) {
@@ -22871,8 +22888,8 @@ function _renderMechHistTable() {
                 '<td style="padding:9px 12px">'+esc(r.mechName)+'</td>' +
                 '<td style="padding:9px 12px">'+esc(r.category)+'</td>' +
                 '<td style="padding:9px 12px;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="'+esc(r.task)+'">'+esc(r.task)+'</td>' +
-                '<td style="padding:9px 12px;white-space:nowrap">'+esc(r.assignedDate)+'</td>' +
-                '<td style="padding:9px 12px;white-space:nowrap">'+esc(r.completedDate||'—')+'</td>' +
+                '<td style="padding:9px 12px;white-space:nowrap">'+(r.assignedDate?fmtDate(r.assignedDate):'—')+'</td>' +
+                '<td style="padding:9px 12px;white-space:nowrap">'+(r.completedDate?fmtDate(r.completedDate):'—')+'</td>' +
                 '<td style="padding:9px 12px"><span style="background:'+sc+'22;color:'+sc+';border-radius:4px;padding:2px 8px;font-size:11px;font-weight:700;white-space:nowrap">'+esc(r.status||'ASSIGNED')+'</span></td>' +
               '</tr>';
             }).join('')
