@@ -4055,13 +4055,79 @@ function calcDurationDays(startDate, endDate, workStatus) {
   return '<span style="font-weight:700;color:'+color+'">'+label+'</span>'+badge;
 }
 
+// Returns the normalised LPO string: trimmed, uppercased, internal spaces removed
+function _normLpo(s) { return (s||'').trim().toUpperCase().replace(/\s+/g,''); }
+
+// Returns the duplicate PO record if the given LPO already exists across
+// TYRE_POS and BAT_POS, excluding the current PO being edited (by poNo).
+// Only compares against p.lpoNo (not the internal poNo like TPO-000070).
+function _findLpoDuplicate(lpoVal, excludePoNo) {
+  var norm = _normLpo(lpoVal);
+  if (!norm) return null;
+  var allPos = (TYRE_POS||[]).concat(BAT_POS||[]);
+  return allPos.find(function(p) {
+    if (excludePoNo && (p.poNo||'') === excludePoNo) return false;
+    return _normLpo(p.lpoNo||'') === norm;
+  }) || null;
+}
+
+// Show or clear an inline error beneath a field element
+function _lpoSetError(el, msg) {
+  var errId = el.id + '_err';
+  var existing = document.getElementById(errId);
+  if (msg) {
+    el.style.borderColor = '#f87171';
+    if (!existing) {
+      var span = document.createElement('span');
+      span.id = errId;
+      span.style.cssText = 'color:#dc2626;font-size:11px;display:block;margin-top:2px';
+      el.parentNode.insertBefore(span, el.nextSibling);
+      existing = span;
+    }
+    existing.textContent = msg;
+  } else {
+    el.style.borderColor = '';
+    if (existing) existing.remove();
+  }
+}
+
 function validateLPO(el) {
-  if (!el.value) { el.style.borderColor = ''; return true; }
-  var val = el.value.toUpperCase();
+  if (!el.value) { _lpoSetError(el, ''); return true; }
+  var val = el.value.toUpperCase().trim();
   el.value = val;
-  var valid = /^(PO|PY)-/.test(val);
-  el.style.borderColor = valid ? '' : '#f87171';
-  return valid;
+  if (!/^(PO|PY)-/.test(val)) {
+    _lpoSetError(el, 'Must start with PO- or PY-');
+    return false;
+  }
+  var dup = _findLpoDuplicate(val, null);
+  if (dup) {
+    _lpoSetError(el, 'LPO No "' + val + '" already exists (' + (dup.poNo||'') + ')');
+    return false;
+  }
+  _lpoSetError(el, '');
+  return true;
+}
+
+// Like validateLPO but excludes the record being edited (by its poNo/id) from duplicate check
+function validateLPOEdit(el, recordId) {
+  if (!el.value) { _lpoSetError(el, ''); return true; }
+  var val = el.value.toUpperCase().trim();
+  el.value = val;
+  if (!/^(PO|PY)-/.test(val)) {
+    _lpoSetError(el, 'Must start with PO- or PY-');
+    return false;
+  }
+  // Find the poNo for this record from the in-memory data
+  var allRecs = (TYRE_POS||[]).concat(BAT_POS||[]);
+  var rec = allRecs.find(function(p){ return p.id === recordId; });
+  var ownPoNo = rec ? (rec.poNo||'') : '';
+  var dup = _findLpoDuplicate(val, ownPoNo);
+  if (dup) {
+    _lpoSetError(el, 'LPO No "' + val + '" already exists (' + (dup.poNo||'') + ')');
+    return false;
+  }
+  _lpoSetError(el, '');
+  return true;
 }
 
 function calcTotal() {
@@ -7662,7 +7728,7 @@ function _doOpenBpoBulkEdit(rows) {
       + '<div><label style="font-size:11px;font-weight:600;color:#555;display:block;margin-bottom:4px">Supplier <span id="bpobe_req_sup_'+r.id+'" style="color:#dc2626;display:'+(isPNR?'inline':'none')+'">*</span></label>'
       + '<select id="bpobe_sup_'+r.id+'" '+(locked?'disabled':'')+' style="'+(locked?fsL:fs)+'">'+suppOpts.replace('<option value="'+r.supplier+'"','<option value="'+r.supplier+'" selected')+'</select></div>'
       + '<div><label style="font-size:11px;font-weight:600;color:#555;display:block;margin-bottom:4px">LPO No <span id="bpobe_req_lpo_'+r.id+'" style="color:#dc2626;display:'+(isPNR?'inline':'none')+'">*</span></label>'
-      + '<input id="bpobe_lpo_'+r.id+'" value="'+(r.lpoNo||'')+'" style="'+fs+'" placeholder="PO- or PY-..."></div>'
+      + '<input id="bpobe_lpo_'+r.id+'" value="'+(r.lpoNo||'')+'" style="'+fs+';text-transform:uppercase" placeholder="PO- or PY-..." oninput="validateLPOEdit(this,\''+r.id+'\')" onblur="validateLPOEdit(this,\''+r.id+'\')"></div>'
       + '<div><label style="font-size:11px;font-weight:600;color:#555;display:block;margin-bottom:4px">Status</label>'
       + statusField+'</div>'
       + '<div><label style="font-size:11px;font-weight:600;color:#555;display:block;margin-bottom:4px">Requested By</label>'
@@ -7704,23 +7770,24 @@ async function saveBpoBulkEdit() {
   var btn = document.getElementById('bpo_bulk_save_btn');
   if(btn){btn.disabled=true;btn.textContent='Saving...';}
   var saved=0, failed=0;
+  var _bpoSeenLpos = []; // track LPOs seen in this edit session for intra-form duplicate detection
   for (var i=0;i<rows.length;i++) {
     var r=rows[i];
     var curStat = (r.status||'NOT PAID').toUpperCase();
     var isFull = curStat==='FULLY RECEIVED'||curStat==='RECEIVED'||curStat==='FULLY DELIVERED';
     var isPart = curStat==='PARTIALLY RECEIVED'||curStat==='PARTIALLY DELIVERED';
     var locked = isFull || isPart;
+    if (locked) continue; // fully/partially received records cannot be edited
     var newStatusEl = document.getElementById('bpobe_status_'+r.id);
     var newStatus = newStatusEl ? newStatusEl.value : r.status;
-    if (locked) newStatus = r.status;
     var sizeEl  = document.getElementById('bpobe_size_'+r.id);
     var brand   = ((document.getElementById('bpobe_brand_'+r.id)||{value:r.brand||''}).value||'').toUpperCase();
     var size    = sizeEl ? sizeEl.value : (r.capacity||r.size||'');
-    var qty     = locked?r.qtyOrdered:Number((document.getElementById('bpobe_qty_'+r.id)||{value:r.qtyOrdered}).value||r.qtyOrdered);
-    var price   = locked?r.unitPrice:Number((document.getElementById('bpobe_price_'+r.id)||{value:r.unitPrice}).value||r.unitPrice);
+    var qty     = Number((document.getElementById('bpobe_qty_'+r.id)||{value:r.qtyOrdered}).value||r.qtyOrdered);
+    var price   = Number((document.getElementById('bpobe_price_'+r.id)||{value:r.unitPrice}).value||r.unitPrice);
     var supplier= (document.getElementById('bpobe_sup_'+r.id)||{value:r.supplier||''}).value;
     var lpoNo   = ((document.getElementById('bpobe_lpo_'+r.id)||{value:r.lpoNo||''}).value||'').toUpperCase();
-    var reqBy   = locked?r.requestedBy:((document.getElementById('bpobe_reqby_'+r.id)||{value:r.requestedBy||''}).value||'').toUpperCase();
+    var reqBy   = ((document.getElementById('bpobe_reqby_'+r.id)||{value:r.requestedBy||''}).value||'').toUpperCase();
     // Mandatory check when PNR
     if (newStatus === 'PAID NOT RECEIVED') {
       if (!brand)    { toast(r.poNo+': Brand is required for PAID NOT RECEIVED','er'); if(btn){btn.disabled=false;btn.textContent='\uD83D\uDCBE Save Changes';} return; }
@@ -7729,6 +7796,15 @@ async function saveBpoBulkEdit() {
       if (!price)    { toast(r.poNo+': Unit Price is required for PAID NOT RECEIVED','er'); if(btn){btn.disabled=false;btn.textContent='\uD83D\uDCBE Save Changes';} return; }
       if (!supplier) { toast(r.poNo+': Supplier is required for PAID NOT RECEIVED','er'); if(btn){btn.disabled=false;btn.textContent='\uD83D\uDCBE Save Changes';} return; }
       if (!lpoNo || !/^(PO|PY)-/i.test(lpoNo)) { toast(r.poNo+': Valid LPO No (PO- or PY-) required for PAID NOT RECEIVED','er'); if(btn){btn.disabled=false;btn.textContent='\uD83D\uDCBE Save Changes';} return; }
+    }
+    // LPO uniqueness check (exclude own record when editing)
+    if (lpoNo) {
+      var _bpoEditDup = _findLpoDuplicate(lpoNo, r.poNo);
+      if (_bpoEditDup) { toast(r.poNo+': LPO No "'+lpoNo+'" already exists ('+(_bpoEditDup.poNo||'')+')','er'); if(btn){btn.disabled=false;btn.textContent='\uD83D\uDCBE Save Changes';} return; }
+      if (_bpoSeenLpos.indexOf(_normLpo(lpoNo)) !== -1) {
+        toast(r.poNo+': LPO No "'+lpoNo+'" is used more than once in this form','er'); if(btn){btn.disabled=false;btn.textContent='\uD83D\uDCBE Save Changes';} return;
+      }
+      _bpoSeenLpos.push(_normLpo(lpoNo));
     }
     var updated = Object.assign({},r,{
       status:newStatus, brand:brand, capacity:size, size:size,
@@ -10022,7 +10098,7 @@ function addBatPOLine() {
     + '<input type="number" id="bpo_qty_'+n+'" placeholder="Qty" min="1" style="'+fs+'" oninput="calcBatPOTotal('+n+')">'
     + '<input type="number" id="bpo_price_'+n+'" placeholder="e.g. 150000" min="0" style="'+fs+'" oninput="calcBatPOTotal('+n+')">'
     + '<input type="text" id="bpo_total_'+n+'" readonly placeholder="Total" style="'+fs+';background:#f0f4ff;color:var(--ac);font-weight:700;cursor:not-allowed">'
-    + '<input type="text" id="bpo_lpo_'+n+'" placeholder="PO-/PY-..." style="'+fs+';text-transform:uppercase">'
+    + '<input type="text" id="bpo_lpo_'+n+'" placeholder="PO-/PY-..." style="'+fs+';text-transform:uppercase" oninput="validateLPO(this)" onblur="validateLPO(this)">'
     + '<div style="display:flex;gap:6px;align-items:center">'
     + '<input type="text" id="bpo_notes_'+n+'" placeholder="Notes..." style="'+fs+';flex:1">'
     + (n>1?'<button onclick="removeBatPOLine('+n+')" style="background:none;border:none;color:#dc2626;cursor:pointer;font-size:18px;line-height:1;flex-shrink:0">\u2715</button>':'<span style="width:22px"></span>')
@@ -10058,11 +10134,19 @@ async function saveBatPO() {
     var size   = (document.getElementById('bpo_size_'+n)||{}).value||'N 150';
     var qty    = Number((document.getElementById('bpo_qty_'+n)||{}).value||0);
     var price  = Number((document.getElementById('bpo_price_'+n)||{}).value||0);
-    var lpo    = ((document.getElementById('bpo_lpo_'+n)||{}).value||'').toUpperCase();
+    var lpo    = _normLpo((document.getElementById('bpo_lpo_'+n)||{}).value||'');
     var notes  = (document.getElementById('bpo_notes_'+n)||{}).value||'';
     if (!sup||!brand||!size||!qty||!price) { toast('Line '+(i+1)+': Supplier, Brand, Size, Qty and Unit Price are required','er'); return; }
     if (status==='PAID NOT RECEIVED' && (!lpo || !/^(PO|PY)-/i.test(lpo))) { toast('Line '+(i+1)+': Valid LPO No (PO- or PY-) is mandatory for PAID NOT RECEIVED','er'); return; }
     if (!isNpOh && !lpo) { toast('Line '+(i+1)+': LPO No is required for this status','er'); return; }
+    if (lpo) {
+      var _bpoDup = _findLpoDuplicate(lpo, null);
+      if (_bpoDup) { toast('Line '+(i+1)+': LPO No "'+lpo+'" already exists ('+(_bpoDup.poNo||'')+')','er'); return; }
+      // Also check earlier lines in this save batch for duplicates within the form
+      if (linesList.some(function(ll){ return _normLpo(ll.lpoNo||'') === lpo; })) {
+        toast('Line '+(i+1)+': LPO No "'+lpo+'" is used more than once in this form','er'); return;
+      }
+    }
     linesList.push({supplier:sup,brand:brand,capacity:size,
       qtyOrdered:qty,unitPrice:price,lpoNo:lpo,notes:notes,totalValue:qty*price});
   }
@@ -11144,7 +11228,7 @@ function addTyrePOLine() {
     + '<input type="text" id="tpo_total_'+n+'" readonly placeholder="Total" style="'+fs+';background:#f0f4ff;color:var(--ac);font-weight:700;cursor:not-allowed">'
     + '<input type="number" id="tpo_km_'+n+'" value="120000" min="1" style="'+fs+'">'
     + '<select id="tpo_type_'+n+'" style="'+fs+'"><option value="RADIAL">RADIAL</option><option value="BIAS">BIAS</option><option value="RETREADED">RETREADED</option></select>'
-    + '<input type="text" id="tpo_lpo_'+n+'" placeholder="PO-/PY-..." style="'+fs+';text-transform:uppercase" oninput="validateLPO(this)">'
+    + '<input type="text" id="tpo_lpo_'+n+'" placeholder="PO-/PY-..." style="'+fs+';text-transform:uppercase" oninput="validateLPO(this)" onblur="validateLPO(this)">'
     + '<div style="display:flex;gap:6px;align-items:center">'
     + '<input type="text" id="tpo_notes_'+n+'" placeholder="Notes..." style="'+fs+';flex:1">'
     + (n>1?'<button onclick="removeTyrePOLine('+n+')" style="background:none;border:none;color:#dc2626;cursor:pointer;font-size:18px;line-height:1;flex-shrink:0">✕</button>':'<span style="width:22px"></span>')
@@ -11888,7 +11972,7 @@ async function saveTyrePO() {
     var price = Number((document.getElementById('tpo_price_'+n)||{}).value||0);
     var km    = Number((document.getElementById('tpo_km_'+n)||{}).value||120000);
     var type  = (document.getElementById('tpo_type_'+n)||{}).value||'RADIAL';
-    var lpo   = ((document.getElementById('tpo_lpo_'+n)||{}).value||'').toUpperCase();
+    var lpo   = _normLpo((document.getElementById('tpo_lpo_'+n)||{}).value||'');
     var notes = (document.getElementById('tpo_notes_'+n)||{}).value||'';
 
     // All fields always mandatory
@@ -11899,6 +11983,14 @@ async function saveTyrePO() {
     if (!sup)           { toast('Line '+(i+1)+': Supplier is required','er'); return; }
     // LPO required when NOT NOT PAID (i.e. PNR or RECEIVED)
     if (!isNpOh && !lpo){ toast('Line '+(i+1)+': LPO No is required for this status','er'); return; }
+    // Duplicate LPO check (across both TYRE_POS and BAT_POS, and within this form)
+    if (lpo) {
+      var _tpoDup = _findLpoDuplicate(lpo, null);
+      if (_tpoDup) { toast('Line '+(i+1)+': LPO No "'+lpo+'" already exists ('+(_tpoDup.poNo||'')+')','er'); return; }
+      if (lines.some(function(ll){ return _normLpo(ll.lpoNo||'') === lpo; })) {
+        toast('Line '+(i+1)+': LPO No "'+lpo+'" is used more than once in this form','er'); return;
+      }
+    }
     // Expected KM required for RECEIVED
     if (isRcv && !km)   { toast('Line '+(i+1)+': Expected KM is required for RECEIVED','er'); return; }
 
@@ -15088,7 +15180,7 @@ function _doOpenTpoBulkEdit(rows) {
       + '<div>'+lbl('Unit Price',true)+'<input type="number" id="tpobe_price_'+r.id+'" value="'+(r.unitPrice||0)+'" '+(locked?'readonly':'')+' style="'+(locked?fsLocked:fs)+'" min="0" oninput="tpobeCalcTotal(\''+r.id+'\')"></div>'
       + '<div>'+lbl('Total Amount',false)+'<input id="tpobe_total_'+r.id+'" value="'+totalVal+'" readonly style="'+fsLocked+';color:var(--ac);font-weight:700"></div>'
       + '<div>'+lbl('Supplier',true)+'<select id="tpobe_sup_'+r.id+'" '+(locked?'disabled':'')+' style="'+(locked?fsLocked:fs)+'">'+suppOpts.replace('value="'+r.supplier+'"','value="'+r.supplier+'" selected')+'</select></div>'
-      + '<div id="tpobe_lpo_wrap_'+r.id+'">'+lbl('LPO No', isPNR)+'<input id="tpobe_lpo_'+r.id+'" value="'+(r.lpoNo||'')+'" style="'+fs+'" placeholder="PO-/PY-..."></div>'
+      + '<div id="tpobe_lpo_wrap_'+r.id+'">'+lbl('LPO No', isPNR)+'<input id="tpobe_lpo_'+r.id+'" value="'+(r.lpoNo||'')+'" style="'+fs+';text-transform:uppercase" placeholder="PO-/PY-..." oninput="validateLPOEdit(this,\''+r.id+'\')" onblur="validateLPOEdit(this,\''+r.id+'\')"></div>'
       + '<div>'+lbl('Requested By',true)+'<input id="tpobe_reqby_'+r.id+'" value="'+(r.requestedBy||'')+'" '+(locked?'readonly':'')+' style="'+(locked?fsLocked:fs)+'"></div>'
       + '<div>'+lbl('Exp. Delivery', isPNR)+'<input type="date" id="tpobe_expd_'+r.id+'" value="'+(r.expectedDelivery||'')+'" style="'+fs+'"></div>'
       + '</div>'
@@ -15146,6 +15238,14 @@ async function saveTpoBulkEdit() {
     // LPO required for PAID NOT RECEIVED
     if (isPNR && !lpo){ toast((r.poNo||'Record')+': LPO No is required for PAID NOT RECEIVED','er'); return; }
     if (isPNR && !expd){ toast((r.poNo||'Record')+': Expected Delivery is required for PAID NOT RECEIVED','er'); return; }
+    // LPO uniqueness check (exclude own record when editing)
+    if (lpo) {
+      var _tpoEditDup = _findLpoDuplicate(lpo, r.poNo);
+      if (_tpoEditDup) { toast((r.poNo||'Record')+': LPO No "'+lpo+'" already exists ('+(_tpoEditDup.poNo||'')+')','er'); return; }
+      if (updates.some(function(u){ return _normLpo(u.lpoNo||'') === _normLpo(lpo); })) {
+        toast((r.poNo||'Record')+': LPO No "'+lpo+'" is used more than once in this form','er'); return;
+      }
+    }
     updates.push(Object.assign({},r,{brand:brand,tyreSize:size,tyreType:type,qtyOrdered:qty,
       unitPrice:price,totalValue:qty*price,supplier:sup,lpoNo:lpo,requestedBy:reqby,
       expectedDelivery:expd,status:newStatus,qtyOutstanding:qty-(r.qtyReceived||0)}));
