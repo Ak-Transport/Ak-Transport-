@@ -4055,8 +4055,13 @@ function calcDurationDays(startDate, endDate, workStatus) {
   return '<span style="font-weight:700;color:'+color+'">'+label+'</span>'+badge;
 }
 
-// Returns the normalised LPO string: trimmed, uppercased, internal spaces removed
-function _normLpo(s) { return (s||'').trim().toUpperCase().replace(/\s+/g,''); }
+// Returns the normalised LPO string: trimmed, uppercased, spaces removed, leading zeros after prefix stripped.
+// e.g. "PO-0891", "PO-891", "po- 0891" all normalise to "PO-891"
+function _normLpo(s) {
+  var v = (s||'').trim().toUpperCase().replace(/\s+/g,'');
+  // Strip leading zeros from the numeric part after the prefix (PO- or PY-)
+  return v.replace(/^(PO|PY)-0+(\d)/,'$1-$2');
+}
 
 // Returns the duplicate PO record if the given LPO already exists across
 // TYRE_POS and BAT_POS, excluding the current PO being edited (by poNo).
