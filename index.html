@@ -2092,9 +2092,16 @@ function buildRow(r,isRO){
   const warnInfo = _rowSpareWarnCheck(r);
   const wBg = warnInfo ? 'background:#fef3c7!important;' : '';
   const rowStyle = warnInfo ? 'outline:2px solid #f59e0b;outline-offset:-2px;' : '';
+  // Store availability badge — only for NOT PAID requests
+  const _isNotPaid = (r.status||'').toUpperCase() === 'NOT PAID';
+  const _sq = _isNotPaid ? _sreqStoreQty(desc) : {total:0};
+  const storeSub = _sq.total > 0
+    ? `<div style="font-size:10px;color:#d97706;font-weight:600;margin-top:1px">📦 in store: ${_sq.total}</div>`
+    : '';
+  const descTrunc = desc.length>(warnInfo?22:28) ? desc.substring(0,warnInfo?22:28)+'…' : desc;
   const descCell = warnInfo
-    ? `<td title="${desc}" style="${wBg}max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"><span title="⚠ Last req: ${fd(warnInfo.lastDate)} (${warnInfo.lastReqNo})" style="display:inline-flex;align-items:center;gap:4px"><span style="color:#d97706;font-size:13px">⚠️</span>${desc.length>22?desc.substring(0,22)+'…':desc}</span></td>`
-    : `<td title="${desc}">${desc.length>28?desc.substring(0,28)+'…':desc}</td>`;
+    ? `<td title="${desc}" style="${wBg}max-width:160px;overflow:hidden;text-overflow:ellipsis"><span title="⚠ Last req: ${fd(warnInfo.lastDate)} (${warnInfo.lastReqNo})" style="display:inline-flex;align-items:center;gap:4px"><span style="color:#d97706;font-size:13px">⚠️</span>${descTrunc}</span>${storeSub}</td>`
+    : `<td title="${desc}"><div style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${descTrunc}</div>${storeSub}</td>`;
   return `<tr data-id="${r.id}" style="${rowStyle}">
     <td style="${wBg}text-align:center;width:36px"><input type="checkbox" class="row-chk" data-id="${r.id}" onchange="onRowCheck(this)" style="cursor:pointer;width:14px;height:14px;accent-color:var(--ac)"></td>
     <td style="${wBg}"><span class="reqbadge">${r.reqNo||''}</span></td>
@@ -4479,6 +4486,7 @@ function clearForm(){
   ['f_supplier_custom','f_truck_custom','f_driver_txt'].forEach(id=>{const el=document.getElementById(id);if(el){el.remove?el.remove():el.style.display='none';}});
   const descSel=document.getElementById('f_desc_select');if(descSel)descSel.value='';
   const descInp=document.getElementById('f_desc');if(descInp){descInp.value='';descInp.style.borderColor='';}
+  var _dsw=document.getElementById('f_desc_store_warn');if(_dsw)_dsw.remove();
 }
 async function saveRecord(){
   var btn = document.getElementById('savebtn');
@@ -4879,11 +4887,12 @@ async function populateFormDropdowns() {
   // Ensure all data needed for this form is loaded before building dropdowns.
   // If Firebase failed (SDK not loaded), fall back to Apps Script for each missing dataset.
   var loads = [];
-  if (!SUPPLIERS.length)  loads.push(wsFbRead('/suppliers').then(function(r){ if(r.records.length) SUPPLIERS=r.records; else return callAPI('getSuppliers').then(function(r2){if(r2&&r2.records)SUPPLIERS=r2.records;}); }).catch(function(){}));
-  if (!SPAREPARTS.length) loads.push(wsFbRead('/spareParts').then(function(r){ if(r.records.length) SPAREPARTS=r.records; else return callAPI('getSpareParts').then(function(r2){if(r2&&r2.records)SPAREPARTS=r2.records;}); }).catch(function(){}));
-  if (!DRIVERS.length)    loads.push(_loadAllDrivers());
-  if (!VEHICLES.length)   loads.push(wsFbRead('/vehicles','/ak_trips').then(function(r){ if(r.records.length) VEHICLES=r.records; else return callAPI('getVehicles').then(function(r2){if(r2&&r2.records)VEHICLES=r2.records;}); }).catch(function(){}));
-  if (!JOBCARDS.length)   loads.push(wsFbRead('/jobCards').then(function(r){ if(r.records.length) JOBCARDS=r.records; else return callAPI('getJobCards').then(function(r2){if(r2&&r2.records)JOBCARDS=r2.records;}); }).catch(function(){}));
+  if (!SUPPLIERS.length)       loads.push(wsFbRead('/suppliers').then(function(r){ if(r.records.length) SUPPLIERS=r.records; else return callAPI('getSuppliers').then(function(r2){if(r2&&r2.records)SUPPLIERS=r2.records;}); }).catch(function(){}));
+  if (!SPAREPARTS.length)      loads.push(wsFbRead('/spareParts').then(function(r){ if(r.records.length) SPAREPARTS=r.records; else return callAPI('getSpareParts').then(function(r2){if(r2&&r2.records)SPAREPARTS=r2.records;}); }).catch(function(){}));
+  if (!DRIVERS.length)         loads.push(_loadAllDrivers());
+  if (!VEHICLES.length)        loads.push(wsFbRead('/vehicles','/ak_trips').then(function(r){ if(r.records.length) VEHICLES=r.records; else return callAPI('getVehicles').then(function(r2){if(r2&&r2.records)VEHICLES=r2.records;}); }).catch(function(){}));
+  if (!JOBCARDS.length)        loads.push(wsFbRead('/jobCards').then(function(r){ if(r.records.length) JOBCARDS=r.records; else return callAPI('getJobCards').then(function(r2){if(r2&&r2.records)JOBCARDS=r2.records;}); }).catch(function(){}));
+  if (!STORE_INVENTORY.length) loads.push(wsFbRead('/storeInventory').then(function(r){ if(r&&r.records) STORE_INVENTORY=r.records; }).catch(function(){}));
   if (loads.length) await Promise.all(loads);
 
   // 1. SUPPLIER dropdown
@@ -5225,6 +5234,21 @@ function onDescSelect() {
   const inp = document.getElementById('f_desc');
   if (!sel || !inp) return;
   inp.value = sel.value || '';
+  // Store availability warning
+  var existing = document.getElementById('f_desc_store_warn');
+  if (existing) existing.remove();
+  var partName = sel.value || '';
+  if (!partName) return;
+  var result = _sreqStoreQty(partName);
+  if (result.total <= 0) return;
+  var bdHtml = (result.breakdown.length > 1 || (result.breakdown.length===1 && result.breakdown[0].name.toUpperCase() !== partName.trim().toUpperCase()))
+    ? ' <span style="font-size:10px;color:#92400e">('+result.breakdown.map(function(x){return x.name+' \xd7'+x.qty;}).join(', ')+')</span>'
+    : '';
+  var warn = document.createElement('div');
+  warn.id = 'f_desc_store_warn';
+  warn.style.cssText = 'margin-top:6px;padding:7px 11px;background:#fffbeb;border:1px solid #fcd34d;border-radius:7px;font-size:12px;color:#92400e;display:flex;align-items:center;gap:7px';
+  warn.innerHTML = '<span style="font-size:15px">⚠️</span><span><b>Available in Store: '+result.total+'</b>'+bdHtml+' — Consider issuing from store.</span>';
+  inp.parentNode.appendChild(warn);
 }
 
 
@@ -6655,7 +6679,7 @@ function renderTyrePOs(statusFilter) {
         + '<td><span class="reqbadge">'+(p.poNo||'')+'</span></td>'
         + '<td>'+fmtDate(p.poDate)+'</td>'
         + '<td><b>'+(p.brand||'')+'</b></td>'
-        + '<td>'+(p.tyreSize||'')+'</td>'
+        + (function(){ var _tsz=p.tyreSize||''; var _isNP=(!isFull&&!isPart&&!isPNR); var _tqty=(_tsz&&_isNP)?_tyreStoreQty(_tsz):0; return '<td>'+_tsz+(_tqty>0?'<div style="font-size:10px;color:#d97706;font-weight:600;margin-top:1px">📦 in store: '+_tqty+'</div>':'')+'</td>'; }())
         + '<td>'+(p.tyreType||'')+'</td>'
         + '<td style="text-align:center">'+(p.qtyOrdered||0)+'</td>'
         + '<td style="text-align:center;color:#059669;font-weight:700">'+(p.qtyReceived||0)+'</td>'
@@ -7611,7 +7635,7 @@ function bpoPrintForm() {
       +'<td style="text-align:center">'+(i+1)+'</td>'
       +'<td style="font-family:monospace">'+(r.poNo||r.reqNo||'')+'</td>'
       +'<td>'+fmtDate(r.poDate||'')+'</td>'
-      +'<td><b>'+(r.brand||'')+'</b> '+(r.size||r.capacity||'')+'</td>'
+      +(function(){ var _sz=r.size||r.capacity||''; var _isNP=(r.status||'').toUpperCase()==='NOT PAID'; var _qty=(_sz&&_isNP)?_batStoreQty(_sz):0; return '<td><b>'+(r.brand||'')+'</b> '+_sz+(_qty>0?'<div style="font-size:9px;color:#92400e;font-weight:700;margin-top:2px;background:#fffbeb;border:1px solid #fcd34d;border-radius:3px;padding:1px 4px;display:inline-block">Avail. in Store: '+_qty+'</div>':'')+'</td>'; }())
       +'<td style="text-align:center">'+(r.qtyOrdered||0)+'</td>'
       +'<td style="text-align:right">'+(r.unitPrice?Number(r.unitPrice).toLocaleString('en-US',{minimumFractionDigits:2}):'')+'</td>'
       +'<td style="text-align:right;font-weight:700">'+total.toLocaleString('en-US',{minimumFractionDigits:2})+'</td>'
@@ -8318,7 +8342,7 @@ function renderBatPOs(statusFilter) {
         +'<td><span class="reqbadge">'+(p.poNo||'')+'</span></td>'
         +'<td>'+fmtDate(p.poDate||p.date||'')+'</td>'
         +'<td><b>'+(p.brand||'')+'</b></td>'
-        +'<td style="text-align:center">'+(p.size||p.capacity||'')+'</td>'
+        +(function(){ var _bsz=p.size||p.capacity||''; var _isNP=s==='NOT PAID'; var _bqty=(_bsz&&_isNP)?_batStoreQty(_bsz):0; return '<td style="text-align:center">'+_bsz+(_bqty>0?'<div style="font-size:10px;color:#d97706;font-weight:600;margin-top:1px">📦 in store: '+_bqty+'</div>':'')+'</td>'; }())
         +'<td style="text-align:center">'+(p.qtyOrdered||0)+'</td>'
         +'<td style="text-align:center;color:#059669;font-weight:700">'+(p.qtyReceived||0)+'</td>'
         +'<td style="text-align:center;color:#dc2626;font-weight:700">'+(p.qtyOutstanding||0)+'</td>'
@@ -8402,11 +8426,17 @@ function _buildPOPdf(rows, type) {
     if (!sizeMap[sizeKey]) sizeMap[sizeKey] = {qty:0, total:0};
     sizeMap[sizeKey].qty   += qty;
     sizeMap[sizeKey].total += total;
+    var _pIsNP = (p.status||'').toUpperCase() === 'NOT PAID';
+    var _pStoreQty = 0;
+    if (sizeKey && sizeKey !== '—' && _pIsNP) {
+      _pStoreQty = isTyre ? _tyreStoreQty(sizeKey) : _batStoreQty(sizeKey);
+    }
+    var sizeCell = sizeKey + (_pStoreQty > 0 ? '<div style="font-size:9px;color:#92400e;font-weight:700;margin-top:2px;background:#fffbeb;border:1px solid #fcd34d;border-radius:3px;padding:1px 4px;display:inline-block">Avail. in Store: '+_pStoreQty+'</div>' : '');
     return '<tr>'
       +'<td>'+(p.poNo||'')+'</td>'
       +'<td>'+fmtDate(p.poDate||p.date||'')+'</td>'
       +'<td><b>'+(p.brand||'')+'</b></td>'
-      +'<td>'+(isTyre?(p.tyreSize||p.size||''):(p.size||p.capacity||''))+'</td>'
+      +'<td>'+sizeCell+'</td>'
       +'<td style="text-align:center">'+qty+'</td>'
       +'<td style="text-align:right">'+fmtMoney(price)+'/=</td>'
       +'<td style="text-align:right;font-weight:700">'+fmtMoney(total)+'/=</td>'
@@ -12439,11 +12469,28 @@ function exportSelectedPDF() {
     var db=_normDateVal(b.dateRequested||'')||(b.dateRequested||'');
     return da.localeCompare(db);
   });
-  // Build requisition form HTML
-  var formRows = rows.map(function(r, i) {
+  // Build requisition form HTML — pre-compute store availability per row
+  var rowsWithStore = rows.map(function(r) {
+    var sq = _sreqStoreQty(r.description||'');
+    return {r:r, storeQty:sq.total, storeBreakdown:sq.breakdown};
+  });
+  var anyInStore = rowsWithStore.some(function(x){ return x.storeQty > 0; });
+  var formRows = rowsWithStore.map(function(x, i) {
+    var r = x.r;
     var warnInfo = _rowSpareWarnCheck(r);
     var descCell = (r.description||'')
       + (warnInfo ? '<div style="margin-top:3px;font-size:9px;color:#92400e;font-weight:600">⚠ Last req: ' + fd(warnInfo.lastDate) + ' (' + warnInfo.lastReqNo + ')</div>' : '');
+    var storeCell = '';
+    if (anyInStore) {
+      if (x.storeQty > 0) {
+        var bdText = (x.storeBreakdown.length > 1 || (x.storeBreakdown.length===1 && x.storeBreakdown[0].name.toUpperCase() !== (r.description||'').trim().toUpperCase()))
+          ? '<div style="font-size:8px;color:#92400e;margin-top:2px">'+x.storeBreakdown.map(function(b){return b.name+' \xd7'+b.qty;}).join(', ')+'</div>'
+          : '';
+        storeCell = '<td style="padding:6px;font-size:10px;text-align:center;font-weight:700;color:#b45309;background:#fffbeb">' + x.storeQty + bdText + '</td>';
+      } else {
+        storeCell = '<td style="padding:6px;font-size:10px;text-align:center;color:#aaa">—</td>';
+      }
+    }
     return '<tr style="border-bottom:1px solid #e0e0e0">'
       + '<td style="padding:6px;font-size:10px;text-align:center">' + (i+1) + '</td>'
       + '<td style="padding:6px;font-size:10px;font-weight:600">' + (r.reqNo||'') + '</td>'
@@ -12453,6 +12500,7 @@ function exportSelectedPDF() {
       + '<td style="padding:6px;font-size:10px">' + (r.driverName||'') + '</td>'
       + '<td style="padding:6px;font-size:10px">' + descCell + '</td>'
       + '<td style="padding:6px;font-size:10px;text-align:center">' + (r.qty||'') + '</td>'
+      + (anyInStore ? storeCell : '')
       + '<td style="padding:6px;font-size:10px;text-align:right">' + (r.unitPrice ? Number(r.unitPrice).toLocaleString() : '') + '</td>'
       + '<td style="padding:6px;font-size:10px;text-align:right;font-weight:600">' + (r.cost ? Number(r.cost).toLocaleString() : '') + '</td>'
       + '<td style="padding:6px;font-size:10px">' + (r.supplier||'') + '</td>'
@@ -12513,6 +12561,7 @@ function exportSelectedPDF() {
     + '<th class="col-drv">Driver</th>'
     + '<th class="col-desc">Description / Spare Part</th>'
     + '<th class="col-qty" style="text-align:center">Qty</th>'
+    + (anyInStore ? '<th style="width:55px;text-align:center;background:#fffbeb;color:#92400e">Avail. in Store</th>' : '')
     + '<th class="col-up" style="text-align:right">Unit Price</th>'
     + '<th class="col-total" style="text-align:right">Total</th>'
     + '<th class="col-sup">Supplier</th>'
@@ -13698,9 +13747,10 @@ async function openFreeReq() {
 
   // Load all required data in parallel, waiting for completion
   var _loads = [];
-  if (!SUPPLIERS.length)  _loads.push(wsFbRead('/suppliers').then(function(r){ if(r&&r.records&&r.records.length) SUPPLIERS=r.records; else return callAPI('getSuppliers').then(function(r2){if(r2&&r2.records)SUPPLIERS=r2.records;}); }).catch(function(){}));
-  if (!SPAREPARTS.length) _loads.push(wsFbRead('/spareParts').then(function(r){ if(r&&r.records&&r.records.length) SPAREPARTS=r.records; else return callAPI('getSpareParts').then(function(r2){if(r2&&r2.records)SPAREPARTS=r2.records;}); }).catch(function(){}));
-  if (!VEHICLES.length)   _loads.push(wsFbRead('/vehicles','/ak_trips').then(function(r){ if(r&&r.records&&r.records.length) VEHICLES=r.records; else return callAPI('getVehicles').then(function(r2){if(r2&&r2.records)VEHICLES=r2.records;}); }).catch(function(){}));
+  if (!SUPPLIERS.length)      _loads.push(wsFbRead('/suppliers').then(function(r){ if(r&&r.records&&r.records.length) SUPPLIERS=r.records; else return callAPI('getSuppliers').then(function(r2){if(r2&&r2.records)SUPPLIERS=r2.records;}); }).catch(function(){}));
+  if (!SPAREPARTS.length)     _loads.push(wsFbRead('/spareParts').then(function(r){ if(r&&r.records&&r.records.length) SPAREPARTS=r.records; else return callAPI('getSpareParts').then(function(r2){if(r2&&r2.records)SPAREPARTS=r2.records;}); }).catch(function(){}));
+  if (!VEHICLES.length)       _loads.push(wsFbRead('/vehicles','/ak_trips').then(function(r){ if(r&&r.records&&r.records.length) VEHICLES=r.records; else return callAPI('getVehicles').then(function(r2){if(r2&&r2.records)VEHICLES=r2.records;}); }).catch(function(){}));
+  if (!STORE_INVENTORY.length) _loads.push(wsFbRead('/storeInventory').then(function(r){ if(r&&r.records) STORE_INVENTORY=r.records; }).catch(function(){}));
   if (_loads.length) await Promise.all(_loads);
 
   // Now data is guaranteed loaded — build the form
@@ -15061,7 +15111,7 @@ function tpoPrintForm() {
       +'<td style="text-align:center">'+(i+1)+'</td>'
       +'<td style="font-family:monospace">'+(r.poNo||'')+'</td>'
       +'<td>'+fmtDate(r.poDate||'')+'</td>'
-      +'<td><b>'+(r.brand||'')+'</b> '+(r.tyreSize||r.size||'')+'</td>'
+      +(function(){ var _sz=r.tyreSize||r.size||''; var _isNP=(r.status||'').toUpperCase()==='NOT PAID'; var _qty=(_sz&&_isNP)?_tyreStoreQty(_sz):0; return '<td><b>'+(r.brand||'')+'</b> '+_sz+(_qty>0?'<div style="font-size:9px;color:#92400e;font-weight:700;margin-top:2px;background:#fffbeb;border:1px solid #fcd34d;border-radius:3px;padding:1px 4px;display:inline-block">Avail. in Store: '+_qty+'</div>':'')+'</td>'; }())
       +'<td style="text-align:center">'+(r.qtyOrdered||0)+'</td>'
       +'<td style="text-align:right">'+(r.unitPrice?Number(r.unitPrice).toLocaleString('en-US',{minimumFractionDigits:2}):'')+'</td>'
       +'<td style="text-align:right;font-weight:700">'+total.toLocaleString('en-US',{minimumFractionDigits:2})+'</td>'
@@ -15754,11 +15804,86 @@ function addSReqLine() {
   new TomSelect(document.getElementById('sreq_sup_'+n),{allowEmptyOption:true,placeholder:'Search supplier...',create:true,dropdownParent:'body'});
 }
 
+function _sreqStoreQty(partName) {
+  // Returns {total, breakdown} for a part name using contains match (case-insensitive)
+  if (!partName) return {total:0, breakdown:[]};
+  var norm = partName.trim().toUpperCase();
+  var matched = {};
+  (STORE_INVENTORY||[]).forEach(function(r) {
+    var rn = (r.partName||'').trim().toUpperCase();
+    if (!rn) return;
+    var qty = Number(r.qtyOnHand||0);
+    if (qty <= 0) return;
+    if (rn.indexOf(norm) !== -1 || norm.indexOf(rn) !== -1) {
+      matched[r.partName] = (matched[r.partName]||0) + qty;
+    }
+  });
+  var breakdown = Object.keys(matched).map(function(k){ return {name:k, qty:matched[k]}; });
+  var total = breakdown.reduce(function(s,x){ return s+x.qty; }, 0);
+  return {total:total, breakdown:breakdown};
+}
+
+function _tyreStoreQty(size) {
+  // Count tyres in TYRES array where status=IN STORE and size matches (contains, case-insensitive)
+  if (!size) return 0;
+  var norm = size.trim().toUpperCase();
+  var count = 0;
+  (TYRES||[]).forEach(function(t) {
+    if ((t.status||'').toUpperCase() !== 'IN STORE') return;
+    var ts = (t.size||'').trim().toUpperCase();
+    if (ts && (ts === norm || ts.indexOf(norm) !== -1 || norm.indexOf(ts) !== -1)) count++;
+  });
+  return count;
+}
+
+function _batStoreQty(size) {
+  // Count batteries in BATTERIES array where status=IN STORE and size matches (contains, case-insensitive)
+  if (!size) return 0;
+  var norm = size.trim().toUpperCase();
+  var count = 0;
+  (BATTERIES||[]).forEach(function(b) {
+    if ((b.status||'').toUpperCase() !== 'IN STORE') return;
+    var bs = (b.size||b.capacity||'').trim().toUpperCase();
+    if (bs && (bs === norm || bs.indexOf(norm) !== -1 || norm.indexOf(bs) !== -1)) count++;
+  });
+  return count;
+}
+
+function _sreqShowStoreWarn(n, partName) {
+  var warnId = 'sreq_inv_warn_'+n;
+  var existing = document.getElementById(warnId);
+  if (existing) existing.remove();
+  if (!partName || partName === '__custom__') return;
+  var result = _sreqStoreQty(partName);
+  if (result.total <= 0) return;
+  // Build breakdown text
+  var breakdownHtml = '';
+  if (result.breakdown.length > 1 || (result.breakdown.length===1 && result.breakdown[0].name.toUpperCase() !== partName.trim().toUpperCase())) {
+    breakdownHtml = '<span style="font-size:10px;color:#92400e;margin-left:6px">('+result.breakdown.map(function(x){return x.name+' \xd7'+x.qty;}).join(', ')+')</span>';
+  }
+  var warn = document.createElement('div');
+  warn.id = warnId;
+  warn.style.cssText = 'margin-top:5px;padding:6px 10px;background:#fffbeb;border:1px solid #fcd34d;border-radius:6px;font-size:11px;color:#92400e;display:flex;align-items:center;gap:6px;flex-wrap:wrap';
+  warn.innerHTML = '<span style="font-size:14px">⚠️</span>'
+    + '<span><b>Available in Store: '+result.total+'</b>'+breakdownHtml+' — Consider issuing from store.</span>';
+  // Insert after the description field container
+  var descSel = document.getElementById('sreq_desc_'+n);
+  var descTxt = document.getElementById('sreq_desc_txt_'+n);
+  var target = (descTxt && descTxt.style.display !== 'none') ? descTxt : descSel;
+  if (target && target.parentNode) target.parentNode.appendChild(warn);
+}
+
 function onSReqDescChange(n){
   var s=document.getElementById('sreq_desc_'+n),t=document.getElementById('sreq_desc_txt_'+n);
   if(!s||!t)return;
-  if(s.value==='__custom__'){s.style.display='none';t.style.display='block';t.style.height='38px';t.focus();}
-  else{t.style.display='none';s.style.display='block';}
+  if(s.value==='__custom__'){s.style.display='none';t.style.display='block';t.style.height='38px';t.focus();
+    // Add blur listener for custom text input
+    t.onblur = function(){ _sreqShowStoreWarn(n, t.value); };
+    _sreqShowStoreWarn(n, '');
+  } else {
+    t.style.display='none';s.style.display='block';
+    _sreqShowStoreWarn(n, s.value);
+  }
 }
 function calcSReqLine(n){
   var qty=parseFloat((document.getElementById('sreq_qty_'+n)||{}).value)||0;
@@ -16302,14 +16427,33 @@ function sreqPrintForm() {
   if (!rows.length) { toast('No rows selected','er'); return; }
   var printDate = fmtDate(todayStr());
   var totalAmt = rows.reduce(function(s,r){ return s+(parseFloat(r.cost)||0); }, 0);
+  // Pre-compute store availability for each row
+  var rowsWithStore = rows.map(function(r){
+    var sq = _sreqStoreQty(r.description||'');
+    return {r:r, storeQty:sq.total, storeBreakdown:sq.breakdown};
+  });
+  var anyInStore = rowsWithStore.some(function(x){ return x.storeQty > 0; });
   var tblRows = '';
-  rows.forEach(function(r,i){
+  rowsWithStore.forEach(function(x,i){
+    var r = x.r;
+    var storeCell = '';
+    if (anyInStore) {
+      if (x.storeQty > 0) {
+        var bdText = (x.storeBreakdown.length > 1 || (x.storeBreakdown.length===1 && x.storeBreakdown[0].name.toUpperCase() !== (r.description||'').trim().toUpperCase()))
+          ? ' ('+x.storeBreakdown.map(function(b){return b.name+' \xd7'+b.qty;}).join(', ')+')'
+          : '';
+        storeCell = '<td style="text-align:center;font-weight:700;color:#b45309;background:#fffbeb">'+x.storeQty+'<span style="font-size:8px;font-weight:400;color:#92400e;display:block">'+bdText+'</span></td>';
+      } else {
+        storeCell = '<td style="text-align:center;color:#aaa">—</td>';
+      }
+    }
     tblRows += '<tr>'
       +'<td style="text-align:center">'+(i+1)+'</td>'
-      +'<td style="font-family:monospace">'+( r.reqNo||'')+'</td>'
+      +'<td style="font-family:monospace">'+(r.reqNo||'')+'</td>'
       +'<td>'+fmtDate(r.dateRequested||'')+'</td>'
       +'<td><b>'+(r.description||'')+'</b></td>'
       +'<td style="text-align:center">'+(r.qty||'')+'</td>'
+      +(anyInStore ? storeCell : '')
       +'<td style="text-align:right">'+(r.unitPrice?Number(r.unitPrice).toLocaleString('en-US',{minimumFractionDigits:2}):'')+'</td>'
       +'<td style="text-align:right;font-weight:700">'+(r.cost?Number(r.cost).toLocaleString('en-US',{minimumFractionDigits:2}):'')+'</td>'
       +'<td>'+(r.supplier||'')+'</td>'
@@ -16345,13 +16489,14 @@ function sreqPrintForm() {
     +'<th style="width:68px">Date</th>'
     +'<th>Description</th>'
     +'<th style="width:30px;text-align:center">Qty</th>'
+    +(anyInStore?'<th style="width:60px;text-align:center;background:#fffbeb;color:#92400e">Avail. in Store</th>':'')
     +'<th style="width:80px;text-align:right">Unit Price</th>'
     +'<th style="width:80px;text-align:right">Total</th>'
     +'<th style="width:100px">Supplier</th>'
     +'</tr></thead>'
     +'<tbody>'+tblRows+'</tbody>'
     +'<tfoot><tr>'
-    +'<td colspan="6" style="text-align:right;font-size:11px;color:#0a2d6e">GRAND TOTAL</td>'
+    +'<td colspan="'+(anyInStore?7:6)+'" style="text-align:right;font-size:11px;color:#0a2d6e">GRAND TOTAL</td>'
     +'<td style="text-align:right;font-size:12px;color:#0a2d6e">'+totalAmt.toLocaleString('en-US',{minimumFractionDigits:2})+'</td>'
     +'<td></td>'
     +'</tr></tfoot>'
