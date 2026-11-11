@@ -11540,6 +11540,8 @@ function updateGRNLineBrands(n) {
   var curVal = (document.getElementById('grn_brand_hidden_'+n)||{}).value||'';
   var autoVal = _poBrands.length===1 ? _poBrands[0] : (curVal && brands.indexOf(curVal)>=0 ? curVal : '');
   _grnBrandSelect(n, autoVal, true);
+  // Always populate sizes after brand is set (even when silent, so size dropdown isn't empty)
+  updateGRNLineSizes(n);
 }
 
 function updateGRNLineSizes(n) {
