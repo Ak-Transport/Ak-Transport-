@@ -10028,6 +10028,9 @@ function addBatPOLine() {
     + (n>1?'<button onclick="removeBatPOLine('+n+')" style="background:none;border:none;color:#dc2626;cursor:pointer;font-size:18px;line-height:1;flex-shrink:0">\u2715</button>':'<span style="width:22px"></span>')
     + '</div>';
   wrap.appendChild(div);
+  // Make supplier and brand searchable
+  try { new TomSelect('#bpo_sup_'+n,{placeholder:'Search supplier...',allowEmptyOption:true,create:false}); } catch(e){}
+  try { new TomSelect('#bpo_brand_'+n,{placeholder:'Search brand...',allowEmptyOption:true}); } catch(e){}
 }
 function calcBatPOTotal(n) {
   var qty   = Number((document.getElementById('bpo_qty_'+n)||{}).value||0);
@@ -10138,16 +10141,28 @@ function _openBatGRNFormInner(poNo) {
     o.textContent = key + ' -- ' + pos.map(function(p){ return (p.brand||'')+(p.capacity?' '+p.capacity:p.size?' '+p.size:''); }).join(', ') + ' (Outstanding: '+totalOut+')';
     lpoSel.appendChild(o);
   });
+  // Make LPO searchable
+  if (lpoSel.tomselect) lpoSel.tomselect.destroy();
+  new TomSelect(lpoSel, {
+    allowEmptyOption: true,
+    placeholder: 'Search LPO...',
+    onChange: function(val){ onBatGRNLPOChange(); }
+  });
   if (poNo) {
     var po = (BAT_POS||[]).find(function(p){ return p.poNo===poNo||p.lpoNo===poNo; });
-    if (po) { lpoSel.value = po.lpoNo||po.poNo; onBatGRNLPOChange(); }
+    if (po) {
+      var lpoVal = po.lpoNo||po.poNo;
+      if (lpoSel.tomselect) { lpoSel.tomselect.setValue(lpoVal, true); } else { lpoSel.value = lpoVal; }
+      onBatGRNLPOChange();
+    }
   }
   addBatGRNLine();
 }
 var _batGRNLineCount = 0;
 var _batGRNActivePOs = [];
 function onBatGRNLPOChange() {
-  var lpo = document.getElementById('bat_grn_lpo').value;
+  var lpoEl = document.getElementById('bat_grn_lpo');
+  var lpo = lpoEl.tomselect ? lpoEl.tomselect.getValue() : lpoEl.value;
   _batGRNActivePOs = (BAT_POS||[]).filter(function(p){
     return (p.lpoNo||p.poNo)===lpo && Number(p.qtyOutstanding||0)>0;
   });
@@ -10197,20 +10212,34 @@ function addBatGRNLine() {
     + (n>1 ? '<button onclick="document.getElementById(&quot;bat_grn_line_&quot;+n).remove();updateBatGRNSummary()" style="background:none;border:none;color:#dc2626;cursor:pointer;font-size:18px;line-height:1;flex-shrink:0">&#10005;</button>' : '<span style="width:22px"></span>')
     + '</div>';
   wrap.appendChild(div);
+  // Make brand searchable
+  (function(lineN){
+    var bSel = document.getElementById('bat_grn_brand_'+lineN);
+    if (bSel && typeof TomSelect !== 'undefined') {
+      new TomSelect(bSel, {
+        allowEmptyOption: true,
+        placeholder: 'Search brand...',
+        onChange: function(val){ onBatGRNBrandChange(lineN); }
+      });
+    }
+  })(n);
   // Auto-select brand if only one, then trigger size rebuild
   if (brands.length===1) {
-    var bEl2=document.getElementById('bat_grn_brand_'+n); if(bEl2) bEl2.value=brands[0];
+    var bEl2=document.getElementById('bat_grn_brand_'+n);
+    if(bEl2 && bEl2.tomselect) bEl2.tomselect.setValue(brands[0],true); else if(bEl2) bEl2.value=brands[0];
     onBatGRNBrandChange(n);
   } else if (_batGRNActivePOs.length===1) {
     var po = _batGRNActivePOs[0];
-    var bEl=document.getElementById('bat_grn_brand_'+n); if(bEl&&po.brand)bEl.value=po.brand;
+    var bEl=document.getElementById('bat_grn_brand_'+n);
+    if(bEl&&po.brand){ if(bEl.tomselect) bEl.tomselect.setValue(po.brand,true); else bEl.value=po.brand; }
     onBatGRNBrandChange(n);
     var qEl=document.getElementById('bat_grn_qty_'+n); if(qEl&&po.qtyOutstanding)qEl.value=po.qtyOutstanding;
   }
   updateBatGRNSummary();
 }
 function onBatGRNBrandChange(n) {
-  var brand = (document.getElementById('bat_grn_brand_'+n)||{}).value||'';
+  var bEl = document.getElementById('bat_grn_brand_'+n);
+  var brand = bEl ? (bEl.tomselect ? bEl.tomselect.getValue() : bEl.value) : '';
   // Rebuild size dropdown filtered to this brand's sizes
   var sEl = document.getElementById('bat_grn_size_'+n);
   if (sEl) {
@@ -10226,7 +10255,8 @@ function onBatGRNBrandChange(n) {
 }
 function validateBatGRNQty(n) {
   var qEl = document.getElementById('bat_grn_qty_'+n); if(!qEl) return;
-  var brand = (document.getElementById('bat_grn_brand_'+n)||{}).value||'';
+  var bEl2 = document.getElementById('bat_grn_brand_'+n);
+  var brand = bEl2 ? (bEl2.tomselect ? bEl2.tomselect.getValue() : bEl2.value) : '';
   var matchPO = _batGRNActivePOs.find(function(p){return p.brand===brand;})||_batGRNActivePOs[0];
   var maxQty = matchPO ? Number(matchPO.qtyOutstanding||0) : 0;
   var entered = Number(qEl.value||0);
@@ -10250,7 +10280,8 @@ function updateBatGRNSummary() {
 async function saveBatGRN() {
   var dateRcv = document.getElementById('bat_grn_date').value;
   var rcvBy   = (document.getElementById('bat_grn_rcvby').value||'').trim();
-  var lpo     = document.getElementById('bat_grn_lpo').value;
+  var _batLpoEl = document.getElementById('bat_grn_lpo');
+  var lpo     = _batLpoEl.tomselect ? _batLpoEl.tomselect.getValue() : _batLpoEl.value;
   if (!dateRcv) { toast('Date Received is required','er'); return; }
   if (!rcvBy)   { toast('Received By is required','er'); return; }
   if (!lpo)     { toast('Select an LPO','er'); return; }
@@ -10259,7 +10290,8 @@ async function saveBatGRN() {
   var grnLines = [];
   for (var i=0;i<lineDivs.length;i++) {
     var n = lineDivs[i].id.replace('bat_grn_line_','');
-    var brand = ((document.getElementById('bat_grn_brand_'+n)||{}).value||'').trim().toUpperCase();
+    var _bgEl = document.getElementById('bat_grn_brand_'+n);
+    var brand = (_bgEl ? (_bgEl.tomselect ? _bgEl.tomselect.getValue() : _bgEl.value) : '').trim().toUpperCase();
     var size  = (document.getElementById('bat_grn_size_'+n)||{}).value||'';
     var qty   = Number((document.getElementById('bat_grn_qty_'+n)||{}).value||0);
     var note  = (document.getElementById('bat_grn_note_'+n)||{}).value||'';
@@ -10385,12 +10417,25 @@ function addFitBatLine() {
   var div = document.createElement('div');
   div.id = 'fit_bat_line_'+n;
   div.style.cssText = 'display:grid;grid-template-columns:2fr 1.5fr 1fr;gap:8px;align-items:center;padding:8px;background:#fff;border:1.5px solid #e2e2e7;border-radius:9px';
-  div.innerHTML = '<select id="fit_bat_ref_'+n+'" onchange="refreshFitBatOpts()" style="'+fs+'">'+batOpts+'</select>'
+  div.innerHTML = '<select id="fit_bat_ref_'+n+'" style="'+fs+'">'+batOpts+'</select>'
     + '<select id="fit_bat_pos_'+n+'" style="'+fs+'">'+posOpts+'</select>'
     + '<div style="display:flex;gap:6px;align-items:center">'
     + (n>1?'<button onclick="removeFitBatLine(this)" style="background:none;border:none;color:#dc2626;cursor:pointer;font-size:18px;line-height:1">✕</button>':'<span style="width:22px"></span>')
     + '</div>';
   wrap.appendChild(div);
+  // Make battery ref searchable
+  (function(lineN){
+    var sel = document.getElementById('fit_bat_ref_'+lineN);
+    if (sel && typeof TomSelect !== 'undefined') {
+      new TomSelect(sel, {
+        allowEmptyOption: true,
+        placeholder: 'Select battery (IN STORE)...',
+        maxOptions: 500,
+        highlight: true,
+        onChange: function(){ refreshFitBatOpts(); }
+      });
+    }
+  })(n);
   // Warn if both occupied
   if (!pos1Free && !pos2Free) {
     toast('Both battery positions on '+curVeh+' are occupied. Remove a battery first.','er');
@@ -10400,13 +10445,21 @@ function addFitBatLine() {
 function refreshFitBatOpts() {
   setTimeout(function(){
     var allSels=Array.from(document.querySelectorAll('[id^="fit_bat_ref_"]'));
-    var used=allSels.map(function(s){return s.value;}).filter(Boolean);
+    var used=allSels.map(function(s){ return s.tomselect ? s.tomselect.getValue() : s.value; }).filter(Boolean);
     allSels.forEach(function(s){
-      var myVal=s.value;
-      Array.from(s.options).forEach(function(opt){
-        if(!opt.value) return;
-        opt.disabled=(used.includes(opt.value)&&opt.value!==myVal);
-      });
+      var myVal=s.tomselect ? s.tomselect.getValue() : s.value;
+      if (s.tomselect) {
+        Object.keys(s.tomselect.options).forEach(function(v){
+          if(!v) return;
+          s.tomselect.updateOption(v, Object.assign({},s.tomselect.options[v],{disabled:used.includes(v)&&v!==myVal}));
+        });
+        s.tomselect.refreshOptions(false);
+      } else {
+        Array.from(s.options).forEach(function(opt){
+          if(!opt.value) return;
+          opt.disabled=(used.includes(opt.value)&&opt.value!==myVal);
+        });
+      }
     });
   },0);
 }
@@ -10490,7 +10543,8 @@ async function saveFitBattery(){
   var batLines=[];
   for(var i=0;i<lineDivs.length;i++){
     var n=lineDivs[i].id.replace('fit_bat_line_','');
-    var batRef=((document.getElementById('fit_bat_ref_'+n)||{}).value||'').trim();
+    var _fbEl=document.getElementById('fit_bat_ref_'+n);
+    var batRef=(_fbEl?(_fbEl.tomselect?_fbEl.tomselect.getValue():_fbEl.value):''||'').trim();
     var position=(document.getElementById('fit_bat_pos_'+n)||{}).value||'';
     if(!batRef||!position){toast('Line '+(i+1)+': Battery and Position required','er');return;}
     // Check position not already occupied locally
@@ -10575,7 +10629,8 @@ async function saveRemoveBattery(){
   var remBatLines=[];
   for(var i=0;i<lineDivs.length;i++){
     var n=lineDivs[i].id.replace('rem_bat_line_','');
-    var batRef=(document.getElementById('rem_bat_ref_'+n)||{}).value||'';
+    var _rbEl=document.getElementById('rem_bat_ref_'+n);
+    var batRef=_rbEl?(_rbEl.tomselect?_rbEl.tomselect.getValue():_rbEl.value):'';
     var cond=(document.getElementById('rem_bat_cond_'+n)||{}).value||'GOOD';
     var rsn=(document.getElementById('rem_bat_rsn_'+n)||{}).value||'';
     if(!batRef){toast('Line '+(i+1)+': Select a battery','er');return;}
@@ -10638,7 +10693,8 @@ async function saveBatSale(){
   var saleLines=[];
   for(var i=0;i<lineDivs.length;i++){
     var n=lineDivs[i].id.replace('bat_sale_line_','');
-    var batRef=(document.getElementById('bat_sale_ref_'+n)||{}).value||'';
+    var _bsEl=document.getElementById('bat_sale_ref_'+n);
+    var batRef=_bsEl?(_bsEl.tomselect?_bsEl.tomselect.getValue():_bsEl.value):'';
     var price=Number((document.getElementById('bat_sale_price_'+n)||{}).value||0);
     if(!batRef||!price){toast('Line '+(i+1)+': Battery and Sale Price required','er');return;}
     var pendBSale=(BAT_SALES||[]).find(function(s){return s.batteryRef===batRef&&(s.status||'').toUpperCase()==='PENDING';});
@@ -10710,12 +10766,25 @@ function addFitTyreLine() {
   var div = document.createElement('div');
   div.id = 'fit_line_'+n;
   div.style.cssText = 'display:grid;grid-template-columns:2fr 2fr 1fr;gap:8px;align-items:center;padding:8px;background:#fff;border:1.5px solid #e2e2e7;border-radius:9px';
-  div.innerHTML = '<select id="fit_ser_'+n+'" onchange="refreshFitTyreOpts(this.id,this.value)" style="'+fs+'">'+tyreOpts+'</select>'
+  div.innerHTML = '<select id="fit_ser_'+n+'" style="'+fs+'">'+tyreOpts+'</select>'
     + '<select id="fit_pos_'+n+'" style="'+fs+'"><option value="">Select position...</option>'+posOpts+'</select>'
     + '<div style="display:flex;gap:6px;align-items:center">'
-    + (n>1?'<button onclick="document.getElementById(\'fit_line_'+n+'\').remove();refreshFitTyreOpts()" style="background:none;border:none;color:#dc2626;cursor:pointer;font-size:18px;line-height:1">\u2715</button>':'<span style="width:22px"></span>')
+    + (n>1?'<button onclick="document.getElementById(\'fit_line_'+n+'\').remove();if(document.getElementById(\'fit_ser_'+n+'\')&&document.getElementById(\'fit_ser_'+n+'\').tomselect){document.getElementById(\'fit_ser_'+n+'\').tomselect.destroy();}refreshFitTyreOpts()" style="background:none;border:none;color:#dc2626;cursor:pointer;font-size:18px;line-height:1">\u2715</button>':'<span style="width:22px"></span>')
     + '</div>';
   wrap.appendChild(div);
+  // Initialise TomSelect for searchable tyre serial dropdown
+  (function(lineN){
+    var sel = document.getElementById('fit_ser_'+lineN);
+    if (sel && typeof TomSelect !== 'undefined') {
+      new TomSelect(sel, {
+        allowEmptyOption: true,
+        placeholder: 'Select tyre (IN STORE)...',
+        maxOptions: 500,
+        highlight: true,
+        onChange: function(val){ refreshFitTyreOpts('fit_ser_'+lineN, val); }
+      });
+    }
+  })(n);
 }
 
 
@@ -10759,13 +10828,28 @@ function addRemoveTyreLine() {
 function refreshFitTyreOpts(changedId, newVal) {
   setTimeout(function(){
     var allSels = Array.from(document.querySelectorAll('[id^="fit_ser_"]'));
-    var used = allSels.map(function(s){ return s.value; }).filter(Boolean);
+    var used = allSels.map(function(s){
+      return s.tomselect ? s.tomselect.getValue() : s.value;
+    }).filter(Boolean);
     allSels.forEach(function(s){
-      var myVal = s.value;
-      Array.from(s.options).forEach(function(opt){
-        if(!opt.value) return;
-        opt.disabled = (used.includes(opt.value) && opt.value !== myVal);
-      });
+      var myVal = s.tomselect ? s.tomselect.getValue() : s.value;
+      if (s.tomselect) {
+        // Enable all first, then disable used (except own selection)
+        Object.keys(s.tomselect.options).forEach(function(v){
+          if (!v) return;
+          if (used.includes(v) && v !== myVal) {
+            s.tomselect.updateOption(v, Object.assign({}, s.tomselect.options[v], {disabled: true}));
+          } else {
+            s.tomselect.updateOption(v, Object.assign({}, s.tomselect.options[v], {disabled: false}));
+          }
+        });
+        s.tomselect.refreshOptions(false);
+      } else {
+        Array.from(s.options).forEach(function(opt){
+          if (!opt.value) return;
+          opt.disabled = (used.includes(opt.value) && opt.value !== myVal);
+        });
+      }
     });
   }, 0);
 }
@@ -10801,32 +10885,59 @@ function addScrapLine() {
   var div = document.createElement('div');
   div.id = 'scrap_line_'+n;
   div.style.cssText = 'display:grid;grid-template-columns:2fr 1.5fr 1fr 1fr;gap:8px;align-items:center;padding:8px;background:#fff;border:1.5px solid #e2e2e7;border-radius:9px';
-  div.innerHTML = '<select id="scrap_ser_'+n+'" style="'+fs+'" onchange="onScrapLineChange('+n+');refreshScrapOpts()">'
+  div.innerHTML = '<select id="scrap_ser_'+n+'" style="'+fs+'">'
     +tyreOpts+'</select>'
     + '<input type="text" id="scrap_bookval_'+n+'" readonly placeholder="Auto" style="'+fs+';background:#f0f4ff;color:var(--ac);font-weight:700;cursor:not-allowed">'
     + '<input type="number" id="scrap_price_'+n+'" placeholder="Sale price" min="0" style="'+fs+'">'
     + '<div style="display:flex;gap:6px;align-items:center">'
-    + (n>1?'<button onclick="document.getElementById(\'scrap_line_'+n+'\').remove();refreshScrapOpts()" style="background:none;border:none;color:#dc2626;cursor:pointer;font-size:18px;line-height:1">\u2715</button>':'<span style="width:22px"></span>')
+    + (n>1?'<button onclick="document.getElementById(\'scrap_line_'+n+'\').remove();if(document.getElementById(\'scrap_ser_'+n+'\')&&document.getElementById(\'scrap_ser_'+n+'\').tomselect){document.getElementById(\'scrap_ser_'+n+'\').tomselect.destroy();}refreshScrapOpts()" style="background:none;border:none;color:#dc2626;cursor:pointer;font-size:18px;line-height:1">\u2715</button>':'<span style="width:22px"></span>')
     + '</div>';
   wrap.appendChild(div);
+  // Initialise TomSelect for searchable tyre serial dropdown
+  (function(lineN){
+    var sel = document.getElementById('scrap_ser_'+lineN);
+    if (sel && typeof TomSelect !== 'undefined') {
+      new TomSelect(sel, {
+        allowEmptyOption: true,
+        placeholder: 'Select tyre...',
+        maxOptions: 500,
+        highlight: true,
+        onChange: function(val){ onScrapLineChange(lineN); refreshScrapOpts(); }
+      });
+    }
+  })(n);
 }
 
 function onScrapLineChange(n) {
   var sel = document.getElementById('scrap_ser_'+n);
-  var opt = sel.querySelector('option[value="'+sel.value+'"]');
+  var val = sel.tomselect ? sel.tomselect.getValue() : sel.value;
+  var opt = sel.querySelector('option[value="'+val+'"]');
   var bv = document.getElementById('scrap_bookval_'+n);
   if (bv && opt) bv.value = fmtMoney(opt.getAttribute('data-bookval')||0)+'/=';
+  else if (bv && !opt) bv.value = '';
 }
 function refreshScrapOpts() {
   setTimeout(function(){
     var allSels = Array.from(document.querySelectorAll('[id^="scrap_ser_"]'));
-    var used = allSels.map(function(s){ return s.value; }).filter(Boolean);
+    var used = allSels.map(function(s){
+      return s.tomselect ? s.tomselect.getValue() : s.value;
+    }).filter(Boolean);
     allSels.forEach(function(s){
-      var myVal = s.value;
-      Array.from(s.options).forEach(function(opt){
-        if(!opt.value) return;
-        opt.disabled = (used.includes(opt.value) && opt.value !== myVal);
-      });
+      var myVal = s.tomselect ? s.tomselect.getValue() : s.value;
+      if (s.tomselect) {
+        Object.keys(s.tomselect.options).forEach(function(v){
+          if (!v) return;
+          s.tomselect.updateOption(v, Object.assign({}, s.tomselect.options[v], {
+            disabled: used.includes(v) && v !== myVal
+          }));
+        });
+        s.tomselect.refreshOptions(false);
+      } else {
+        Array.from(s.options).forEach(function(opt){
+          if (!opt.value) return;
+          opt.disabled = (used.includes(opt.value) && opt.value !== myVal);
+        });
+      }
     });
   }, 0);
 }
@@ -10883,25 +10994,46 @@ function addRemoveBatLine() {
   var div = document.createElement('div');
   div.id = 'rem_bat_line_'+n;
   div.style.cssText = 'display:grid;grid-template-columns:2fr 1fr 1.5fr 1fr;gap:8px;align-items:center;padding:8px;background:#fff;border:1.5px solid #e2e2e7;border-radius:9px';
-  div.innerHTML = '<select id="rem_bat_ref_'+n+'" onchange="refreshRemBatOpts();_showBatRemWarn('+n+')" style="'+fs+'">'+batOpts+'</select>'
+  div.innerHTML = '<select id="rem_bat_ref_'+n+'" style="'+fs+'">'+batOpts+'</select>'
     + '<select id="rem_bat_cond_'+n+'" style="'+fs+'"><option value="GOOD">GOOD</option><option value="WEAK">WEAK</option><option value="DEAD">DEAD</option></select>'
     + '<select id="rem_bat_rsn_'+n+'" style="'+fs+'"><option value="">Select reason...</option><option value="ROTATION">ROTATION</option><option value="DAMAGED">DAMAGED</option><option value="END OF LIFE">END OF LIFE</option></select>'
     + '<div style="display:flex;gap:6px;align-items:center">'
     + (n>1?'<button onclick="document.getElementById(\'rem_bat_line_'+n+'\').remove();refreshRemBatOpts()" style="background:none;border:none;color:#dc2626;cursor:pointer;font-size:18px;line-height:1">\u2715</button>':'<span style="width:22px"></span>')
     + '</div>';
   wrap.appendChild(div);
+  // Make battery ref searchable
+  (function(lineN){
+    var sel = document.getElementById('rem_bat_ref_'+lineN);
+    if (sel && typeof TomSelect !== 'undefined') {
+      new TomSelect(sel, {
+        allowEmptyOption: true,
+        placeholder: 'Select battery (FITTED)...',
+        maxOptions: 500,
+        highlight: true,
+        onChange: function(){ refreshRemBatOpts(); _showBatRemWarn(lineN); }
+      });
+    }
+  })(n);
 }
 
 function refreshRemBatOpts(){
   setTimeout(function(){
     var allSels=Array.from(document.querySelectorAll('[id^="rem_bat_ref_"]'));
-    var used=allSels.map(function(s){return s.value;}).filter(Boolean);
+    var used=allSels.map(function(s){ return s.tomselect ? s.tomselect.getValue() : s.value; }).filter(Boolean);
     allSels.forEach(function(s){
-      var myVal=s.value;
-      Array.from(s.options).forEach(function(opt){
-        if(!opt.value) return;
-        opt.disabled=(used.includes(opt.value)&&opt.value!==myVal);
-      });
+      var myVal=s.tomselect ? s.tomselect.getValue() : s.value;
+      if (s.tomselect) {
+        Object.keys(s.tomselect.options).forEach(function(v){
+          if(!v) return;
+          s.tomselect.updateOption(v, Object.assign({},s.tomselect.options[v],{disabled:used.includes(v)&&v!==myVal}));
+        });
+        s.tomselect.refreshOptions(false);
+      } else {
+        Array.from(s.options).forEach(function(opt){
+          if(!opt.value) return;
+          opt.disabled=(used.includes(opt.value)&&opt.value!==myVal);
+        });
+      }
     });
   },0);
 }
@@ -10928,31 +11060,54 @@ function addBatSaleLine() {
   var div = document.createElement('div');
   div.id = 'bat_sale_line_'+n;
   div.style.cssText = 'display:grid;grid-template-columns:2fr 1.5fr 1fr 1fr;gap:8px;align-items:center;padding:8px;background:#fff;border:1.5px solid #e2e2e7;border-radius:9px';
-  div.innerHTML = '<select id="bat_sale_ref_'+n+'" style="'+fs+'" onchange="onBatSaleLineChange('+n+');refreshBatSaleOpts()">'+batOpts+'</select>'
+  div.innerHTML = '<select id="bat_sale_ref_'+n+'" style="'+fs+'">'+batOpts+'</select>'
     + '<input type="text" id="bat_sale_pp_'+n+'" readonly placeholder="Auto" style="'+fs+';background:#f0f4ff;color:var(--ac);font-weight:700;cursor:not-allowed">'
     + '<input type="number" id="bat_sale_price_'+n+'" placeholder="Sale price" min="0" style="'+fs+'">'
     + '<div style="display:flex;gap:6px;align-items:center">'
     + (n>1?'<button onclick="document.getElementById(\'bat_sale_line_'+n+'\').remove();refreshBatSaleOpts()" style="background:none;border:none;color:#dc2626;cursor:pointer;font-size:18px;line-height:1">\u2715</button>':'<span style="width:22px"></span>')
     + '</div>';
   wrap.appendChild(div);
+  // Make battery ref searchable
+  (function(lineN){
+    var sel = document.getElementById('bat_sale_ref_'+lineN);
+    if (sel && typeof TomSelect !== 'undefined') {
+      new TomSelect(sel, {
+        allowEmptyOption: true,
+        placeholder: 'Select battery (IN STORE)...',
+        maxOptions: 500,
+        highlight: true,
+        onChange: function(){ onBatSaleLineChange(lineN); refreshBatSaleOpts(); }
+      });
+    }
+  })(n);
 }
 
 function onBatSaleLineChange(n) {
   var sel = document.getElementById('bat_sale_ref_'+n);
-  var opt = sel.querySelector('option[value="'+sel.value+'"]');
+  var val = sel ? (sel.tomselect ? sel.tomselect.getValue() : sel.value) : '';
+  var opt = sel ? sel.querySelector('option[value="'+val+'"]') : null;
   var pp = document.getElementById('bat_sale_pp_'+n);
   if (pp && opt) pp.value = fmtMoney(opt.getAttribute('data-pp')||0)+'/=';
+  else if (pp && !opt) pp.value = '';
 }
 function refreshBatSaleOpts() {
   setTimeout(function(){
     var allSels=Array.from(document.querySelectorAll('[id^="bat_sale_ref_"]'));
-    var used=allSels.map(function(s){return s.value;}).filter(Boolean);
+    var used=allSels.map(function(s){ return s.tomselect ? s.tomselect.getValue() : s.value; }).filter(Boolean);
     allSels.forEach(function(s){
-      var myVal=s.value;
-      Array.from(s.options).forEach(function(opt){
-        if(!opt.value) return;
-        opt.disabled=(used.includes(opt.value)&&opt.value!==myVal);
-      });
+      var myVal=s.tomselect ? s.tomselect.getValue() : s.value;
+      if (s.tomselect) {
+        Object.keys(s.tomselect.options).forEach(function(v){
+          if(!v) return;
+          s.tomselect.updateOption(v, Object.assign({},s.tomselect.options[v],{disabled:used.includes(v)&&v!==myVal}));
+        });
+        s.tomselect.refreshOptions(false);
+      } else {
+        Array.from(s.options).forEach(function(opt){
+          if(!opt.value) return;
+          opt.disabled=(used.includes(opt.value)&&opt.value!==myVal);
+        });
+      }
     });
   },0);
 }
@@ -10995,8 +11150,9 @@ function addTyrePOLine() {
     + (n>1?'<button onclick="removeTyrePOLine('+n+')" style="background:none;border:none;color:#dc2626;cursor:pointer;font-size:18px;line-height:1;flex-shrink:0">✕</button>':'<span style="width:22px"></span>')
     + '</div>';
   wrap.appendChild(div);
-  // Make supplier dropdown searchable with TomSelect
+  // Make supplier and brand dropdowns searchable with TomSelect
   try { new TomSelect('#tpo_sup_'+n,{placeholder:'Search supplier...',allowEmptyOption:true}); } catch(e){}
+  try { new TomSelect('#tpo_brand_'+n,{placeholder:'Search brand...',allowEmptyOption:true}); } catch(e){}
 }
 
 function calcTyrePOTotal(n) {
@@ -11055,9 +11211,10 @@ function openGRNForm(poNo) {
   _grnLineCount  = 0;
   _grnActivePOs  = [];
 
-  // Populate LPO dropdown - only active LPOs (POs with outstanding qty > 0)
-  var lpoSel = document.getElementById('grn_lpo');
-  lpoSel.innerHTML = '<option value="">Select active LPO...</option>';
+  // Populate LPO searchable combo-box
+  document.getElementById('grn_lpo').value        = '';
+  document.getElementById('grn_lpo_search').value = '';
+  document.getElementById('grn_lpo_list').style.display = 'none';
   var activePOs = (TYRE_POS||[]).filter(function(p){
     var lnoKey = (p.lpoNo||p.poNo||'').toUpperCase();
     var st = (p.status||'').toUpperCase();
@@ -11065,25 +11222,25 @@ function openGRNForm(poNo) {
       && (st==='PAID NOT RECEIVED' || st==='PARTIALLY RECEIVED' || st==='PARTIALLY DELIVERED')
       && /^(PO|PY)-/.test(lnoKey);
   });
-  // Group by LPO No
+  // Group by LPO No, build options array
   var lpoMap = {};
   activePOs.forEach(function(p){
     var lpo = p.lpoNo || p.poNo;
     if (!lpoMap[lpo]) lpoMap[lpo] = [];
     lpoMap[lpo].push(p);
   });
-  Object.keys(lpoMap).forEach(function(lpo){
-    var o = document.createElement('option');
-    o.value = lpo;
+  window._grnLpoOptions = Object.keys(lpoMap).sort().map(function(lpo){
     var pos = lpoMap[lpo];
-    var totalOut = pos.reduce(function(s,p){ return s + Number(p.qtyOutstanding||0); }, 0);
-    o.textContent = lpo + ' - ' + pos.map(function(p){ return p.brand+' '+p.tyreSize; }).join(', ') + ' (Outstanding: '+totalOut+')';
-    lpoSel.appendChild(o);
+    var totalOut = pos.reduce(function(s,p){ return s+Number(p.qtyOutstanding||0); }, 0);
+    var label = lpo + ' — ' + pos.map(function(p){ return p.brand+' '+p.tyreSize; }).join(', ') + ' (Qty: '+totalOut+')';
+    var supplier = pos[0].supplier || '';
+    return { value: lpo, label: label, supplier: supplier, searchText: (lpo+' '+supplier+' '+pos.map(function(p){return p.brand+' '+p.tyreSize;}).join(' ')).toLowerCase() };
   });
+  window._grnLpoHighlight = -1;
   if (poNo) {
-    // Find LPO from PO number
+    // Find LPO from PO number and pre-select
     var po = (TYRE_POS||[]).find(function(p){ return p.poNo === poNo; });
-    if (po) { lpoSel.value = po.lpoNo || po.poNo; onGRNLPOChange(); }
+    if (po) { _grnLpoSelect(po.lpoNo || po.poNo); }
   }
   addGRNLine(); // start with one line
 }
@@ -11092,7 +11249,7 @@ var _grnLineCount = 0;
 var _grnActivePOs = []; // POs for selected LPO
 
 function onGRNLPOChange() {
-  var lpo = document.getElementById('grn_lpo').value;
+  var lpo = (document.getElementById('grn_lpo')||{}).value||'';
   _grnActivePOs = (TYRE_POS||[]).filter(function(p){
     return (p.lpoNo || p.poNo) === lpo && Number(p.qtyOutstanding||0) > 0;
   });
@@ -11107,42 +11264,199 @@ function onGRNLPOChange() {
     if (supEl) supEl.value = '';
   }
   // Update brand/size dropdowns in all existing lines
-  document.getElementById('grn_lines_wrap').querySelectorAll('[id^="grn_brand_"]').forEach(function(sel){
-    var n = sel.id.replace('grn_brand_','');
+  document.getElementById('grn_lines_wrap').querySelectorAll('[id^="grn_brand_hidden_"]').forEach(function(el){
+    var n = el.id.replace('grn_brand_hidden_','');
     updateGRNLineBrands(n);
   });
   updateGRNSummary();
 }
 
+// ── LPO searchable combo-box helpers ────────────────────────────────────────
+function _grnLpoRenderList(opts) {
+  var list = document.getElementById('grn_lpo_list');
+  if (!list) return;
+  if (!opts.length) {
+    list.innerHTML = '<div style="padding:10px 14px;color:#94a3b8;font-size:12px">No matching LPOs</div>';
+    list.style.display = 'block';
+    return;
+  }
+  list.innerHTML = opts.map(function(o, i) {
+    var parts = o.label.split(' — ');
+    var lpoNum = parts[0];
+    var detail = parts.slice(1).join(' — ');
+    return '<div class="_grn-lpo-item" data-idx="'+i+'" data-val="'+esc(o.value)+'"'
+      + ' style="padding:9px 13px;cursor:pointer;border-bottom:1px solid #f0f4ff;font-size:12px"'
+      + ' onmousedown="_grnLpoSelect(\''+esc(o.value)+'\')"'
+      + ' onmouseover="document.querySelectorAll(\'._grn-lpo-item\').forEach(function(x,j){x.style.background=j==='+i+'?\'#eef2ff\':\'\';}); window._grnLpoHighlight='+i+'">'
+      + '<div style="font-weight:700;color:#0a2d6e;font-family:monospace">'+esc(lpoNum)+'</div>'
+      + '<div style="color:#64748b;margin-top:1px">'+esc(detail)+'</div>'
+      + '</div>';
+  }).join('');
+  list.style.display = 'block';
+  window._grnLpoHighlight = -1;
+}
+function _grnLpoOpen() {
+  _grnLpoFilter(document.getElementById('grn_lpo_search').value);
+}
+function _grnLpoFilter(q) {
+  var opts = window._grnLpoOptions || [];
+  var t = (q||'').toLowerCase().trim();
+  var filtered = t ? opts.filter(function(o){ return o.searchText.indexOf(t) !== -1; }) : opts;
+  _grnLpoRenderList(filtered);
+  window._grnLpoFiltered = filtered;
+}
+function _grnLpoSelect(val) {
+  var opts = window._grnLpoOptions || [];
+  var opt = opts.find(function(o){ return o.value === val; });
+  var searchEl = document.getElementById('grn_lpo_search');
+  var hiddenEl = document.getElementById('grn_lpo');
+  var list     = document.getElementById('grn_lpo_list');
+  if (opt) {
+    hiddenEl.value  = opt.value;
+    searchEl.value  = opt.value; // show just the LPO number in the input
+    searchEl.style.borderColor = 'var(--ac)';
+  } else {
+    hiddenEl.value  = '';
+    searchEl.value  = '';
+    searchEl.style.borderColor = 'var(--br)';
+  }
+  if (list) list.style.display = 'none';
+  window._grnLpoHighlight = -1;
+  onGRNLPOChange();
+}
+function _grnLpoKey(e) {
+  var list     = document.getElementById('grn_lpo_list');
+  var filtered = window._grnLpoFiltered || window._grnLpoOptions || [];
+  var items    = list ? list.querySelectorAll('._grn-lpo-item') : [];
+  var h = window._grnLpoHighlight || -1;
+  if (e.key === 'ArrowDown') {
+    e.preventDefault();
+    h = Math.min(h + 1, filtered.length - 1);
+    items.forEach(function(x, j){ x.style.background = j===h ? '#eef2ff' : ''; });
+    window._grnLpoHighlight = h;
+    if (items[h]) items[h].scrollIntoView({ block:'nearest' });
+  } else if (e.key === 'ArrowUp') {
+    e.preventDefault();
+    h = Math.max(h - 1, 0);
+    items.forEach(function(x, j){ x.style.background = j===h ? '#eef2ff' : ''; });
+    window._grnLpoHighlight = h;
+    if (items[h]) items[h].scrollIntoView({ block:'nearest' });
+  } else if (e.key === 'Enter') {
+    e.preventDefault();
+    if (h >= 0 && filtered[h]) _grnLpoSelect(filtered[h].value);
+  } else if (e.key === 'Escape') {
+    if (list) list.style.display = 'none';
+  }
+}
+// Close dropdown when clicking outside
+document.addEventListener('mousedown', function(e) {
+  var wrap = document.getElementById('grn_lpo_wrap');
+  if (wrap && !wrap.contains(e.target)) {
+    var list = document.getElementById('grn_lpo_list');
+    if (list) list.style.display = 'none';
+    // If nothing was selected, clear the text too
+    var hidden = document.getElementById('grn_lpo');
+    var search = document.getElementById('grn_lpo_search');
+    if (hidden && search && !hidden.value) search.value = '';
+  }
+});
+// ────────────────────────────────────────────────────────────────────────────
+// Brand searchable combo-box (per line, keyed by n)
+window._grnBrandOpts      = {};
+window._grnBrandFiltered  = {};
+window._grnBrandHighlight = {};
+
+function _grnBrandRenderList(n, opts) {
+  var list = document.getElementById('grn_brand_list_'+n);
+  if (!list) return;
+  if (!opts || !opts.length) { list.style.display = 'none'; return; }
+  list.innerHTML = opts.map(function(b) {
+    return '<div class="_grn-brand-item" data-val="'+esc(b)+'" onmousedown="event.preventDefault();_grnBrandSelect('+n+',\''+b.replace(/'/g,"\\'")+'\')" style="padding:8px 12px;cursor:pointer;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+esc(b)+'</div>';
+  }).join('');
+  list.style.display = 'block';
+  window._grnBrandHighlight[n] = -1;
+}
+
+function _grnBrandOpen(n) {
+  _grnBrandFilter(n, (document.getElementById('grn_brand_'+n)||{}).value||'');
+}
+
+function _grnBrandFilter(n, q) {
+  var brands = window._grnBrandOpts[n] || [];
+  var filtered = q ? brands.filter(function(b){ return b.toLowerCase().indexOf(q.toLowerCase()) >= 0; }) : brands;
+  window._grnBrandFiltered[n] = filtered;
+  _grnBrandRenderList(n, filtered);
+}
+
+function _grnBrandSelect(n, val, silent) {
+  var hidden = document.getElementById('grn_brand_hidden_'+n);
+  var search = document.getElementById('grn_brand_'+n);
+  var list   = document.getElementById('grn_brand_list_'+n);
+  if (hidden) hidden.value = val || '';
+  if (search) search.value = val || '';
+  if (list)   list.style.display = 'none';
+  window._grnBrandHighlight[n] = -1;
+  if (!silent && val) updateGRNLineSizes(n);
+}
+
+function _grnBrandKey(e, n) {
+  var filtered = window._grnBrandFiltered[n] || window._grnBrandOpts[n] || [];
+  var list  = document.getElementById('grn_brand_list_'+n);
+  var items = list ? list.querySelectorAll('._grn-brand-item') : [];
+  var h = window._grnBrandHighlight[n] !== undefined ? window._grnBrandHighlight[n] : -1;
+  if (e.key === 'ArrowDown') {
+    e.preventDefault();
+    h = Math.min(h + 1, filtered.length - 1);
+    items.forEach(function(x, j){ x.style.background = j===h ? '#eef2ff' : ''; });
+    window._grnBrandHighlight[n] = h;
+    if (items[h]) items[h].scrollIntoView({ block:'nearest' });
+  } else if (e.key === 'ArrowUp') {
+    e.preventDefault();
+    h = Math.max(h - 1, 0);
+    items.forEach(function(x, j){ x.style.background = j===h ? '#eef2ff' : ''; });
+    window._grnBrandHighlight[n] = h;
+    if (items[h]) items[h].scrollIntoView({ block:'nearest' });
+  } else if (e.key === 'Enter') {
+    e.preventDefault();
+    if (h >= 0 && filtered[h]) _grnBrandSelect(n, filtered[h]);
+  } else if (e.key === 'Escape') {
+    if (list) list.style.display = 'none';
+  }
+}
+
+// Close brand dropdowns when clicking outside
+document.addEventListener('mousedown', function(e) {
+  document.querySelectorAll('[id^="grn_brand_wrap_"]').forEach(function(wrap) {
+    if (!wrap.contains(e.target)) {
+      var n = wrap.id.replace('grn_brand_wrap_','');
+      var list   = document.getElementById('grn_brand_list_'+n);
+      var hidden = document.getElementById('grn_brand_hidden_'+n);
+      var search = document.getElementById('grn_brand_'+n);
+      if (list) list.style.display = 'none';
+      // If nothing selected, clear text field
+      if (hidden && search && !hidden.value) search.value = '';
+    }
+  });
+});
+// ────────────────────────────────────────────────────────────────────────────
+
+window._grnBrandOpts = window._grnBrandOpts || {};
 function updateGRNLineBrands(n) {
-  var brandSel = document.getElementById('grn_brand_'+n);
-  var sizeSel  = document.getElementById('grn_size_'+n);
-  if (!brandSel) return;
-  var curBrand = brandSel.value;
-  brandSel.innerHTML = '<option value="">Select brand...</option>';
   var _master=['SAILUN','LINGLONG','BLACKLION','CHENGSHAN','DOUBLE COIN','BRIDGESTONE','MICHELIN','SUMITOMO','TRIANGLE','OVATION','GOODRIDE','JINYU','MRF','AGATE','DOVROAD','ENERGIAN','FIREMAX','GT RADIAL','LANVIGATOR','INNING','SAFCESS','LONGMARCH','MIRAGE','TECHKING','WESTLAKE','ROADLUX','AUSTONE','PIRELLI'];
   var _poBrands=[...new Set(_grnActivePOs.map(function(p){return p.brand||'';}).filter(Boolean))];
   var brands=[..._master];
   _poBrands.forEach(function(b){if(brands.indexOf(b)<0)brands.push(b);});
-  brands.forEach(function(b){
-    var o = document.createElement('option');
-    o.value = b; o.textContent = b;
-    brandSel.appendChild(o);
-  });
-  // Auto-select: if LPO has only one brand, select it automatically
-  if (_poBrands.length === 1) {
-    brandSel.value = _poBrands[0];
-  } else if (curBrand && brands.includes(curBrand)) {
-    brandSel.value = curBrand;
-  }
-  updateGRNLineSizes(n);
+  window._grnBrandOpts[n] = brands;
+  // Auto-select if LPO has exactly one brand
+  var curVal = (document.getElementById('grn_brand_hidden_'+n)||{}).value||'';
+  var autoVal = _poBrands.length===1 ? _poBrands[0] : (curVal && brands.indexOf(curVal)>=0 ? curVal : '');
+  _grnBrandSelect(n, autoVal, true);
 }
 
 function updateGRNLineSizes(n) {
-  var brandSel = document.getElementById('grn_brand_'+n);
   var sizeSel  = document.getElementById('grn_size_'+n);
   if (!sizeSel) return;
-  var brand = brandSel ? brandSel.value : '';
+  var brand = (document.getElementById('grn_brand_hidden_'+n)||{}).value||'';
   var curSize = sizeSel.value;
   sizeSel.innerHTML = '<option value="">Select size...</option>';
   var matchPOs = _grnActivePOs.filter(function(p){ return !brand || p.brand === brand; });
@@ -11178,7 +11492,12 @@ function addGRNLine() {
   var div = document.createElement('div');
   div.id = 'grn_line_'+n;
   div.style.cssText = 'display:grid;grid-template-columns:1fr 1fr 180px 1fr;gap:8px;align-items:center;padding:8px;background:#fff;border:1.5px solid #e2e2e7;border-radius:9px';
-  div.innerHTML = '<select id="grn_brand_'+n+'" style="'+fs+'" onchange="updateGRNLineSizes('+n+')"><option value="">Select brand...</option></select>'
+  div.innerHTML = '<div style="position:relative" id="grn_brand_wrap_'+n+'">'
+    + '<input type="hidden" id="grn_brand_hidden_'+n+'">'
+    + '<input type="text" id="grn_brand_'+n+'" autocomplete="off" spellcheck="false" placeholder="Search brand..." style="'+fs+';padding-right:26px" oninput="_grnBrandFilter('+n+',this.value)" onfocus="_grnBrandOpen('+n+')" onkeydown="_grnBrandKey(event,'+n+')">'
+    + '<span style="position:absolute;right:7px;top:50%;transform:translateY(-50%);color:#94a3b8;pointer-events:none;font-size:11px">▾</span>'
+    + '<div id="grn_brand_list_'+n+'" style="display:none;position:absolute;top:100%;left:0;right:0;background:#fff;border:1.5px solid var(--ac);border-radius:8px;box-shadow:0 6px 24px rgba(0,0,0,.13);z-index:9999;max-height:180px;overflow-y:auto;margin-top:2px"></div>'
+    + '</div>'
     + '<select id="grn_size_'+n+'" style="'+fs+'"><option value="">Select size...</option></select>'
     + '<input type="text" id="grn_serial_'+n+'" placeholder="e.g. BS-2024-001" style="'+fs+';text-transform:uppercase" oninput="validateGRNSerial('+n+')">'
     + '<div style="display:flex;gap:6px;align-items:center">'
@@ -11240,7 +11559,7 @@ async function saveTyreGRN() {
   var serials = [];
   for (var i=0; i<lineDivs.length; i++) {
     var n = lineDivs[i].id.replace('grn_line_','');
-    var brand  = (document.getElementById('grn_brand_'+n)||{}).value||'';
+    var brand  = (document.getElementById('grn_brand_hidden_'+n)||{}).value||'';
     var size   = (document.getElementById('grn_size_'+n)||{}).value||'';
     var serial = ((document.getElementById('grn_serial_'+n)||{}).value||'').toUpperCase();
     var note   = (document.getElementById('grn_note_'+n)||{}).value||'';
@@ -12472,7 +12791,7 @@ function _showBatRemWarn(n) {
   var existing = document.getElementById(bannerId);
   if (existing) existing.remove();
   var refEl = document.getElementById('rem_bat_ref_' + n);
-  var batRef = refEl ? refEl.value : '';
+  var batRef = refEl ? (refEl.tomselect ? refEl.tomselect.getValue() : refEl.value) : '';
   if (!batRef) return;
   var w = _checkBatRemoveWarning(batRef);
   if (!w.found) return;
@@ -21450,7 +21769,21 @@ history.pushState(null, '', window.location.href);
         <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:14px">
           <div class="formgroup"><label>Date Received *</label><input type="date" id="grn_date"></div>
           <div class="formgroup"><label>Received By *</label><input type="text" id="grn_rcvby" placeholder="Staff name..." style="text-transform:uppercase"></div>
-          <div class="formgroup"><label>LPO No *</label><select id="grn_lpo" onchange="onGRNLPOChange()"><option value="">Select active LPO...</option></select></div>
+          <div class="formgroup" style="position:relative" id="grn_lpo_wrap">
+            <label>LPO No *</label>
+            <!-- hidden value holder (read by save logic) -->
+            <input type="hidden" id="grn_lpo">
+            <!-- visible search input -->
+            <input type="text" id="grn_lpo_search" autocomplete="off" spellcheck="false"
+              placeholder="Search LPO..."
+              style="width:100%;box-sizing:border-box;border:1.5px solid var(--br);border-radius:8px;padding:8px 30px 8px 10px;font-size:13px;color:var(--tx);background:#fff;outline:none"
+              oninput="_grnLpoFilter(this.value)"
+              onfocus="_grnLpoOpen()"
+              onkeydown="_grnLpoKey(event)">
+            <span style="position:absolute;right:9px;top:30px;color:#94a3b8;pointer-events:none;font-size:12px">▾</span>
+            <!-- dropdown list -->
+            <div id="grn_lpo_list" style="display:none;position:absolute;top:100%;left:0;right:0;background:#fff;border:1.5px solid var(--ac);border-radius:8px;box-shadow:0 6px 24px rgba(0,0,0,.13);z-index:9999;max-height:220px;overflow-y:auto;margin-top:2px"></div>
+          </div>
           <div class="formgroup"><label>Supplier</label><input type="text" id="grn_supplier" readonly style="background:#f5f5f7;color:var(--ac);font-weight:600;cursor:not-allowed" placeholder="Auto from LPO"></div>
           <div class="formgroup"><label>LPO Info</label><input type="text" id="grn_lpo_info" readonly style="background:#f5f5f7;color:var(--t2);font-size:12px;cursor:not-allowed" placeholder="Select LPO first..."></div>
         </div>
