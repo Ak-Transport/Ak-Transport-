@@ -4014,9 +4014,15 @@ function fmtDate(d) {
 function _parseDateLocal(s) {
   if (!s) return new Date(NaN);
   s = String(s);
-  // Plain YYYY-MM-DD
+  // Plain YYYY-MM-DD — parse as local midnight (replace - with / to avoid UTC interpretation)
   if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return new Date(s.replace(/-/g, '/'));
-  // ISO string with time component — extract the date part and parse as local
+  // ISO string with time component (e.g. "2026-11-10T21:00:00.000Z" from Firebase/Sheets UTC storage)
+  // Parse as a real Date (JS converts UTC→local) then extract LOCAL date components
+  if (/^\d{4}-\d{2}-\d{2}T/.test(s)) {
+    var utcDt = new Date(s);
+    if (!isNaN(utcDt.getTime())) return new Date(utcDt.getFullYear()+'/'+String(utcDt.getMonth()+1).padStart(2,'0')+'/'+String(utcDt.getDate()).padStart(2,'0'));
+  }
+  // Other date strings with date portion — extract and parse as local
   var m = s.match(/(\d{4})-(\d{2})-(\d{2})/);
   if (m) return new Date(m[1]+'/'+m[2]+'/'+m[3]);
   // Locale string like "Wed Oct 07 2026 00:00:00 GMT+0300 (Saa za Afrika Mashariki)"
@@ -4076,9 +4082,11 @@ function _normLpo(s) {
 function _findLpoDuplicate(lpoVal, excludePoNo) {
   var norm = _normLpo(lpoVal);
   if (!norm) return null;
+  // excludePoNo can be a string or an array of strings
+  var excludeList = excludePoNo ? (Array.isArray(excludePoNo) ? excludePoNo : [excludePoNo]) : [];
   var allPos = (TYRE_POS||[]).concat(BAT_POS||[]);
   return allPos.find(function(p) {
-    if (excludePoNo && (p.poNo||'') === excludePoNo) return false;
+    if (excludeList.length && excludeList.indexOf(p.poNo||'') !== -1) return false;
     return _normLpo(p.lpoNo||'') === norm;
   }) || null;
 }
@@ -7743,8 +7751,13 @@ function _doOpenBpoBulkEdit(rows) {
         + (isPNR ? '<div style="font-size:10px;color:#b45309;margin-top:3px">\u26a0 All fields required for PNR</div>' : '');
     }
     var badge = '<span style="font-size:10px;font-weight:600;background:'+(locked?'#dcfce7':isPNR?'#dbeafe':'#fee2e2')+';color:'+(locked?'#15803d':isPNR?'#1d4ed8':'#b91c1c')+';padding:2px 8px;border-radius:20px;margin-left:6px">'+(r.status||'NOT PAID')+'</span>';
+    var lbl = function(t,req){ return '<label style="font-size:11px;font-weight:600;color:#555;display:block;margin-bottom:4px">'+t+(req?' <span style="color:#dc2626">*</span>':'')+'</label>'; };
     html += '<div style="background:#f8f9fc;border:1.5px solid #e2e2e7;border-radius:10px;padding:14px;margin-bottom:12px" id="bpobe_card_'+r.id+'">'
       + '<div style="font-size:11px;font-weight:700;color:#1e3a5f;text-transform:uppercase;margin-bottom:10px">\uD83D\uDD0B '+(r.poNo||r.reqNo||'')+(r.brand?' \u2014 '+r.brand:'')+badge+'</div>'
+      + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">'
+      + '<div>'+lbl('Supplier',true)+'<select id="bpobe_sup_'+r.id+'" '+(locked?'disabled':'')+' style="'+(locked?fsL:fs)+'">'+suppOpts.replace('<option value="'+r.supplier+'"','<option value="'+r.supplier+'" selected')+'</select></div>'
+      + '<div id="bpobe_lpo_wrap_'+r.id+'">'+lbl('LPO No',isPNR)+'<input id="bpobe_lpo_'+r.id+'" value="'+(r.lpoNo||'')+'" '+(locked?'readonly':'')+' style="'+(locked?fsL:fs)+';text-transform:uppercase" placeholder="PO- or PY-..." oninput="validateLPOEdit(this,\''+r.id+'\')" onblur="validateLPOEdit(this,\''+r.id+'\')"></div>'
+      + '</div>'
       + '<div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:10px">'
       + '<div><label style="font-size:11px;font-weight:600;color:#555;display:block;margin-bottom:4px">Brand <span id="bpobe_req_brand_'+r.id+'" style="color:#dc2626;display:'+(isPNR?'inline':'none')+'">*</span></label>'
       + _mkSelect('bpobe_brand_'+r.id,['AOKLY','DISCOVERY','ELEPHANT','APEX DRIVE','WENON','BOSCH','AMARON','VATRA','CHLORIDE EXIDE','INDEX','RHINO','BUFFALO','EVERSTART','KOJEAN','S.T POWER','EURONET'],(r.brand||''),locked,(locked?fsL:fs))+'</div>'
@@ -7754,10 +7767,6 @@ function _doOpenBpoBulkEdit(rows) {
       + '<input type="number" id="bpobe_qty_'+r.id+'" value="'+(r.qtyOrdered||'')+'" min="1" '+(locked?'readonly':'')+' style="'+(locked?fsL:fs)+'" placeholder="0"></div>'
       + '<div><label style="font-size:11px;font-weight:600;color:#555;display:block;margin-bottom:4px">Unit Price <span id="bpobe_req_price_'+r.id+'" style="color:#dc2626;display:'+(isPNR?'inline':'none')+'">*</span></label>'
       + '<input type="number" id="bpobe_price_'+r.id+'" value="'+(r.unitPrice||'')+'" min="0" '+(locked?'readonly':'')+' style="'+(locked?fsL:fs)+'" placeholder="0.00"></div>'
-      + '<div><label style="font-size:11px;font-weight:600;color:#555;display:block;margin-bottom:4px">Supplier <span id="bpobe_req_sup_'+r.id+'" style="color:#dc2626;display:'+(isPNR?'inline':'none')+'">*</span></label>'
-      + '<select id="bpobe_sup_'+r.id+'" '+(locked?'disabled':'')+' style="'+(locked?fsL:fs)+'">'+suppOpts.replace('<option value="'+r.supplier+'"','<option value="'+r.supplier+'" selected')+'</select></div>'
-      + '<div><label style="font-size:11px;font-weight:600;color:#555;display:block;margin-bottom:4px">LPO No <span id="bpobe_req_lpo_'+r.id+'" style="color:#dc2626;display:'+(isPNR?'inline':'none')+'">*</span></label>'
-      + '<input id="bpobe_lpo_'+r.id+'" value="'+(r.lpoNo||'')+'" style="'+fs+';text-transform:uppercase" placeholder="PO- or PY-..." oninput="validateLPOEdit(this,\''+r.id+'\')" onblur="validateLPOEdit(this,\''+r.id+'\')"></div>'
       + '<div><label style="font-size:11px;font-weight:600;color:#555;display:block;margin-bottom:4px">Status</label>'
       + statusField+'</div>'
       + '<div><label style="font-size:11px;font-weight:600;color:#555;display:block;margin-bottom:4px">Requested By</label>'
@@ -7774,10 +7783,16 @@ function onBpobeStatusChange(rid) {
   if (!sel) return;
   var isPNR = sel.value === 'PAID NOT RECEIVED';
   // Show/hide required asterisks
-  ['brand','size','qty','price','sup','lpo'].forEach(function(f){
+  ['brand','size','qty','price'].forEach(function(f){
     var el = document.getElementById('bpobe_req_'+f+'_'+rid);
     if (el) el.style.display = isPNR ? 'inline' : 'none';
   });
+  // Update LPO label required asterisk in header row
+  var lpoWrap = document.getElementById('bpobe_lpo_wrap_'+rid);
+  if (lpoWrap) {
+    var lbl = lpoWrap.querySelector('label');
+    if (lbl) lbl.innerHTML = 'LPO No' + (isPNR ? ' <span style="color:#dc2626">*</span>' : '');
+  }
   // Show warning note
   var card = document.getElementById('bpobe_card_'+rid);
   if (card) {
@@ -7799,7 +7814,8 @@ async function saveBpoBulkEdit() {
   var btn = document.getElementById('bpo_bulk_save_btn');
   if(btn){btn.disabled=true;btn.textContent='Saving...';}
   var saved=0, failed=0;
-  var _bpoSeenLpos = []; // track LPOs seen in this edit session for intra-form duplicate detection
+  // All poNos in this edit session — LPO shared across these is legitimate (one LPO can cover multiple lines)
+  var _bpoSessionPoNos = rows.map(function(r){ return r.poNo||''; });
   for (var i=0;i<rows.length;i++) {
     var r=rows[i];
     var curStat = (r.status||'NOT PAID').toUpperCase();
@@ -7826,14 +7842,10 @@ async function saveBpoBulkEdit() {
       if (!supplier) { toast(r.poNo+': Supplier is required for PAID NOT RECEIVED','er'); if(btn){btn.disabled=false;btn.textContent='\uD83D\uDCBE Save Changes';} return; }
       if (!lpoNo || !/^(PO|PY)-/i.test(lpoNo)) { toast(r.poNo+': Valid LPO No (PO- or PY-) required for PAID NOT RECEIVED','er'); if(btn){btn.disabled=false;btn.textContent='\uD83D\uDCBE Save Changes';} return; }
     }
-    // LPO uniqueness check (exclude own record when editing)
+    // LPO uniqueness check \u2014 exclude all records in this session (shared LPO across cards is valid)
     if (lpoNo) {
-      var _bpoEditDup = _findLpoDuplicate(lpoNo, r.poNo);
+      var _bpoEditDup = _findLpoDuplicate(lpoNo, _bpoSessionPoNos);
       if (_bpoEditDup) { toast(r.poNo+': LPO No "'+lpoNo+'" already exists ('+(_bpoEditDup.poNo||'')+')','er'); if(btn){btn.disabled=false;btn.textContent='\uD83D\uDCBE Save Changes';} return; }
-      if (_bpoSeenLpos.indexOf(_normLpo(lpoNo)) !== -1) {
-        toast(r.poNo+': LPO No "'+lpoNo+'" is used more than once in this form','er'); if(btn){btn.disabled=false;btn.textContent='\uD83D\uDCBE Save Changes';} return;
-      }
-      _bpoSeenLpos.push(_normLpo(lpoNo));
     }
     var updated = Object.assign({},r,{
       status:newStatus, brand:brand, capacity:size, size:size,
@@ -10099,6 +10111,12 @@ function printSpareMove(id) {
 
 // -- FORM OPENERS --
 // -- BATTERY FORM FUNCTIONS --
+function onBatPOStatusChange() {
+  var status = document.getElementById('bpo_status').value;
+  var isNpOh = status === 'NOT PAID' || status === 'ON HOLD';
+  var lpoLbl = document.getElementById('bpo_lpo_lbl');
+  if (lpoLbl) lpoLbl.innerHTML = 'LPO No' + (isNpOh ? '' : ' <span style="color:#dc2626">*</span>');
+}
 function openBatPOForm() {
   if (!can('battery_create')) { toast('No permission to create battery requests', 'er'); return; }
   var modal = document.getElementById('batPOmodal');
@@ -10110,6 +10128,21 @@ function openBatPOForm() {
   document.getElementById('bpo_reqby').value = CURRENT_USER ? CURRENT_USER.name||CURRENT_USER.username : '';
   document.getElementById('bpo_expdelivery').value = '';
   document.getElementById('bpo_status').value = 'NOT PAID';
+  var lpoEl = document.getElementById('bpo_lpo'); if (lpoEl) lpoEl.value = '';
+  var lpoLbl = document.getElementById('bpo_lpo_lbl'); if (lpoLbl) lpoLbl.textContent = 'LPO No';
+  // Populate supplier dropdown
+  var suppEl = document.getElementById('bpo_supplier');
+  if (suppEl) {
+    var suppOpts = '<option value="">Select supplier...</option>'
+      + (SUPPLIERS||[]).filter(function(s){return s.status!=='INACTIVE';}).map(function(s){
+          return '<option value="'+s.name+'">'+s.name+'</option>';}).join('');
+    suppEl.innerHTML = suppOpts; suppEl.value = '';
+    if (!suppEl.tomselect) {
+      try { new TomSelect('#bpo_supplier',{placeholder:'Search supplier...',allowEmptyOption:true,create:false}); } catch(e){}
+    } else {
+      try { suppEl.tomselect.clear(); suppEl.tomselect.clearOptions(); (SUPPLIERS||[]).filter(function(s){return s.status!=='INACTIVE';}).forEach(function(s){suppEl.tomselect.addOption({value:s.name,text:s.name});}); suppEl.tomselect.refreshOptions(false); } catch(e){}
+    }
+  }
   var wrap = document.getElementById('bpo_lines_wrap');
   if (wrap) wrap.innerHTML = '';
   _bpoLineCount = 0;
@@ -10121,26 +10154,20 @@ function addBatPOLine() {
   var wrap = document.getElementById('bpo_lines_wrap');
   if (!wrap) return;
   var fs = 'background:#fff;border:1.5px solid #e2e2e7;border-radius:8px;padding:9px 10px;font-size:13px;width:100%;box-sizing:border-box;outline:none;color:var(--tx)';
-  var suppOpts = '<option value="">Select supplier...</option>'
-    + (SUPPLIERS||[]).filter(function(s){return s.status!=='INACTIVE';}).map(function(s){
-        return '<option value="'+s.name+'">'+s.name+'</option>';}).join('');
   var div = document.createElement('div');
   div.id = 'bpo_line_'+n;
-  div.style.cssText = 'display:grid;grid-template-columns:2fr 1fr 90px 80px 120px 110px 100px 1fr;gap:8px;align-items:center;padding:8px;background:#fff;border:1.5px solid #e2e2e7;border-radius:9px';
-  div.innerHTML = '<select id="bpo_sup_'+n+'" style="'+fs+'">'+suppOpts+'</select>'
-    + '<select id="bpo_brand_'+n+'" style="'+fs+'"><option value="">Select brand...</option><option value="AOKLY">AOKLY</option><option value="DISCOVERY">DISCOVERY</option><option value="ELEPHANT">ELEPHANT</option><option value="APEX DRIVE">APEX DRIVE</option><option value="WENON">WENON</option><option value="BOSCH">BOSCH</option><option value="AMARON">AMARON</option><option value="VATRA">VATRA</option><option value="CHLORIDE EXIDE">CHLORIDE EXIDE</option><option value="INDEX">INDEX</option><option value="RHINO">RHINO</option><option value="BUFFALO">BUFFALO</option><option value="EVERSTART">EVERSTART</option><option value="KOJEAN">KOJEAN</option><option value="GALAXY">GALAXY</option><option value="S.T POWER">S.T POWER</option><option value="EURONET">EURONET</option></select>'
+  div.style.cssText = 'display:grid;grid-template-columns:1fr 90px 80px 120px 110px 1fr;gap:8px;align-items:center;padding:8px;background:#fff;border:1.5px solid #e2e2e7;border-radius:9px';
+  div.innerHTML = '<select id="bpo_brand_'+n+'" style="'+fs+'"><option value="">Select brand...</option><option value="AOKLY">AOKLY</option><option value="DISCOVERY">DISCOVERY</option><option value="ELEPHANT">ELEPHANT</option><option value="APEX DRIVE">APEX DRIVE</option><option value="WENON">WENON</option><option value="BOSCH">BOSCH</option><option value="AMARON">AMARON</option><option value="VATRA">VATRA</option><option value="CHLORIDE EXIDE">CHLORIDE EXIDE</option><option value="INDEX">INDEX</option><option value="RHINO">RHINO</option><option value="BUFFALO">BUFFALO</option><option value="EVERSTART">EVERSTART</option><option value="KOJEAN">KOJEAN</option><option value="GALAXY">GALAXY</option><option value="S.T POWER">S.T POWER</option><option value="EURONET">EURONET</option></select>'
     + '<select id="bpo_size_'+n+'" style="'+fs+'"><option value="">Select size...</option><option value="N150">N150</option><option value="N180">N180</option><option value="N200">N200</option><option value="N225">N225</option><option value="N165">N165</option></select>'
     + '<input type="number" id="bpo_qty_'+n+'" placeholder="Qty" min="1" style="'+fs+'" oninput="calcBatPOTotal('+n+')">'
     + '<input type="number" id="bpo_price_'+n+'" placeholder="e.g. 150000" min="0" style="'+fs+'" oninput="calcBatPOTotal('+n+')">'
     + '<input type="text" id="bpo_total_'+n+'" readonly placeholder="Total" style="'+fs+';background:#f0f4ff;color:var(--ac);font-weight:700;cursor:not-allowed">'
-    + '<input type="text" id="bpo_lpo_'+n+'" placeholder="PO-/PY-..." style="'+fs+';text-transform:uppercase" oninput="validateLPO(this)" onblur="validateLPO(this)">'
     + '<div style="display:flex;gap:6px;align-items:center">'
     + '<input type="text" id="bpo_notes_'+n+'" placeholder="Notes..." style="'+fs+';flex:1">'
     + (n>1?'<button onclick="removeBatPOLine('+n+')" style="background:none;border:none;color:#dc2626;cursor:pointer;font-size:18px;line-height:1;flex-shrink:0">\u2715</button>':'<span style="width:22px"></span>')
     + '</div>';
   wrap.appendChild(div);
-  // Make supplier and brand searchable
-  try { new TomSelect('#bpo_sup_'+n,{placeholder:'Search supplier...',allowEmptyOption:true,create:false}); } catch(e){}
+  // Make brand searchable
   try { new TomSelect('#bpo_brand_'+n,{placeholder:'Search brand...',allowEmptyOption:true}); } catch(e){}
 }
 function calcBatPOTotal(n) {
@@ -10155,34 +10182,33 @@ function removeBatPOLine(n) {
 async function saveBatPO() {
   var poDate  = document.getElementById('bpo_date').value || todayStr();
   var reqBy   = (document.getElementById('bpo_reqby').value||'').trim().toUpperCase();
+  var suppEl  = document.getElementById('bpo_supplier');
+  var supplier = suppEl ? (suppEl.tomselect ? suppEl.tomselect.getValue() : suppEl.value)||'' : '';
+  supplier = supplier.trim();
+  var lpo     = _normLpo((document.getElementById('bpo_lpo')||{}).value||'');
   var expDel  = document.getElementById('bpo_expdelivery').value || '';
   var status  = document.getElementById('bpo_status').value || 'NOT PAID';
-  if (!reqBy) { toast('Requested By is required','er'); return; }
+  if (!reqBy)    { toast('Requested By is required','er'); return; }
+  if (!supplier) { toast('Supplier is required','er'); return; }
   var isNpOh  = status === 'NOT PAID' || status === 'ON HOLD';
   if (!isNpOh && !expDel) { toast('Expected Delivery Date is required for this status','er'); return; }
+  if (status==='PAID NOT RECEIVED' && (!lpo || !/^(PO|PY)-/i.test(lpo))) { toast('Valid LPO No (PO- or PY-) is mandatory for PAID NOT RECEIVED','er'); return; }
+  if (!isNpOh && !lpo) { toast('LPO No is required for this status','er'); return; }
+  if (lpo) {
+    var _bpoHdrDup = _findLpoDuplicate(lpo, null);
+    if (_bpoHdrDup) { toast('LPO No "'+lpo+'" already exists ('+(_bpoHdrDup.poNo||'')+')','er'); return; }
+  }
   var linesList = [];
   var lineDivs = document.getElementById('bpo_lines_wrap').querySelectorAll('[id^="bpo_line_"]');
   for (var i=0; i<lineDivs.length; i++) {
     var n      = lineDivs[i].id.replace('bpo_line_','');
-    var sup    = (document.getElementById('bpo_sup_'+n)||{}).value||'';
     var brand  = ((document.getElementById('bpo_brand_'+n)||{}).value||'').toUpperCase();
     var size   = (document.getElementById('bpo_size_'+n)||{}).value||'N 150';
     var qty    = Number((document.getElementById('bpo_qty_'+n)||{}).value||0);
     var price  = Number((document.getElementById('bpo_price_'+n)||{}).value||0);
-    var lpo    = _normLpo((document.getElementById('bpo_lpo_'+n)||{}).value||'');
     var notes  = (document.getElementById('bpo_notes_'+n)||{}).value||'';
-    if (!sup||!brand||!size||!qty||!price) { toast('Line '+(i+1)+': Supplier, Brand, Size, Qty and Unit Price are required','er'); return; }
-    if (status==='PAID NOT RECEIVED' && (!lpo || !/^(PO|PY)-/i.test(lpo))) { toast('Line '+(i+1)+': Valid LPO No (PO- or PY-) is mandatory for PAID NOT RECEIVED','er'); return; }
-    if (!isNpOh && !lpo) { toast('Line '+(i+1)+': LPO No is required for this status','er'); return; }
-    if (lpo) {
-      var _bpoDup = _findLpoDuplicate(lpo, null);
-      if (_bpoDup) { toast('Line '+(i+1)+': LPO No "'+lpo+'" already exists ('+(_bpoDup.poNo||'')+')','er'); return; }
-      // Also check earlier lines in this save batch for duplicates within the form
-      if (linesList.some(function(ll){ return _normLpo(ll.lpoNo||'') === lpo; })) {
-        toast('Line '+(i+1)+': LPO No "'+lpo+'" is used more than once in this form','er'); return;
-      }
-    }
-    linesList.push({supplier:sup,brand:brand,capacity:size,
+    if (!brand||!size||!qty||!price) { toast('Line '+(i+1)+': Brand, Size, Qty and Unit Price are required','er'); return; }
+    linesList.push({supplier:supplier,brand:brand,capacity:size,
       qtyOrdered:qty,unitPrice:price,lpoNo:lpo,notes:notes,totalValue:qty*price});
   }
   if (!linesList.length) { toast('Add at least one order line','er'); return; }
@@ -11239,6 +11265,22 @@ function openTyrePOForm() {
   document.getElementById('tpo_date').value = todayStr();
   var reqByEl=document.getElementById('tpo_reqby');if(reqByEl)reqByEl.value='';
   document.getElementById('tpo_expdelivery').value = '';
+  var lpoEl = document.getElementById('tpo_lpo'); if (lpoEl) lpoEl.value = '';
+  // Populate supplier dropdown
+  var suppEl = document.getElementById('tpo_supplier');
+  if (suppEl) {
+    var suppOpts = '<option value="">Select supplier...</option>'
+      + (SUPPLIERS||[]).filter(function(s){return s.status!=='INACTIVE';}).map(function(s){
+          return '<option value="'+s.name+'">'+s.name+'</option>';}).join('');
+    suppEl.innerHTML = suppOpts;
+    suppEl.value = '';
+    // Apply TomSelect if not already applied
+    if (!suppEl.tomselect) {
+      try { new TomSelect('#tpo_supplier',{placeholder:'Search supplier...',allowEmptyOption:true}); } catch(e){}
+    } else {
+      try { suppEl.tomselect.clear(); suppEl.tomselect.clearOptions(); (SUPPLIERS||[]).filter(function(s){return s.status!=='INACTIVE';}).forEach(function(s){suppEl.tomselect.addOption({value:s.name,text:s.name});}); suppEl.tomselect.setValue(''); } catch(e){}
+    }
+  }
   document.getElementById('tpo_lines_wrap').innerHTML = '';
   _tpoLineCount = 0;
   addTyrePOLine();
@@ -11249,28 +11291,22 @@ function addTyrePOLine() {
   var n = ++_tpoLineCount;
   var wrap = document.getElementById('tpo_lines_wrap');
   var fs = 'background:#fff;border:1.5px solid #e2e2e7;border-radius:8px;padding:9px 10px;font-size:13px;width:100%;box-sizing:border-box;outline:none;color:var(--tx)';
-  var suppOpts = '<option value="">Select supplier...</option>'
-    + (SUPPLIERS||[]).filter(function(s){return s.status!=='INACTIVE';}).map(function(s){
-        return '<option value="'+s.name+'">'+s.name+'</option>';}).join('');
   var div = document.createElement('div');
   div.id = 'tpo_line_'+n;
-  div.style.cssText = 'display:grid;grid-template-columns:2fr 1fr 1fr 80px 120px 110px 110px 90px 90px 1fr;gap:8px;align-items:center;padding:8px;background:#fff;border:1.5px solid #e2e2e7;border-radius:9px';
-  div.innerHTML = '<select id="tpo_sup_'+n+'" style="'+fs+'">'+suppOpts+'</select>'
-    + '<select id="tpo_brand_'+n+'" style="'+fs+'"><option value="">Select brand...</option><option value="SAILUN">SAILUN</option><option value="LINGLONG">LINGLONG</option><option value="BLACKLION">BLACKLION</option><option value="CHENGSHAN">CHENGSHAN</option><option value="DOUBLE COIN">DOUBLE COIN</option><option value="BRIDGESTONE">BRIDGESTONE</option><option value="MICHELIN">MICHELIN</option><option value="SUMITOMO">SUMITOMO</option><option value="TRIANGLE">TRIANGLE</option><option value="OVATION">OVATION</option><option value="GOODRIDE">GOODRIDE</option><option value="JINYU">JINYU</option><option value="MRF">MRF</option><option value="AGATE">AGATE</option><option value="DOVROAD">DOVROAD</option><option value="ENERGIAN">ENERGIAN</option><option value="FIREMAX">FIREMAX</option><option value="GT RADIAL">GT RADIAL</option><option value="LANVIGATOR">LANVIGATOR</option><option value="INNING">INNING</option><option value="SAFCESS">SAFCESS</option><option value="LONGMARCH">LONGMARCH</option><option value="MIRAGE">MIRAGE</option><option value="TECHKING">TECHKING</option><option value="WESTLAKE">WESTLAKE</option><option value="ROADLUX">ROADLUX</option><option value="AUSTONE">AUSTONE</option><option value="PIRELLI">PIRELLI</option></select>'
+  div.style.cssText = 'display:grid;grid-template-columns:1fr 1fr 80px 120px 110px 110px 90px 1fr;gap:8px;align-items:center;padding:8px;background:#fff;border:1.5px solid #e2e2e7;border-radius:9px';
+  div.innerHTML = '<select id="tpo_brand_'+n+'" style="'+fs+'"><option value="">Select brand...</option><option value="SAILUN">SAILUN</option><option value="LINGLONG">LINGLONG</option><option value="BLACKLION">BLACKLION</option><option value="CHENGSHAN">CHENGSHAN</option><option value="DOUBLE COIN">DOUBLE COIN</option><option value="BRIDGESTONE">BRIDGESTONE</option><option value="MICHELIN">MICHELIN</option><option value="SUMITOMO">SUMITOMO</option><option value="TRIANGLE">TRIANGLE</option><option value="OVATION">OVATION</option><option value="GOODRIDE">GOODRIDE</option><option value="JINYU">JINYU</option><option value="MRF">MRF</option><option value="AGATE">AGATE</option><option value="DOVROAD">DOVROAD</option><option value="ENERGIAN">ENERGIAN</option><option value="FIREMAX">FIREMAX</option><option value="GT RADIAL">GT RADIAL</option><option value="LANVIGATOR">LANVIGATOR</option><option value="INNING">INNING</option><option value="SAFCESS">SAFCESS</option><option value="LONGMARCH">LONGMARCH</option><option value="MIRAGE">MIRAGE</option><option value="TECHKING">TECHKING</option><option value="WESTLAKE">WESTLAKE</option><option value="ROADLUX">ROADLUX</option><option value="AUSTONE">AUSTONE</option><option value="PIRELLI">PIRELLI</option></select>'
     + '<select id="tpo_size_'+n+'" style="'+fs+'"><option value="">Select size...</option><option value="385/65 R22.5 SUPERSINGLE">385/65 R22.5 SUPERSINGLE</option><option value="385/55 R22.5 SUPERSINGLE TERIOUS">385/55 R22.5 SUPERSINGLE TERIOUS</option><option value="315/80 R22.5 DIFF">315/80 R22.5 DIFF</option><option value="315/80 R22.5 ALL POSITION">315/80 R22.5 ALL POSITION</option><option value="295/80 R22.5 TERIOUS">295/80 R22.5 TERIOUS</option><option value="11R 22.5">11R 22.5</option><option value="12R 22.5">12R 22.5</option></select>'
     + '<input type="number" id="tpo_qty_'+n+'" placeholder="Qty" min="1" style="'+fs+'" oninput="calcTyrePOTotal('+n+')">'
     + '<input type="number" id="tpo_price_'+n+'" placeholder="e.g. 700000" min="0" style="'+fs+'" oninput="calcTyrePOTotal('+n+')">'
     + '<input type="text" id="tpo_total_'+n+'" readonly placeholder="Total" style="'+fs+';background:#f0f4ff;color:var(--ac);font-weight:700;cursor:not-allowed">'
     + '<input type="number" id="tpo_km_'+n+'" value="120000" min="1" style="'+fs+'">'
     + '<select id="tpo_type_'+n+'" style="'+fs+'"><option value="RADIAL">RADIAL</option><option value="BIAS">BIAS</option><option value="RETREADED">RETREADED</option></select>'
-    + '<input type="text" id="tpo_lpo_'+n+'" placeholder="PO-/PY-..." style="'+fs+';text-transform:uppercase" oninput="validateLPO(this)" onblur="validateLPO(this)">'
     + '<div style="display:flex;gap:6px;align-items:center">'
     + '<input type="text" id="tpo_notes_'+n+'" placeholder="Notes..." style="'+fs+';flex:1">'
     + (n>1?'<button onclick="removeTyrePOLine('+n+')" style="background:none;border:none;color:#dc2626;cursor:pointer;font-size:18px;line-height:1;flex-shrink:0">✕</button>':'<span style="width:22px"></span>')
     + '</div>';
   wrap.appendChild(div);
-  // Make supplier and brand dropdowns searchable with TomSelect
-  try { new TomSelect('#tpo_sup_'+n,{placeholder:'Search supplier...',allowEmptyOption:true}); } catch(e){}
+  // Make brand dropdown searchable with TomSelect
   try { new TomSelect('#tpo_brand_'+n,{placeholder:'Search brand...',allowEmptyOption:true}); } catch(e){}
 }
 
@@ -11283,18 +11319,10 @@ function calcTyrePOTotal(n) {
 
 function onTyrePOStatusChange() {
   var status = document.getElementById('tpo_status').value;
-  // Update status options - prevent going back
-  // (handled in renderTyrePOs for existing records)
-  // Update column headers to show which fields are required
-  var lpoHdr   = document.getElementById('tpo_hdr_lpo');
-  var expHdr   = document.getElementById('tpo_hdr_exp');
-  var reqEl    = document.getElementById('tpo_reqby');
-  var isRcv    = status === 'RECEIVED';
-  var isPNR    = status === 'PAID NOT RECEIVED';
-  var isNpOh   = status === 'NOT PAID' || status === 'ON HOLD';
-  // Highlight required fields
-  if (lpoHdr) lpoHdr.innerHTML = 'LPO No' + (isNpOh ? '' : ' <span style="color:#dc2626">*</span>');
-  if (expHdr) expHdr.innerHTML = 'Exp. Delivery' + (isNpOh ? '' : ' <span style="color:#dc2626">*</span>');
+  var isNpOh = status === 'NOT PAID' || status === 'ON HOLD';
+  // Update LPO label in header to show required indicator
+  var lpoLbl = document.getElementById('tpo_lpo_lbl');
+  if (lpoLbl) lpoLbl.innerHTML = 'LPO No' + (isNpOh ? '' : ' <span style="color:#dc2626">*</span>');
 }
 
 function removeTyrePOLine(n) {
@@ -11987,9 +12015,14 @@ function onScrapSerialChange() {
 async function saveTyrePO() {
   var poDate  = document.getElementById('tpo_date').value || todayStr();
   var reqBy   = (document.getElementById('tpo_reqby').value||'').trim().toUpperCase();
+  var suppEl  = document.getElementById('tpo_supplier');
+  var supplier = suppEl ? (suppEl.tomselect ? suppEl.tomselect.getValue() : suppEl.value)||'' : '';
+  supplier = supplier.trim();
+  var lpo     = _normLpo((document.getElementById('tpo_lpo')||{}).value||'');
   var expDel  = document.getElementById('tpo_expdelivery').value || '';
   var status  = document.getElementById('tpo_status').value || 'NOT PAID';
-  if (!reqBy) { toast('Requested By is required','er'); return; }
+  if (!reqBy)    { toast('Requested By is required','er'); return; }
+  if (!supplier) { toast('Supplier is required','er'); return; }
 
   var isRcv  = status === 'RECEIVED';
   var isPNR  = status === 'PAID NOT RECEIVED';
@@ -11997,19 +12030,23 @@ async function saveTyrePO() {
 
   // Validate header fields per status
   if (!isNpOh && !expDel) { toast('Expected Delivery Date is required for this status','er'); return; }
+  if (!isNpOh && !lpo)    { toast('LPO No is required for this status','er'); return; }
+  // Duplicate LPO check
+  if (lpo) {
+    var _tpoHdrDup = _findLpoDuplicate(lpo, null);
+    if (_tpoHdrDup) { toast('LPO No "'+lpo+'" already exists ('+(_tpoHdrDup.poNo||'')+')','er'); return; }
+  }
 
   var lines = [];
   var lineDivs = document.getElementById('tpo_lines_wrap').querySelectorAll('[id^="tpo_line_"]');
   for (var i=0; i<lineDivs.length; i++) {
     var n = lineDivs[i].id.replace('tpo_line_','');
-    var sup   = (document.getElementById('tpo_sup_'+n)||{}).value||'';
     var brand = ((document.getElementById('tpo_brand_'+n)||{}).value||'').toUpperCase();
     var size  = ((document.getElementById('tpo_size_'+n)||{}).value||'').toUpperCase();
     var qty   = Number((document.getElementById('tpo_qty_'+n)||{}).value||0);
     var price = Number((document.getElementById('tpo_price_'+n)||{}).value||0);
     var km    = Number((document.getElementById('tpo_km_'+n)||{}).value||120000);
     var type  = (document.getElementById('tpo_type_'+n)||{}).value||'RADIAL';
-    var lpo   = _normLpo((document.getElementById('tpo_lpo_'+n)||{}).value||'');
     var notes = (document.getElementById('tpo_notes_'+n)||{}).value||'';
 
     // All fields always mandatory
@@ -12017,21 +12054,10 @@ async function saveTyrePO() {
     if (!size)          { toast('Line '+(i+1)+': Size is required','er'); return; }
     if (!qty||qty<=0)   { toast('Line '+(i+1)+': Qty is required','er'); return; }
     if (!price||price<=0){ toast('Line '+(i+1)+': Unit Price is required','er'); return; }
-    if (!sup)           { toast('Line '+(i+1)+': Supplier is required','er'); return; }
-    // LPO required when NOT NOT PAID (i.e. PNR or RECEIVED)
-    if (!isNpOh && !lpo){ toast('Line '+(i+1)+': LPO No is required for this status','er'); return; }
-    // Duplicate LPO check (across both TYRE_POS and BAT_POS, and within this form)
-    if (lpo) {
-      var _tpoDup = _findLpoDuplicate(lpo, null);
-      if (_tpoDup) { toast('Line '+(i+1)+': LPO No "'+lpo+'" already exists ('+(_tpoDup.poNo||'')+')','er'); return; }
-      if (lines.some(function(ll){ return _normLpo(ll.lpoNo||'') === lpo; })) {
-        toast('Line '+(i+1)+': LPO No "'+lpo+'" is used more than once in this form','er'); return;
-      }
-    }
     // Expected KM required for RECEIVED
     if (isRcv && !km)   { toast('Line '+(i+1)+': Expected KM is required for RECEIVED','er'); return; }
 
-    lines.push({supplier:sup,brand:brand,tyreSize:size,qtyOrdered:qty,unitPrice:price,
+    lines.push({supplier:supplier,brand:brand,tyreSize:size,qtyOrdered:qty,unitPrice:price,
       expectedKM:km,tyreType:type,lpoNo:lpo,notes:notes,totalValue:qty*price});
   }
   if (!lines.length) { toast('Add at least one order line','er'); return; }
@@ -15224,6 +15250,10 @@ function _doOpenTpoBulkEdit(rows) {
     var badge = '<span style="font-size:10px;font-weight:600;background:'+(locked?'#dcfce7':isPNR?'#dbeafe':'#fee2e2')+';color:'+(locked?'#15803d':isPNR?'#1d4ed8':'#b91c1c')+';padding:2px 8px;border-radius:20px;margin-left:6px">'+(r.status||'NOT PAID')+'</span>';
     html += '<div id="tpobe_card_'+r.id+'" style="background:#f8f9fc;border:1.5px solid #e2e2e7;border-radius:10px;padding:14px;margin-bottom:12px">'
       + '<div style="font-size:11px;font-weight:700;color:#0a2d6e;text-transform:uppercase;margin-bottom:10px">\uD83D\uDCCB '+(r.poNo||'')+(r.brand?' \u2014 '+r.brand:'')+badge+'</div>'
+      + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">'
+      + '<div>'+lbl('Supplier',true)+'<select id="tpobe_sup_'+r.id+'" '+(locked?'disabled':'')+' style="'+(locked?fsLocked:fs)+'">'+suppOpts.replace('value="'+r.supplier+'"','value="'+r.supplier+'" selected')+'</select></div>'
+      + '<div id="tpobe_lpo_wrap_'+r.id+'">'+lbl('LPO No', isPNR)+'<input id="tpobe_lpo_'+r.id+'" value="'+(r.lpoNo||'')+'" '+(locked?'readonly':'')+' style="'+(locked?fsLocked:fs)+';text-transform:uppercase" placeholder="PO-/PY-..." oninput="validateLPOEdit(this,\''+r.id+'\')" onblur="validateLPOEdit(this,\''+r.id+'\')"></div>'
+      + '</div>'
       + '<div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:10px">'
       + '<div>'+lbl('Brand',true)+_mkSelect('tpobe_brand_'+r.id,['SAILUN','LINGLONG','BLACKLION','CHENGSHAN','DOUBLE COIN','BRIDGESTONE','MICHELIN','SUMITOMO','TRIANGLE','OVATION','GOODRIDE','JINYU','MRF','AGATE','DOVROAD','ENERGIAN','FIREMAX','GT RADIAL','LANVIGATOR','INNING','SAFCESS','LONGMARCH','MIRAGE','TECHKING','WESTLAKE','ROADLUX','AUSTONE','PIRELLI'],(r.brand||''),locked,(locked?fsLocked:fs))+'</div>'
       + '<div>'+lbl('Size',true)+_mkSelect('tpobe_size_'+r.id,['385/65 R22.5 SUPERSINGLE','385/55 R22.5 SUPERSINGLE TERIOUS','315/80 R22.5 DIFF','315/80 R22.5 ALL POSITION','295/80 R22.5 TERIOUS','11R 22.5','12R 22.5'],(r.tyreSize||''),locked,(locked?fsLocked:fs))+'</div>'
@@ -15236,8 +15266,6 @@ function _doOpenTpoBulkEdit(rows) {
       + '<div>'+lbl('Qty Ordered',true)+'<input type="number" id="tpobe_qty_'+r.id+'" value="'+(r.qtyOrdered||0)+'" '+(locked?'readonly':'')+' style="'+(locked?fsLocked:fs)+'" min="1" oninput="tpobeCalcTotal(\''+r.id+'\')"></div>'
       + '<div>'+lbl('Unit Price',true)+'<input type="number" id="tpobe_price_'+r.id+'" value="'+(r.unitPrice||0)+'" '+(locked?'readonly':'')+' style="'+(locked?fsLocked:fs)+'" min="0" oninput="tpobeCalcTotal(\''+r.id+'\')"></div>'
       + '<div>'+lbl('Total Amount',false)+'<input id="tpobe_total_'+r.id+'" value="'+totalVal+'" readonly style="'+fsLocked+';color:var(--ac);font-weight:700"></div>'
-      + '<div>'+lbl('Supplier',true)+'<select id="tpobe_sup_'+r.id+'" '+(locked?'disabled':'')+' style="'+(locked?fsLocked:fs)+'">'+suppOpts.replace('value="'+r.supplier+'"','value="'+r.supplier+'" selected')+'</select></div>'
-      + '<div id="tpobe_lpo_wrap_'+r.id+'">'+lbl('LPO No', isPNR)+'<input id="tpobe_lpo_'+r.id+'" value="'+(r.lpoNo||'')+'" style="'+fs+';text-transform:uppercase" placeholder="PO-/PY-..." oninput="validateLPOEdit(this,\''+r.id+'\')" onblur="validateLPOEdit(this,\''+r.id+'\')"></div>'
       + '<div>'+lbl('Requested By',true)+'<input id="tpobe_reqby_'+r.id+'" value="'+(r.requestedBy||'')+'" '+(locked?'readonly':'')+' style="'+(locked?fsLocked:fs)+'"></div>'
       + '<div>'+lbl('Exp. Delivery', isPNR)+'<input type="date" id="tpobe_expd_'+r.id+'" value="'+(r.expectedDelivery||'')+'" style="'+fs+'"></div>'
       + '</div>'
@@ -15269,6 +15297,8 @@ async function saveTpoBulkEdit() {
   var rows = _tpoEditRows || [];
   if (!rows.length) { toast('Nothing to save','er'); return; }
   var updates = [];
+  // All poNos in this edit session — shared LPO across cards is valid (one LPO can cover multiple lines)
+  var _tpoSessionPoNos = rows.map(function(r){ return r.poNo||''; });
   for (var i=0; i<rows.length; i++) {
     var r = rows[i];
     var s = (r.status||'NOT PAID').toUpperCase();
@@ -15295,13 +15325,10 @@ async function saveTpoBulkEdit() {
     // LPO required for PAID NOT RECEIVED
     if (isPNR && !lpo){ toast((r.poNo||'Record')+': LPO No is required for PAID NOT RECEIVED','er'); return; }
     if (isPNR && !expd){ toast((r.poNo||'Record')+': Expected Delivery is required for PAID NOT RECEIVED','er'); return; }
-    // LPO uniqueness check (exclude own record when editing)
+    // LPO uniqueness check — exclude all records in this session (shared LPO across cards is valid)
     if (lpo) {
-      var _tpoEditDup = _findLpoDuplicate(lpo, r.poNo);
+      var _tpoEditDup = _findLpoDuplicate(lpo, _tpoSessionPoNos);
       if (_tpoEditDup) { toast((r.poNo||'Record')+': LPO No "'+lpo+'" already exists ('+(_tpoEditDup.poNo||'')+')','er'); return; }
-      if (updates.some(function(u){ return _normLpo(u.lpoNo||'') === _normLpo(lpo); })) {
-        toast((r.poNo||'Record')+': LPO No "'+lpo+'" is used more than once in this form','er'); return;
-      }
     }
     updates.push(Object.assign({},r,{brand:brand,tyreSize:size,tyreType:type,qtyOrdered:qty,
       unitPrice:price,totalValue:qty*price,supplier:sup,lpoNo:lpo,requestedBy:reqby,
@@ -15346,16 +15373,21 @@ async function _doDeleteTpoSelected(ids, rows) {
   var rcv=rows.filter(function(r){var s=(r.status||'').toUpperCase();return s==='FULLY RECEIVED'||s==='PARTIALLY RECEIVED'||s==='RECEIVED';});
   if(rcv.length){toast('Cannot delete fully/partially received records ('+rcv.length+' blocked)','er');return;}
   if(!confirm('Delete '+ids.length+' tyre request(s)? This cannot be undone.'))return;
+  var _tpoDelBtn=document.getElementById('tpo_del_btn');
+  var _tpoSelCnt=document.getElementById('tpo_selcount');
+  if(_tpoDelBtn){_tpoDelBtn.disabled=true;_tpoDelBtn.textContent='Deleting '+ids.length+' request'+(ids.length>1?'s':'')+' ...';}
+  if(_tpoSelCnt)_tpoSelCnt.textContent='Deleting...';
   var deleted=0;
   for(var i=0;i<ids.length;i++){
+    if(_tpoDelBtn){_tpoDelBtn.textContent='Deleting '+(i+1)+'/'+ids.length+'...';}
     try{
-      await callAPI('deleteTyrePO',{id:ids[i]});
-      TYRE_POS=TYRE_POS.filter(function(r){return r.id!==ids[i];});
-      deleted++;
+      var res=await callAPI('deleteTyrePO',{id:ids[i]});
+      if(res&&res.success!==false){TYRE_POS=TYRE_POS.filter(function(r){return r.id!==ids[i];});deleted++;}
     }catch(e){}
   }
+  if(_tpoDelBtn){_tpoDelBtn.disabled=false;_tpoDelBtn.innerHTML='&#128465; Delete Selected';}
   tpoClearSelection();
-  toast(deleted+' tyre request(s) deleted','ok');
+  if(deleted>0)toast(deleted+' tyre request(s) deleted ✓','ok');
   _wsFetchAndRender({'TYRE_POS':'/tyrePOs','TYRES':'/tyres'}, function(){ renderTyrePOs('all'); });
 }
 
@@ -21732,12 +21764,14 @@ history.pushState(null, '', window.location.href);
             </select>
           </div>
         </div>
-        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:14px">
+        <div style="display:grid;grid-template-columns:repeat(6,1fr);gap:14px">
           <div class="formgroup"><label>Request Date *</label><input type="date" id="bpo_date"></div>
           <div class="formgroup"><label>Requested By *</label><input type="text" id="bpo_reqby" placeholder="Staff name..." style="text-transform:uppercase"></div>
+          <div class="formgroup"><label>Supplier *</label><select id="bpo_supplier"><option value="">Select supplier...</option></select></div>
+          <div class="formgroup"><label id="bpo_lpo_lbl">LPO No</label><input type="text" id="bpo_lpo" placeholder="PO-/PY-..." style="text-transform:uppercase" oninput="validateLPO(this)" onblur="validateLPO(this)"></div>
           <div class="formgroup"><label>Expected Delivery</label><input type="date" id="bpo_expdelivery"></div>
           <div class="formgroup"><label>Status *</label>
-            <select id="bpo_status">
+            <select id="bpo_status" onchange="onBatPOStatusChange()">
               <option value="NOT PAID">NOT PAID</option>
               <option value="PAID NOT RECEIVED">PAID NOT RECEIVED</option>
             </select>
@@ -21751,17 +21785,15 @@ history.pushState(null, '', window.location.href);
       <!-- Order Lines -->
       <div style="background:#f8f9fc;border:1.5px solid #e2e2e7;border-radius:12px;padding:16px">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
-          <div style="font-size:10px;font-weight:700;color:var(--ac);text-transform:uppercase;letter-spacing:.08em">&#128267; Order Lines - one line per supplier</div>
+          <div style="font-size:10px;font-weight:700;color:var(--ac);text-transform:uppercase;letter-spacing:.08em">&#128267; Order Lines</div>
           <button class="btn bg" onclick="addBatPOLine()" style="font-size:12px;padding:6px 16px">+ Add Line</button>
         </div>
-        <div style="display:grid;grid-template-columns:2fr 1fr 90px 80px 120px 110px 100px 1fr;gap:8px;margin-bottom:6px;padding:0 4px">
-          <span style="font-size:10px;font-weight:700;color:#888;text-transform:uppercase">Supplier <span style="color:#dc2626">*</span></span>
+        <div style="display:grid;grid-template-columns:1fr 90px 80px 120px 110px 1fr;gap:8px;margin-bottom:6px;padding:0 4px">
           <span style="font-size:10px;font-weight:700;color:#888;text-transform:uppercase">Brand <span style="color:#dc2626">*</span></span>
           <span style="font-size:10px;font-weight:700;color:#888;text-transform:uppercase">Size <span style="color:#dc2626">*</span></span>
           <span style="font-size:10px;font-weight:700;color:#888;text-transform:uppercase">Qty <span style="color:#dc2626">*</span></span>
           <span style="font-size:10px;font-weight:700;color:#888;text-transform:uppercase">Unit Price <span style="color:#dc2626">*</span></span>
           <span style="font-size:10px;font-weight:700;color:#888;text-transform:uppercase">Total Amount</span>
-          <span id="bpo_hdr_lpo" style="font-size:10px;font-weight:700;color:#888;text-transform:uppercase">LPO No</span>
           <span style="font-size:10px;font-weight:700;color:#888;text-transform:uppercase">Notes</span>
         </div>
         <div id="bpo_lines_wrap" style="display:flex;flex-direction:column;gap:6px"></div>
@@ -21947,7 +21979,7 @@ history.pushState(null, '', window.location.href);
             </select>
           </div>
         </div>
-        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:14px">
+        <div style="display:grid;grid-template-columns:repeat(6,1fr);gap:14px">
           <div class="formgroup">
             <label>Request Date *</label>
             <input type="date" id="tpo_date">
@@ -21957,12 +21989,20 @@ history.pushState(null, '', window.location.href);
             <select id="tpo_reqby" style="text-transform:uppercase"><option value="">Select...</option><option value="SABRI ABRI">Sabri Abri</option><option value="RAMADHAN LUDEGE">Ramadhan Ludege</option></select>
           </div>
           <div class="formgroup">
+            <label>Supplier *</label>
+            <select id="tpo_supplier"><option value="">Select supplier...</option></select>
+          </div>
+          <div class="formgroup">
+            <label id="tpo_lpo_lbl">LPO No</label>
+            <input type="text" id="tpo_lpo" placeholder="PO-/PY-..." style="text-transform:uppercase" oninput="validateLPO(this)" onblur="validateLPO(this)">
+          </div>
+          <div class="formgroup">
             <label>Expected Delivery</label>
             <input type="date" id="tpo_expdelivery">
           </div>
           <div class="formgroup">
             <label>Status *</label>
-            <select id="tpo_status">
+            <select id="tpo_status" onchange="onTyrePOStatusChange()">
               <option value="NOT PAID">NOT PAID</option>
               <option value="PAID NOT RECEIVED">PAID NOT RECEIVED</option>
             </select>
@@ -21977,12 +22017,11 @@ history.pushState(null, '', window.location.href);
       <!-- Order Lines -->
       <div style="background:#f8f9fc;border:1.5px solid #e2e2e7;border-radius:12px;padding:16px">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
-          <div style="font-size:10px;font-weight:700;color:var(--ac);text-transform:uppercase;letter-spacing:.08em">🚛 Order Lines - one line per supplier</div>
+          <div style="font-size:10px;font-weight:700;color:var(--ac);text-transform:uppercase;letter-spacing:.08em">🚛 Order Lines</div>
           <button class="btn bg" onclick="addTyrePOLine()" style="font-size:12px;padding:6px 16px">+ Add Line</button>
         </div>
         <!-- Column headers -->
-        <div style="display:grid;grid-template-columns:2fr 1fr 1fr 80px 120px 110px 110px 90px 90px 1fr;gap:8px;margin-bottom:6px;padding:0 4px">
-          <span style="font-size:10px;font-weight:700;color:#888;text-transform:uppercase">Supplier <span style="color:#dc2626">*</span></span>
+        <div style="display:grid;grid-template-columns:1fr 1fr 80px 120px 110px 110px 90px 1fr;gap:8px;margin-bottom:6px;padding:0 4px">
           <span style="font-size:10px;font-weight:700;color:#888;text-transform:uppercase">Brand <span style="color:#dc2626">*</span></span>
           <span style="font-size:10px;font-weight:700;color:#888;text-transform:uppercase">Size <span style="color:#dc2626">*</span></span>
           <span style="font-size:10px;font-weight:700;color:#888;text-transform:uppercase">Qty <span style="color:#dc2626">*</span></span>
@@ -21990,7 +22029,6 @@ history.pushState(null, '', window.location.href);
           <span style="font-size:10px;font-weight:700;color:#888;text-transform:uppercase">Total Amount</span>
           <span style="font-size:10px;font-weight:700;color:#888;text-transform:uppercase">Exp. KM</span>
           <span style="font-size:10px;font-weight:700;color:#888;text-transform:uppercase">Type</span>
-          <span id="tpo_hdr_lpo" style="font-size:10px;font-weight:700;color:#888;text-transform:uppercase">LPO No</span>
           <span style="font-size:10px;font-weight:700;color:#888;text-transform:uppercase">Notes</span>
         </div>
         <div id="tpo_lines_wrap" style="display:flex;flex-direction:column;gap:6px"></div>
@@ -22918,14 +22956,11 @@ async function saveAssignment() {
       if (isEdit) {
         var updRes = await callAPI('updateMechanicAssignment', {record: record});
         if (updRes && updRes.error) {
-          // ID mismatch — re-fetch from sheet and retry with correct ID
+          // ID mismatch — fetch from sheet just to get the real ID, then retry with correct ID
+          // Keep record's own dates (YYYY-MM-DD) — do NOT overwrite from sheet to avoid timezone mangling
           var fresh = await callAPI('getMechanicAssignments');
-          if (fresh && fresh.records) MECH_ASSIGNMENTS = fresh.records.map(function(a){
-            if(a.assignedDate)  a.assignedDate  = toISODate(a.assignedDate);
-            if(a.completedDate) a.completedDate = toISODate(a.completedDate);
-            return a;
-          });
-          var match = MECH_ASSIGNMENTS.find(function(a){
+          var freshRecords = (fresh && fresh.records) || [];
+          var match = freshRecords.find(function(a){
             return (a.jobCardNo||'') === (record.jobCardNo||'')
               && (a.mechanicId||'') === (record.mechanicId||'')
               && (a.task||'').substring(0,40).toLowerCase() === task.substring(0,40).toLowerCase();
@@ -22934,8 +22969,8 @@ async function saveAssignment() {
             record.id = match.id;
             var retry = await callAPI('updateMechanicAssignment', {record: record});
             if (retry && retry.error) throw new Error(retry.error);
-            // Update local array with corrected ID
-            var i2 = MECH_ASSIGNMENTS.findIndex(function(x){ return x.id === match.id; });
+            // Update local array with correct ID but keep our record's dates
+            var i2 = MECH_ASSIGNMENTS.findIndex(function(x){ return x.id === _editingAssign || x.id === match.id; });
             if (i2 >= 0) MECH_ASSIGNMENTS[i2] = record;
           } else {
             throw new Error(updRes.error);
@@ -22944,19 +22979,11 @@ async function saveAssignment() {
       } else {
         var addRes = await callAPI('addMechanicAssignment', {record: record});
         if (addRes && addRes.error) throw new Error(addRes.error);
-        // Sync server-assigned ID into local array
+        // Sync server-assigned ID into local array — no re-fetch to avoid sheet date timezone mangling
         if (addRes && addRes.id && addRes.id !== record.id) {
           var li = MECH_ASSIGNMENTS.findIndex(function(x){ return x.id === record.id; });
           if (li >= 0) MECH_ASSIGNMENTS[li].id = addRes.id;
         }
-        // Re-fetch after add so IDs always match server
-        callAPI('getMechanicAssignments').then(function(r2){
-          if (r2 && r2.records && r2.records.length) MECH_ASSIGNMENTS = r2.records.map(function(a){
-            if(a.assignedDate)  a.assignedDate  = toISODate(a.assignedDate);
-            if(a.completedDate) a.completedDate = toISODate(a.completedDate);
-            return a;
-          });
-        });
       }
     } catch(e) {
       // Revert optimistic update and show error
