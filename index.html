@@ -10446,11 +10446,11 @@ async function saveBatGRN() {
     var matchPO = _batGRNActivePOs.find(function(p){ return (p.brand||'').toUpperCase()===brand; })||_batGRNActivePOs[0]||{};
     var maxQty = matchPO ? Number(matchPO.qtyOutstanding||0) : 0;
     if (maxQty>0 && qty>maxQty) { toast('Line '+(i+1)+': Qty '+qty+' exceeds outstanding '+maxQty+' for this LPO','er'); return; }
-    var finalSize=size||(matchPO.size||matchPO.capacity||'');
-    grnLines.push({brand:brand,size:finalSize,qty:qty,unitPrice:matchPO.unitPrice||0,supplier:matchPO.supplier||'',lpoNo:lpo||'',notes:note});
+    var finalSize=size||(matchPO.capacity||matchPO.size||'');
+    grnLines.push({brand:brand,size:finalSize,capacity:finalSize,qtyReceived:qty,qty:qty,notes:note});
   }
   if (!grnLines.length) { toast('Add at least one battery line','er'); return; }
-  var _totalRcv2 = grnLines.reduce(function(s,l){return s+l.qty;},0);
+  var _totalRcv2 = grnLines.reduce(function(s,l){return s+(l.qtyReceived||l.qty||0);},0);
   var _totalOut3 = _batGRNActivePOs.reduce(function(s,p){return s+Number(p.qtyOutstanding||0);},0);
   if(_totalOut3>0 && _totalRcv2>_totalOut3){toast('Total qty '+_totalRcv2+' exceeds outstanding '+_totalOut3+' for this LPO','er');return;}
   var btn = document.getElementById('bat_grn_save_btn');
@@ -10458,18 +10458,22 @@ async function saveBatGRN() {
   try {
     var res = await callAPI('saveBatteryGRN',{poNo:lpo, lpoNo:lpo, grnDate:dateRcv,receivedBy:rcvBy,lines:grnLines});
     if (res&&res.success) {
-      // Update BAT_POS locally immediately so LPO disappears from dropdown
-      var _totalRcvNow = grnLines.reduce(function(s,l){return s+l.qty;},0);
-      (BAT_POS||[]).forEach(function(p){
-        var pLpo=(p.lpoNo||p.poNo||'').trim().toUpperCase();
-        if(pLpo===lpo.toUpperCase()){
-          var newRcv=Number(p.qtyReceived||0)+_totalRcvNow;
-          var newOut=Math.max(0,Number(p.qtyOrdered||0)-newRcv);
-          p.qtyReceived=newRcv;
-          p.qtyOutstanding=newOut;
-          p.status=newOut<=0?'FULLY RECEIVED':'PARTIALLY RECEIVED';
-        }
+      // Update each matching BPO record's qtyReceived/qtyOutstanding/status via updateBatteryPO
+      var _totalRcvNow = grnLines.reduce(function(s,l){return s+(l.qtyReceived||l.qty||0);},0);
+      var _posToUpdate = (BAT_POS||[]).filter(function(p){
+        var pLpo=(p.lpoNo||'').trim().toUpperCase();
+        return pLpo && pLpo===lpo.trim().toUpperCase();
       });
+      for (var _pi=0; _pi<_posToUpdate.length; _pi++) {
+        var _bp = _posToUpdate[_pi];
+        var _share = Math.min(_totalRcvNow, Number(_bp.qtyOutstanding||0));
+        var _newRcv = Number(_bp.qtyReceived||0) + _share;
+        var _newOut = Math.max(0, Number(_bp.qtyOrdered||0) - _newRcv);
+        var _newStatus = _newOut<=0 ? 'FULLY RECEIVED' : 'PARTIALLY RECEIVED';
+        var _updated = Object.assign({}, _bp, {qtyReceived:_newRcv, qtyOutstanding:_newOut, status:_newStatus});
+        try { await callAPI('updateBatteryPO', {record:_updated}); } catch(e){}
+        _totalRcvNow = Math.max(0, _totalRcvNow - _share);
+      }
       var [gr,br,pr] = await Promise.all([wsFbRead('/batteryGRNs'),wsFbRead('/batteries'),wsFbRead('/batteryPOs')]);
       BAT_GRNS=gr.records||[]; BATTERIES=br.records||[]; BAT_POS=pr.records||[];
       closeModal('batGRNmodal');
