@@ -2094,7 +2094,7 @@ function buildRow(r,isRO){
   const rowStyle = warnInfo ? 'outline:2px solid #f59e0b;outline-offset:-2px;' : '';
   // Store availability badge — only for NOT PAID requests
   const _isNotPaid = (r.status||'').toUpperCase() === 'NOT PAID';
-  const _sq = _isNotPaid ? _sreqStoreQty(desc) : {total:0};
+  const _sq = _isNotPaid ? _sreqStoreQty(desc, r.truck) : {total:0};
   const storeSub = _sq.total > 0
     ? `<div style="font-size:10px;color:#d97706;font-weight:600;margin-top:1px">📦 in store: ${_sq.total}</div>`
     : '';
@@ -5247,7 +5247,9 @@ function onDescSelect() {
   if (existing) existing.remove();
   var partName = sel.value || '';
   if (!partName) return;
-  var result = _sreqStoreQty(partName);
+  var _truckEl = document.getElementById('f_truck');
+  var _truckPlate = _truckEl ? (_truckEl.tomselect ? _truckEl.tomselect.getValue() : _truckEl.value)||'' : '';
+  var result = _sreqStoreQty(partName, _truckPlate);
   if (result.total <= 0) return;
   var bdHtml = (result.breakdown.length > 1 || (result.breakdown.length===1 && result.breakdown[0].name.toUpperCase() !== partName.trim().toUpperCase()))
     ? ' <span style="font-size:10px;color:#92400e">('+result.breakdown.map(function(x){return x.name+' \xd7'+x.qty;}).join(', ')+')</span>'
@@ -12501,7 +12503,7 @@ function exportSelectedPDF() {
   });
   // Build requisition form HTML — pre-compute store availability per row
   var rowsWithStore = rows.map(function(r) {
-    var sq = _sreqStoreQty(r.description||'');
+    var sq = _sreqStoreQty(r.description||'', r.truck||'');
     return {r:r, storeQty:sq.total, storeBreakdown:sq.breakdown};
   });
   var anyInStore = rowsWithStore.some(function(x){ return x.storeQty > 0; });
@@ -15840,19 +15842,60 @@ function addSReqLine() {
   new TomSelect(document.getElementById('sreq_sup_'+n),{allowEmptyOption:true,placeholder:'Search supplier...',create:true,dropdownParent:'body'});
 }
 
-function _sreqStoreQty(partName) {
-  // Returns {total, breakdown} for a part name using contains match (case-insensitive)
+function _getTruckMake(truckPlate) {
+  // Look up vehicle make (HOWO, SCANIA, IVECO, BENZ, TRAILER etc.) from plate number
+  if (!truckPlate || !VEHICLES) return '';
+  var v = (VEHICLES||[]).find(function(v){
+    return (v.plate||'').trim().toUpperCase() === truckPlate.trim().toUpperCase();
+  });
+  return v ? (v.make||'').trim().toUpperCase() : '';
+}
+function _sreqStoreQty(partName, truckPlate) {
+  // Returns {total, breakdown} using smart word-score match + truck make as tiebreaker
+  // Step 1: score each store part by how many PART NAME words match (min 2 required)
+  // Step 2: among tied top scorers, prefer those whose name contains the truck make
   if (!partName) return {total:0, breakdown:[]};
-  var norm = partName.trim().toUpperCase();
-  var matched = {};
+  // Only strip truly meaningless filler words — keep makes, positions, part descriptors
+  var STOP_WORDS = {'SIZE':1,'NO':1,'NUMBER':1,'TYPE':1,'SET':1,'KIT':1,'PCS':1,'PCS.':1,
+    'MM':1,'CM':1,'M':1,'X':1,'WITH':1,'AND':1,'FOR':1,'OF':1,'IN':1,'A':1,'THE':1,
+    'ASSY':1,'ASSEMBLY':1,'PART':1,'NEW':1,'OEM':1,'STD':1,'STD.':1,'INC':1};
+  var make = truckPlate ? _getTruckMake(truckPlate) : '';
+  var partWords = partName.trim().toUpperCase().split(/\s+/).filter(function(w){ return w && !STOP_WORDS[w] && !/^\d+$/.test(w); });
+  if (partWords.length < 2) return {total:0, breakdown:[]};
+  var firstWord = partWords[0]; // must match in every candidate
+  // Detect brand/make word in part name — must match if present
+  var KNOWN_MAKES = {'HOWO':1,'SCANIA':1,'IVECO':1,'BENZ':1,'MERCEDES':1,'ISUZU':1,'MAN':1,'DAF':1,'VOLVO':1,'TRAILER':1};
+  var brandWord = partWords.find(function(w){ return KNOWN_MAKES[w]; }) || null;
+  // Require at least 3 matches if we have 3+ words, else 2
+  var minScore = partWords.length >= 3 ? 3 : 2;
+  // Score each store item on part-name words only
+  var scores = [];
   (STORE_INVENTORY||[]).forEach(function(r) {
     var rn = (r.partName||'').trim().toUpperCase();
     if (!rn) return;
     var qty = Number(r.qtyOnHand||0);
     if (qty <= 0) return;
-    if (rn.indexOf(norm) !== -1 || norm.indexOf(rn) !== -1) {
-      matched[r.partName] = (matched[r.partName]||0) + qty;
+    var invWords = rn.split(/\s+/).filter(function(w){ return w && !STOP_WORDS[w] && !/^\d+$/.test(w); });
+    // First and second words must both match — if not, skip entirely
+    if (invWords.indexOf(firstWord) === -1) return;
+    if (partWords.length >= 2 && invWords.indexOf(partWords[1]) === -1) return;
+    // Brand/make must match if specified in the requisition
+    if (brandWord && invWords.indexOf(brandWord) === -1) return;
+    var score = 0;
+    partWords.forEach(function(w){ if (invWords.indexOf(w) !== -1) score++; });
+    if (score >= minScore) {
+      // Bonus: +0.5 if truck make matches (used for tiebreaking only)
+      var makeBonus = (make && invWords.indexOf(make) !== -1) ? 0.5 : 0;
+      scores.push({name:r.partName, qty:qty, score:score + makeBonus});
     }
+  });
+  if (!scores.length) return {total:0, breakdown:[]};
+  // Find highest effective score
+  var maxScore = scores.reduce(function(m,x){ return x.score>m?x.score:m; }, 0);
+  // Keep only top scorers, merge by name
+  var matched = {};
+  scores.filter(function(x){ return x.score===maxScore; }).forEach(function(x){
+    matched[x.name] = (matched[x.name]||0) + x.qty;
   });
   var breakdown = Object.keys(matched).map(function(k){ return {name:k, qty:matched[k]}; });
   var total = breakdown.reduce(function(s,x){ return s+x.qty; }, 0);
@@ -16465,7 +16508,7 @@ function sreqPrintForm() {
   var totalAmt = rows.reduce(function(s,r){ return s+(parseFloat(r.cost)||0); }, 0);
   // Pre-compute store availability for each row
   var rowsWithStore = rows.map(function(r){
-    var sq = _sreqStoreQty(r.description||'');
+    var sq = _sreqStoreQty(r.description||'', r.truck||'');
     return {r:r, storeQty:sq.total, storeBreakdown:sq.breakdown};
   });
   var anyInStore = rowsWithStore.some(function(x){ return x.storeQty > 0; });
