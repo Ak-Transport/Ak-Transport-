@@ -9831,6 +9831,39 @@ function spmExportPdf() {
 }
 
 var _spmEditId = null;
+
+function onSpmPartChange() {
+  // When spare part selected, check if it has a generic prefix in SPAREPARTS
+  // e.g. "AIRBAG TRAILER 4 BOLT AXLE NO. 1 LEFT" → prefix "AIRBAG TRAILER 4 BOLT"
+  var partSel = document.getElementById('spm_part');
+  var part = partSel ? (partSel.tomselect ? partSel.tomselect.getValue() : partSel.value) : '';
+  var wrap = document.getElementById('spm_store_as_wrap');
+  var storeAsSel = document.getElementById('spm_store_as');
+  if (!wrap || !storeAsSel) return;
+  if (!part) { wrap.style.display = 'none'; storeAsSel.value = ''; return; }
+  var partUpper = part.trim().toUpperCase();
+  // Find all SPAREPARTS whose name is a prefix of the selected part (and shorter)
+  var prefixes = (SPAREPARTS||[]).filter(function(p) {
+    var n = (p.name||'').trim().toUpperCase();
+    return n && n !== partUpper && partUpper.indexOf(n) === 0 && partUpper[n.length] === ' ';
+  });
+  if (!prefixes.length) {
+    wrap.style.display = 'none';
+    storeAsSel.value = '';
+    return;
+  }
+  // Sort by length descending (most specific prefix first)
+  prefixes.sort(function(a,b){ return b.name.length - a.name.length; });
+  // Populate dropdown
+  if (storeAsSel.tomselect) { try { storeAsSel.tomselect.destroy(); } catch(e){} }
+  storeAsSel.innerHTML = '<option value="">Select generic name...</option>'
+    + prefixes.map(function(p){ return '<option value="'+p.name+'">'+p.name+'</option>'; }).join('');
+  // Auto-select if only one option
+  if (prefixes.length === 1) storeAsSel.value = prefixes[0].name;
+  try { new TomSelect(storeAsSel, { allowEmptyOption:true, placeholder:'Select generic name...', dropdownParent:'body' }); } catch(e){}
+  wrap.style.display = 'block';
+}
+
 function openSpareMoveForm() {
   if (!can('sparemove_create') && !can('sparemove')) { toast('No permission to create spare movement requests','er'); return; }
   var modal = document.getElementById('spareMoveModal');
@@ -9863,7 +9896,14 @@ function openSpareMoveForm() {
     var o = document.createElement('option'); o.value = p.name; o.setAttribute('data-code', p.code||''); o.textContent = (p.code?p.code+' - ':'')+p.name;
     partSel.appendChild(o);
   });
-  new TomSelect(partSel, { allowEmptyOption:true, placeholder:'Search spare part...', dropdownParent:'body', maxOptions:500 });
+  new TomSelect(partSel, { allowEmptyOption:true, placeholder:'Search spare part...', dropdownParent:'body', maxOptions:500,
+    onChange: function(){ onSpmPartChange(); }
+  });
+  // Reset store-as field
+  var storeAsWrap = document.getElementById('spm_store_as_wrap');
+  if (storeAsWrap) storeAsWrap.style.display = 'none';
+  var storeAsSel = document.getElementById('spm_store_as');
+  if (storeAsSel) { if (storeAsSel.tomselect) { try { storeAsSel.tomselect.destroy(); } catch(e){} } storeAsSel.value = ''; }
 }
 
 function editSpareMove(id) {
@@ -9881,6 +9921,12 @@ function editSpareMove(id) {
     if (truckSelEdit.tomselect) truckSelEdit.tomselect.setValue(r.truck || '', true); else truckSelEdit.value = r.truck || '';
     var partSelEdit = document.getElementById('spm_part');
     if (partSelEdit.tomselect) partSelEdit.tomselect.setValue(r.partName || '', true); else partSelEdit.value = r.partName || '';
+    // Trigger store-as detection then set saved value
+    onSpmPartChange();
+    if (r.storeAs) {
+      var saEdit = document.getElementById('spm_store_as');
+      if (saEdit) { if (saEdit.tomselect) saEdit.tomselect.setValue(r.storeAs, true); else saEdit.value = r.storeAs; }
+    }
     document.getElementById('spm_worth').value = r.currentWorth || '';
     document.getElementById('spm_reason').value = r.reason || '';
     document.getElementById('spm_notes').value = r.notes || '';
@@ -9892,9 +9938,13 @@ function editSpareMove(id) {
 async function saveSpareMove() {
   var truck = (document.getElementById('spm_truck')||{}).value || '';
   var partSel = document.getElementById('spm_part');
-  var part = partSel ? partSel.value : '';
+  var part = partSel ? (partSel.tomselect ? partSel.tomselect.getValue() : partSel.value) : '';
   var partRec = (SPAREPARTS||[]).find(function(p){ return p.name === part; });
   var partCode = partRec ? (partRec.code||'') : '';
+  var storeAsWrap = document.getElementById('spm_store_as_wrap');
+  var storeAsSel = document.getElementById('spm_store_as');
+  var storeAsVisible = storeAsWrap && storeAsWrap.style.display !== 'none';
+  var storeAs = storeAsVisible ? (storeAsSel ? (storeAsSel.tomselect ? storeAsSel.tomselect.getValue() : storeAsSel.value)||'' : '') : '';
   var worth = parseFloat((document.getElementById('spm_worth')||{}).value) || 0;
   var reason = (document.getElementById('spm_reason')||{}).value || '';
   var notes = ((document.getElementById('spm_notes')||{}).value || '').trim();
@@ -9908,6 +9958,7 @@ async function saveSpareMove() {
   if (!worth || worth<=0) { toast('Current worth is required','er'); return; }
   if (!reason) { toast('Reason is required','er'); return; }
   if (!notes) { toast('Notes is required','er'); return; }
+  if (storeAsVisible && !storeAs) { toast('Please select the generic store name (Store As)','er'); return; }
 
   var btn = document.getElementById('spm_save_btn');
   if (btn) { btn.disabled = true; btn.textContent = 'Saving...'; }
@@ -9917,6 +9968,7 @@ async function saveSpareMove() {
     var existing = (SPARE_MOVES||[]).find(function(x){return x.id===_spmEditId;});
     var updated = Object.assign({}, existing, {
       dateRequested: date, truck: truck.toUpperCase(), partCode: partCode, partName: part.toUpperCase(),
+      storeAs: storeAs ? storeAs.toUpperCase() : '',
       currentWorth: worth, reason: reason.toUpperCase(), notes: notes.toUpperCase(), requestedBy: reqBy.toUpperCase()
     });
     try {
@@ -9941,6 +9993,7 @@ async function saveSpareMove() {
   try {
     var res = await callAPI('requestSpareMovement', {
       truck: truck.toUpperCase(), partCode: partCode, partName: part.toUpperCase(),
+      storeAs: storeAs ? storeAs.toUpperCase() : '',
       supplier: '', currentWorth: worth, reason: reason.toUpperCase(),
       notes: notes.toUpperCase(), requestedBy: reqBy.toUpperCase(), dateRequested: date
     });
@@ -14190,13 +14243,37 @@ function renderStoreInventory(tab) {
   var tdS = 'padding:9px 12px;border-bottom:1px solid #f0f0f4;vertical-align:middle';
 
   if (_invTab === 'summary') {
-    // Group by part name — use STORE_MIN_LEVELS for min level (not per-batch value)
+    // Group by generic name — use STORE_MIN_LEVELS for min level (not per-batch value)
+    // Generic name priority: 1) r.storeAs, 2) SPM record storeAs (via remarks lookup), 3) r.partName
+    var _spmLookupSum = {};
+    (SPARE_MOVES||[]).forEach(function(s){ if(s.reqNo) _spmLookupSum[s.reqNo.trim().toUpperCase()] = s; });
     var grouped = {};
     STORE_INVENTORY.forEach(function(r){
-      var name = (r.partName||'').trim().toUpperCase();
-      if (!name) return; // skip blank part names
-      if (!grouped[name]) grouped[name] = { partName: name, qtyOnHand: 0, minStockLevel: STORE_MIN_LEVELS[name]||0 };
-      grouped[name].qtyOnHand += Number(r.qtyOnHand||0);
+      var rawName = (r.partName||'').trim().toUpperCase();
+      if (!rawName) return;
+      // Resolve generic name
+      var groupName = (r.storeAs||'').trim().toUpperCase();
+      if (!groupName) {
+        // Try to find via SPM remarks link
+        var mSpmSum = (r.remarks||'').match(/SPM-\d+/i);
+        if (mSpmSum) {
+          var spmRec = _spmLookupSum[mSpmSum[0].toUpperCase()];
+          if (spmRec && spmRec.storeAs) groupName = spmRec.storeAs.trim().toUpperCase();
+        }
+      }
+      if (!groupName) {
+        // Fallback: find longest SPAREPARTS prefix of this part name
+        var bestPrefix = '';
+        (SPAREPARTS||[]).forEach(function(p){
+          var pn = (p.name||'').trim().toUpperCase();
+          if (pn && pn !== rawName && rawName.indexOf(pn) === 0 && rawName[pn.length] === ' ') {
+            if (pn.length > bestPrefix.length) bestPrefix = pn;
+          }
+        });
+        groupName = bestPrefix || rawName;
+      }
+      if (!grouped[groupName]) grouped[groupName] = { partName: groupName, qtyOnHand: 0, minStockLevel: STORE_MIN_LEVELS[groupName]||0 };
+      grouped[groupName].qtyOnHand += Number(r.qtyOnHand||0);
     });
     var rows = _applySINVFilters(Object.values(grouped)).sort(function(a,b){ return a.partName.localeCompare(b.partName); });
 
@@ -14252,6 +14329,7 @@ function renderStoreInventory(tab) {
 
     var detailed = STORE_INVENTORY.filter(function(r){ return (r.partName||'').trim() !== ''; }).map(function(r){
       var reqNo = ''; var dateReceived = ''; var qtyReceived = ''; var supplierDisplay = (r.supplier||''); var lpoDisplay = (r.partCode||'');
+      var fromPosition = ''; var fittedToDisplay = '';
       var mSreq = (r.remarks||'').match(/SREQ-\d+/i);
       var mSpm  = (r.remarks||'').match(/SPM-\d+/i);
       if (mSreq) {
@@ -14271,18 +14349,31 @@ function renderStoreInventory(tab) {
           var truckPart  = spmMatch.truck ? ('From ' + spmMatch.truck) : '';
           supplierDisplay = [reasonPart, truckPart].filter(Boolean).join(' \u2014 ');
           lpoDisplay = 'N/A';
+          // FROM POSITION: original position on source truck
+          var fullPart = (spmMatch.partName||'').trim().toUpperCase();
+          var genPart  = (spmMatch.storeAs||spmMatch.partName||'').trim().toUpperCase();
+          if (fullPart && genPart && fullPart !== genPart && fullPart.indexOf(genPart) === 0) {
+            var posSuffix = fullPart.slice(genPart.length).trim();
+            fromPosition = (spmMatch.truck||'') + (posSuffix ? ' \u2014 ' + posSuffix : '');
+          } else {
+            fromPosition = spmMatch.truck || '';
+          }
         }
+      }
+      // FITTED TO: set when this inventory record was issued to a truck with position
+      if (r.fittedTo) {
+        fittedToDisplay = r.fittedTo + (r.fittedPosition ? ' \u2014 ' + r.fittedPosition : '');
       }
       // Attach grouped total AND min level so filter + render both use same values as Summary
       var _pkey = (r.partName||'').toUpperCase();
       var _totalQty = _detGroupedQty[_pkey]||0;
       var _minLevel = STORE_MIN_LEVELS[_pkey]||0;
       var _stLabel  = _invStatus(_totalQty, _minLevel).label;
-      return Object.assign({}, r, { _reqNo: reqNo, _dateReceived: dateReceived, _qtyReceived: qtyReceived, _supplierDisplay: supplierDisplay, _lpoDisplay: lpoDisplay, _totalQty: _totalQty, _minLevel: _minLevel, _stLabel: _stLabel });
+      return Object.assign({}, r, { _reqNo: reqNo, _dateReceived: dateReceived, _qtyReceived: qtyReceived, _supplierDisplay: supplierDisplay, _lpoDisplay: lpoDisplay, _fromPosition: fromPosition, _fittedTo: fittedToDisplay, _totalQty: _totalQty, _minLevel: _minLevel, _stLabel: _stLabel });
     });
     var rows = _applySINVFilters(detailed).sort(function(a,b){ return (a.partName||'').localeCompare(b.partName||''); });
 
-    // 10 columns (with checkbox)
+    // 12 columns (with checkbox) — includes From Position + Fitted To
     html += '<div style="overflow-x:auto"><table id="sinv-detail-table" style="width:100%;border-collapse:collapse"><thead><tr>'
       + '<th style="'+thS+';width:32px;text-align:center"><input type="checkbox" id="sinv-chk-all" title="Select all" onchange="_sinvToggleAll(this)"></th>'
       + '<th style="'+thS+';text-align:left;min-width:120px">Req No</th>'
@@ -14292,13 +14383,15 @@ function renderStoreInventory(tab) {
       + '<th style="'+thS+';text-align:right;min-width:120px">Unit Price</th>'
       + '<th style="'+thS+';text-align:left;min-width:180px">Supplier</th>'
       + '<th style="'+thS+';text-align:left;min-width:120px">LPO No</th>'
+      + '<th style="'+thS+';text-align:left;min-width:180px">From Position</th>'
+      + '<th style="'+thS+';text-align:left;min-width:180px">Fitted To</th>'
       + '<th style="'+thS+';text-align:center;min-width:100px">Qty On Hand</th>'
       + '<th style="'+thS+';text-align:center;min-width:85px">Min Level</th>'
       + '<th style="'+thS+';text-align:center;min-width:90px">Status</th>'
       + '</tr></thead><tbody>';
 
     if (!rows.length) {
-      html += '<tr><td colspan="11" style="text-align:center;color:var(--t3);padding:28px">No records match filter</td></tr>';
+      html += '<tr><td colspan="13" style="text-align:center;color:var(--t3);padding:28px">No records match filter</td></tr>';
     } else {
       rows.forEach(function(r){
         var qtyOnHand = Number(r.qtyOnHand||0);       // per-batch qty (shown in Qty On Hand column)
@@ -14316,6 +14409,8 @@ function renderStoreInventory(tab) {
           + '<td style="'+tdS+';text-align:right;font-family:monospace">'+unitPriceDisp+'</td>'
           + '<td style="'+tdS+'">'+(r._supplierDisplay||'')+'</td>'
           + '<td style="'+tdS+';font-family:monospace;font-weight:600">'+(r._lpoDisplay||'-')+'</td>'
+          + '<td style="'+tdS+';background:#fffdf0;font-size:12px;color:#92400e;font-weight:600">'+(r._fromPosition ? '📍 '+r._fromPosition : '<span style="color:#ccc">—</span>')+'</td>'
+          + '<td style="'+tdS+';background:#f0fdf4;font-size:12px;color:#166534;font-weight:600">'+(r._fittedTo ? '🔧 '+r._fittedTo : '<span style="color:#ccc">—</span>')+'</td>'
           + '<td style="'+tdS+';text-align:center;font-weight:700;color:'+st.dot+'">'+qtyOnHand+'</td>'
           + '<td style="'+tdS+';text-align:center">'+min+'</td>'
           + '<td style="'+tdS+';text-align:center"><span style="font-size:11px;font-weight:700;padding:2px 8px;border-radius:12px;background:'+st.bg+';color:'+st.color+'">'+st.label+'</span></td>'
@@ -16257,6 +16352,16 @@ function addIssLine(){
     + fg2('Driver', '<input type="text" id="iss_driver_'+n+'" readonly placeholder="Auto from Job Card" style="'+fs+';background:#f5f5f7;cursor:not-allowed;color:var(--ac);font-weight:600">', false)
     + fg2('Category', '<input type="text" id="iss_cat_'+n+'" readonly placeholder="Auto from Job Card" style="'+fs+';background:#f5f5f7;cursor:not-allowed;color:var(--ac);font-weight:600">', false)
     + '</div>'
+    // Install at Position row — shown only when selected part has position variants in SPAREPARTS
+    + '<div id="iss_pos_wrap_'+n+'" style="display:none;margin-bottom:10px">'
+    + '<div style="background:#f0fdf4;border:1.5px solid #86efac;border-radius:9px;padding:10px 14px">'
+    + '<div style="display:flex;align-items:center;gap:8px;margin-bottom:7px">'
+    + '<span style="font-size:14px">🔧</span>'
+    + '<label style="font-size:10px;font-weight:700;color:#166534;text-transform:uppercase;letter-spacing:.06em">Install at Position <span style="color:#f87171">*</span></label>'
+    + '</div>'
+    + '<div style="font-size:11px;color:#14532d;margin-bottom:7px">This part has position variants. Select where it will be installed on the truck.</div>'
+    + '<select id="iss_pos_'+n+'" style="width:100%;height:38px;padding:0 10px;font-size:13px;border:1.5px solid #86efac;border-radius:7px;background:#fff;box-sizing:border-box"><option value="">Select position...</option></select>'
+    + '</div></div>'
     // Row 2: Qty | Unit Price | Total | Priority | Supplier | LPO | Remarks
     + '<div style="display:grid;grid-template-columns:80px 110px 110px 120px 1.2fr 1.2fr 1fr;gap:10px;align-items:end">'
     + fg2('Qty *', '<input type="number" id="iss_qty_'+n+'" min="1" value="1" oninput="calcIssLine('+n+')" style="'+fs+'">', false)
@@ -16276,7 +16381,14 @@ function addIssLine(){
 function onIssPartChange(n){
   var sel=document.getElementById('iss_part_'+n);
   var val=sel?sel.value:'';
-  if(!val)return;
+  // Hide position wrap when part cleared
+  var posWrap = document.getElementById('iss_pos_wrap_'+n);
+  var posSel  = document.getElementById('iss_pos_'+n);
+  if (!val) {
+    if (posWrap) posWrap.style.display = 'none';
+    if (posSel) { if (posSel.tomselect) { try { posSel.tomselect.destroy(); } catch(e){} } posSel.value = ''; }
+    return;
+  }
   var parts=val.split('|||');
   var partName=parts[0]; var supplier=parts[1]||''; var lpoNo=parts[2]||'';
   var inv=(STORE_INVENTORY||[]).find(function(r){
@@ -16289,6 +16401,25 @@ function onIssPartChange(n){
   var upEl=document.getElementById('iss_up_'+n); if(upEl&&inv) upEl.value=Number(inv.unitPrice||0).toLocaleString('en-US',{minimumFractionDigits:2});
   if(inv) sel.setAttribute('data-maxqty',inv.qtyOnHand||0);
   calcIssLine(n);
+  // Check for position variants in SPAREPARTS
+  var pnUpper = partName.trim().toUpperCase();
+  var variants = (SPAREPARTS||[]).filter(function(p){
+    var pn = (p.name||'').trim().toUpperCase();
+    return pn !== pnUpper && pn.indexOf(pnUpper) === 0 && pn[pnUpper.length] === ' ';
+  });
+  if (posWrap && posSel) {
+    if (variants.length) {
+      if (posSel.tomselect) { try { posSel.tomselect.destroy(); } catch(e){} }
+      posSel.innerHTML = '<option value="">Select position...</option>'
+        + variants.map(function(p){ return '<option value="'+p.name+'">'+p.name+'</option>'; }).join('');
+      try { new TomSelect(posSel, { allowEmptyOption:true, placeholder:'Select position...', dropdownParent:'body' }); } catch(e){}
+      posWrap.style.display = 'block';
+    } else {
+      if (posSel.tomselect) { try { posSel.tomselect.destroy(); } catch(e){} }
+      posSel.value = '';
+      posWrap.style.display = 'none';
+    }
+  }
 }
 function onIssTruckChange(n, plate) {
   if (plate === undefined) {
@@ -16402,6 +16533,15 @@ async function saveIssueFromStore(){
     var total=parseFloat(qty)*up;
     var pri=(document.getElementById('iss_pri_'+i)||{}).value||'NORMAL';
     var rem=(document.getElementById('iss_rem_'+i)||{}).value||'';
+    // Read install position if visible
+    var posWrap=document.getElementById('iss_pos_wrap_'+i);
+    var posSel=document.getElementById('iss_pos_'+i);
+    var posVisible=posWrap&&posWrap.style.display!=='none';
+    var fittedPosition='';
+    if(posVisible){
+      fittedPosition=posSel?(posSel.tomselect?posSel.tomselect.getValue():posSel.value)||'':'';
+      if(!fittedPosition){toast('Line '+i+': Install at Position is required','er');return;}
+    }
     tempMaxReq++; _issCounter++;
     lines.push({
       issuanceNo:'ISS-'+String(_issCounter).padStart(5,'0'),
@@ -16419,7 +16559,9 @@ async function saveIssueFromStore(){
       unitPrice:up,
       totalCost:total,
       priority:pri,
-      remarks:rem.toUpperCase()
+      remarks:rem.toUpperCase(),
+      fittedTo:truck.toUpperCase(),
+      fittedPosition:fittedPosition?fittedPosition.toUpperCase():''
     });
   }
   if(!lines.length){toast('Add at least one line','er');return;}
@@ -21756,7 +21898,7 @@ history.pushState(null, '', window.location.href);
         <div style="display:grid;grid-template-columns:2fr 1fr 1.6fr;gap:16px;margin-bottom:16px;align-items:end">
           <div style="display:flex;flex-direction:column;gap:5px">
             <label style="font-size:10px;font-weight:700;color:#515154;text-transform:uppercase;letter-spacing:.06em">Spare Part <span style="color:#f87171">*</span></label>
-            <select id="spm_part" style="width:100%;height:38px;padding:0 10px;font-size:13px;border:1.5px solid #d2d2d7;border-radius:7px;background:#fff;box-sizing:border-box"><option value="">Select spare part...</option></select>
+            <select id="spm_part" onchange="onSpmPartChange()" style="width:100%;height:38px;padding:0 10px;font-size:13px;border:1.5px solid #d2d2d7;border-radius:7px;background:#fff;box-sizing:border-box"><option value="">Select spare part...</option></select>
           </div>
           <div style="display:flex;flex-direction:column;gap:5px">
             <label style="font-size:10px;font-weight:700;color:#515154;text-transform:uppercase;letter-spacing:.06em">Current Worth <span style="color:#f87171">*</span></label>
@@ -21772,6 +21914,17 @@ history.pushState(null, '', window.location.href);
               <option value="TRUCK BREAKDOWN - PART NOT NEEDED">TRUCK BREAKDOWN - PART NOT NEEDED</option>
               <option value="OTHER">OTHER</option>
             </select>
+          </div>
+        </div>
+        <!-- Store As field — shown only when selected part has a generic prefix in SPAREPARTS -->
+        <div id="spm_store_as_wrap" style="display:none;margin-bottom:16px">
+          <div style="background:#fffbeb;border:1.5px solid #fcd34d;border-radius:9px;padding:12px 14px">
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+              <span style="font-size:14px">📦</span>
+              <label style="font-size:10px;font-weight:700;color:#92400e;text-transform:uppercase;letter-spacing:.06em">Store As (Generic Part Name) <span style="color:#f87171">*</span></label>
+            </div>
+            <div style="font-size:11px;color:#78350f;margin-bottom:8px">This spare has position variants. Select the generic store name it should be grouped under in inventory.</div>
+            <select id="spm_store_as" style="width:100%;height:38px;padding:0 10px;font-size:13px;border:1.5px solid #fcd34d;border-radius:7px;background:#fff;box-sizing:border-box"><option value="">Select generic name...</option></select>
           </div>
         </div>
         <div style="display:flex;flex-direction:column;gap:5px">
