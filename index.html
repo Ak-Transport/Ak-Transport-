@@ -14590,7 +14590,7 @@ function renderStoreIssuances() {
           + '<td><span class="reqbadge">'+(r.issuanceNo||'')+'</span></td>'
           + '<td>'+fmtDate(r.dateIssued||'')+'</td>'
           + '<td>'+(r.issuedBy||'\u2014')+'</td>'
-          + '<td><b>'+(l.partName||'\u2014')+'</b></td>'
+          + '<td><b>'+((l.fittedPosition||l.partName)||'\u2014')+'</b></td>'
           + '<td style="font-size:11px;font-family:monospace">'+(l.lpoNo||'\u2014')+'</td>'
           + '<td style="text-align:center">'+(l.qty||'\u2014')+'</td>'
           + '<td style="color:var(--ac);font-weight:600">'+(l.truck||'\u2014')+'</td>'
@@ -14614,7 +14614,7 @@ function renderStoreIssuances() {
           + '<td><span class="reqbadge">'+key+'</span></td>'
           + '<td>'+fmtDate(r.dateIssued||'')+'</td>'
           + '<td>'+(r.issuedBy||'\u2014')+'</td>'
-          + '<td><b>'+(l.partName||'\u2014')+'</b></td>'
+          + '<td><b>'+((l.fittedPosition||l.partName)||'\u2014')+'</b></td>'
           + '<td style="font-size:11px;font-family:monospace">'+(l.lpoNo||'\u2014')+'</td>'
           + '<td style="text-align:center">'+(l.qty||'\u2014')+'</td>'
           + '<td style="color:var(--ac);font-weight:600">'+(l.truck||'\u2014')+'</td>'
@@ -14928,7 +14928,7 @@ function renderIssPending() {
           + '<td><span class="reqbadge">'+(r.issuanceNo||'')+'</span></td>'
           + '<td>'+fmtDate(r.dateIssued||'')+'</td>'
           + '<td>'+(r.issuedBy||'\u2014')+'</td>'
-          + '<td><b>'+(l.partName||'\u2014')+'</b></td>'
+          + '<td><b>'+((l.fittedPosition||l.partName)||'\u2014')+'</b></td>'
           + '<td style="font-size:11px;font-family:monospace">'+(l.lpoNo||'\u2014')+'</td>'
           + '<td style="text-align:center">'+(l.qty||'\u2014')+'</td>'
           + '<td style="color:var(--ac);font-weight:600">'+(l.truck||'\u2014')+'</td>'
@@ -16402,11 +16402,27 @@ function onIssPartChange(n){
   if(inv) sel.setAttribute('data-maxqty',inv.qtyOnHand||0);
   calcIssLine(n);
   // Check for position variants in SPAREPARTS
+  // Case A: selected part is generic — find its children (pnUpper is a prefix of variant)
+  // Case B: selected part is specific — find its parent first, then list all siblings
   var pnUpper = partName.trim().toUpperCase();
   var variants = (SPAREPARTS||[]).filter(function(p){
     var pn = (p.name||'').trim().toUpperCase();
     return pn !== pnUpper && pn.indexOf(pnUpper) === 0 && pn[pnUpper.length] === ' ';
   });
+  if (!variants.length) {
+    // Case B: find parent — any SPAREPARTS entry that is a prefix of selected part
+    var parent = (SPAREPARTS||[]).find(function(p){
+      var pn = (p.name||'').trim().toUpperCase();
+      return pn && pn !== pnUpper && pnUpper.indexOf(pn) === 0 && pnUpper[pn.length] === ' ';
+    });
+    if (parent) {
+      var parentUpper = parent.name.trim().toUpperCase();
+      variants = (SPAREPARTS||[]).filter(function(p){
+        var pn = (p.name||'').trim().toUpperCase();
+        return pn !== parentUpper && pn.indexOf(parentUpper) === 0 && pn[parentUpper.length] === ' ';
+      });
+    }
+  }
   if (posWrap && posSel) {
     if (variants.length) {
       if (posSel.tomselect) { try { posSel.tomselect.destroy(); } catch(e){} }
