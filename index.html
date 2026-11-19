@@ -14277,7 +14277,7 @@ function renderStoreInventory(tab) {
     });
     var rows = _applySINVFilters(Object.values(grouped)).sort(function(a,b){ return a.partName.localeCompare(b.partName); });
 
-    html += '<div style="overflow-x:auto"><table id="sinv-summary-table" style="width:100%;border-collapse:collapse">'
+    html += '<div><table id="sinv-summary-table" style="width:100%;border-collapse:collapse">'
       + '<thead><tr>'
       + '<th style="'+thS+';width:32px;text-align:center"><input type="checkbox" id="sinv-chk-all" title="Select all" onchange="_sinvToggleAll(this)"></th>'
       + '<th style="'+thS+';text-align:left">Part Name</th>'
@@ -14374,7 +14374,7 @@ function renderStoreInventory(tab) {
     var rows = _applySINVFilters(detailed).sort(function(a,b){ return (a.partName||'').localeCompare(b.partName||''); });
 
     // 12 columns (with checkbox) — includes From Position + Fitted To
-    html += '<div style="overflow-x:auto"><table id="sinv-detail-table" style="width:100%;border-collapse:collapse"><thead><tr>'
+    html += '<div><table id="sinv-detail-table" style="width:100%;border-collapse:collapse"><thead><tr>'
       + '<th style="'+thS+';width:32px;text-align:center"><input type="checkbox" id="sinv-chk-all" title="Select all" onchange="_sinvToggleAll(this)"></th>'
       + '<th style="'+thS+';text-align:left;min-width:120px">Req No</th>'
       + '<th style="'+thS+';text-align:left;min-width:110px">Date Received</th>'
