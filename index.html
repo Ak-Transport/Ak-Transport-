@@ -285,6 +285,7 @@ tr:hover td{background:#f0f4ff}
 .sOH {background:#fef3c7;color:#92400e}
 .sRNP{background:#e0e7ff;color:#3730a3}
 .sSLD{background:#7c3aed;color:#fff}
+.sHLD{background:#ea580c;color:#fff}
 .sPNR{background:#dbeafe;color:#1e40af}
 
 /* MODALS */
@@ -1536,7 +1537,24 @@ body.no-delete .actbtn.d:not(.ws-action):not(.jc-action):not(.fleet-action):not(
         <div style="display:flex;gap:6px"><select id="TIFF1" onchange="onTIFChange();applyTyreInvFilter()" style="background:var(--s1);border:1.5px solid var(--ac);border-radius:8px;padding:8px 10px;color:#1d3c6e;font-size:12px;font-weight:600;outline:none;cursor:pointer;width:148px;flex-shrink:0"><option value="">— Filter 1 —</option><option value="serialNo">🔢 Serial No</option><option value="brand">🏷 Brand</option><option value="size">📐 Size</option><option value="tyreType">⚙ Type</option><option value="purchaseDate">📅 Purchase Date</option></select><input type="text" id="TIFV1" placeholder="Search..." autocomplete="off" spellcheck="false" style="flex:1;min-width:0;background:var(--s1);border:1.5px solid var(--br);border-radius:8px;padding:8px 12px;color:var(--tx);font-size:13px;outline:none" oninput="applyTyreInvFilter()"></div>
         <div style="display:flex;gap:6px"><select id="TIFF2" onchange="onTIFChange();applyTyreInvFilter()" style="background:var(--s1);border:1.5px solid var(--ac);border-radius:8px;padding:8px 10px;color:#1d3c6e;font-size:12px;font-weight:600;outline:none;cursor:pointer;width:148px;flex-shrink:0"><option value="">— Filter 2 —</option><option value="supplier">🏪 Supplier</option><option value="poNo">📄 Req No</option><option value="lpoNo">📄 LPO No</option></select><input type="text" id="TIFV2" placeholder="Optional..." autocomplete="off" spellcheck="false" style="flex:1;min-width:0;background:var(--s1);border:1.5px solid var(--br);border-radius:8px;padding:8px 12px;color:var(--tx);font-size:13px;outline:none" oninput="applyTyreInvFilter()"></div>
         <div style="display:flex;gap:6px"><select id="TIFF3" onchange="onTIFChange();applyTyreInvFilter()" style="background:var(--s1);border:1.5px solid var(--ac);border-radius:8px;padding:8px 10px;color:#1d3c6e;font-size:12px;font-weight:600;outline:none;cursor:pointer;width:148px;flex-shrink:0"><option value="">— Filter 3 —</option><option value="purchaseDate">📅 Purchase Date</option><option value="currentVehicle">🚛 Vehicle</option><option value="currentPosition">📍 Position</option></select><input type="text" id="TIFV3" placeholder="Optional..." autocomplete="off" spellcheck="false" style="flex:1;min-width:0;background:var(--s1);border:1.5px solid var(--br);border-radius:8px;padding:8px 12px;color:var(--tx);font-size:13px;outline:none" oninput="applyTyreInvFilter()"></div>
-        <div style="display:flex;gap:6px"><select id="TIFSTATUS" style="flex:1;background:var(--s1);border:1.5px solid var(--br);border-radius:8px;padding:8px 10px;color:var(--tx);font-size:12px;outline:none;cursor:pointer" onchange="applyTyreInvFilter()"><option value="">All Status</option><option value="IN STORE">IN STORE</option><option value="FITTED">FITTED</option><option value="RETREADING">RETREADING</option><option value="SCRAPPED">SCRAPPED</option></select><button class="btn bg" onclick="clearTyreInvFilter()" style="padding:8px 14px;font-size:12px;white-space:nowrap">✕ Clear</button></div>
+        <div style="display:flex;gap:6px;align-items:center">
+          <div style="position:relative;flex:1" id="TIFSTATUS_WRAP">
+            <button id="TIFSTATUS_BTN" onclick="_tifStatusToggle(event)" style="width:100%;background:var(--s1);border:1.5px solid var(--br);border-radius:8px;padding:8px 10px;color:var(--tx);font-size:12px;outline:none;cursor:pointer;text-align:left;display:flex;align-items:center;justify-content:space-between;gap:6px">
+              <span id="TIFSTATUS_LABEL">All Status</span>
+              <span style="font-size:10px;color:var(--t2)">▾</span>
+            </button>
+            <div id="TIFSTATUS_PANEL" style="display:none;position:absolute;top:calc(100% + 4px);left:0;min-width:200px;background:var(--s1);border:1.5px solid var(--br);border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,.18);z-index:3000;padding:8px 0">
+              <label style="display:flex;align-items:center;gap:8px;padding:7px 14px;cursor:pointer;font-size:12px;border-bottom:1px solid var(--br);color:var(--t2)" onclick="_tifStatusClear()"><span style="font-size:11px">✕</span> Clear / All Status</label>
+              <label style="display:flex;align-items:center;gap:8px;padding:7px 14px;cursor:pointer;font-size:12px" onmouseenter="this.style.background='rgba(10,45,110,.06)'" onmouseleave="this.style.background=''"><input type="checkbox" value="IN STORE" class="tif-sf-chk" onchange="_tifStatusChange()" style="accent-color:var(--ac);width:14px;height:14px"> IN STORE</label>
+              <label style="display:flex;align-items:center;gap:8px;padding:7px 14px;cursor:pointer;font-size:12px" onmouseenter="this.style.background='rgba(10,45,110,.06)'" onmouseleave="this.style.background=''"><input type="checkbox" value="FITTED" class="tif-sf-chk" onchange="_tifStatusChange()" style="accent-color:var(--ac);width:14px;height:14px"> FITTED</label>
+              <label style="display:flex;align-items:center;gap:8px;padding:7px 14px;cursor:pointer;font-size:12px" onmouseenter="this.style.background='rgba(10,45,110,.06)'" onmouseleave="this.style.background=''"><input type="checkbox" value="RETREADING" class="tif-sf-chk" onchange="_tifStatusChange()" style="accent-color:var(--ac);width:14px;height:14px"> RETREADING</label>
+              <label style="display:flex;align-items:center;gap:8px;padding:7px 14px;cursor:pointer;font-size:12px" onmouseenter="this.style.background='rgba(10,45,110,.06)'" onmouseleave="this.style.background=''"><input type="checkbox" value="SCRAPPED" class="tif-sf-chk" onchange="_tifStatusChange()" style="accent-color:var(--ac);width:14px;height:14px"> SCRAPPED</label>
+              <label style="display:flex;align-items:center;gap:8px;padding:7px 14px;cursor:pointer;font-size:12px" onmouseenter="this.style.background='rgba(10,45,110,.06)'" onmouseleave="this.style.background=''"><input type="checkbox" value="SOLD" class="tif-sf-chk" onchange="_tifStatusChange()" style="accent-color:var(--ac);width:14px;height:14px"> SOLD</label>
+              <label style="display:flex;align-items:center;gap:8px;padding:7px 14px;cursor:pointer;font-size:12px" onmouseenter="this.style.background='rgba(10,45,110,.06)'" onmouseleave="this.style.background=''"><input type="checkbox" value="ON HOLD" class="tif-sf-chk" onchange="_tifStatusChange()" style="accent-color:var(--ac);width:14px;height:14px"> ON HOLD</label>
+            </div>
+          </div>
+          <button class="btn bg" onclick="clearTyreInvFilter()" style="padding:8px 14px;font-size:12px;white-space:nowrap">✕ Clear</button>
+        </div>
       </div>
       <!-- date range row -->
       <div id="TIF_daterow" style="display:none;margin-top:8px">
@@ -1911,6 +1929,41 @@ const PH = {truck:'e.g. T843DEE',reqNo:'e.g. REQ-001234',description:'e.g. BRAKE
 
 // -- APPLY FILTERS --
 var _statusFilters = new Set();
+
+// Tyre Inventory multi-checkbox status filter
+var _tifStatusFilters = new Set();
+function _tifStatusToggle(e) {
+  e.stopPropagation();
+  var panel = document.getElementById('TIFSTATUS_PANEL');
+  if (!panel) return;
+  var open = panel.style.display !== 'none';
+  document.querySelectorAll('[id$="_PANEL"]').forEach(function(p){p.style.display='none';});
+  panel.style.display = open ? 'none' : 'block';
+}
+function _tifStatusChange() {
+  _tifStatusFilters.clear();
+  document.querySelectorAll('.tif-sf-chk:checked').forEach(function(cb){ _tifStatusFilters.add(cb.value); });
+  var lbl = document.getElementById('TIFSTATUS_LABEL');
+  if (lbl) lbl.textContent = _tifStatusFilters.size ? Array.from(_tifStatusFilters).join(', ') : 'All Status';
+  renderTyreInventory();
+}
+function _tifStatusClear(rerender) {
+  _tifStatusFilters.clear();
+  document.querySelectorAll('.tif-sf-chk').forEach(function(cb){ cb.checked = false; });
+  var lbl = document.getElementById('TIFSTATUS_LABEL');
+  if (lbl) lbl.textContent = 'All Status';
+  var panel = document.getElementById('TIFSTATUS_PANEL');
+  if (panel) panel.style.display = 'none';
+  if (rerender !== false) renderTyreInventory();
+}
+document.addEventListener('click', function(e){
+  var panel = document.getElementById('TIFSTATUS_PANEL');
+  var wrap = document.getElementById('TIFSTATUS_WRAP');
+  if (panel && panel.style.display !== 'none' && wrap && !wrap.contains(e.target)) {
+    panel.style.display = 'none';
+  }
+});
+
 function toggleStatusDropdown(e) {
   e.stopPropagation();
   var panel = document.getElementById('STATUSFILTER_PANEL');
@@ -5339,6 +5392,7 @@ function renderTyreInventory() {
   var retread = (TYRES||[]).filter(function(t){ return t.status==='RETREADING'; }).length;
   var scrapped= (TYRES||[]).filter(function(t){ return t.status==='SCRAPPED'; }).length;
   var sold    = (TYRES||[]).filter(function(t){ return t.status==='SOLD'; }).length;
+  var onHold  = (TYRES||[]).filter(function(t){ return t.status==='ON HOLD'; }).length;
   var html = '<div style="display:flex;gap:10px;margin-bottom:14px;flex-wrap:wrap">'
     + '<div class="statcard statcard-sm" style="background:#0a2d6e;color:#fff"><div class="scl">Total Tyres</div><div class="scv">'+total+'</div></div>'
     + '<div class="statcard statcard-sm" style="background:#059669;color:#fff"><div class="scl">In Store</div><div class="scv">'+inStore+'</div></div>'
@@ -5346,8 +5400,9 @@ function renderTyreInventory() {
     + '<div class="statcard statcard-sm" style="background:#d97706;color:#fff"><div class="scl">Retreading</div><div class="scv">'+retread+'</div></div>'
     + '<div class="statcard statcard-sm" style="background:#dc2626;color:#fff"><div class="scl">Scrapped</div><div class="scv">'+scrapped+'</div></div>'
     + '<div class="statcard statcard-sm" style="background:#7c3aed;color:#fff"><div class="scl">Sold</div><div class="scv">'+sold+'</div></div>'
+    + '<div class="statcard statcard-sm" style="background:#ea580c;color:#fff"><div class="scl">On Hold</div><div class="scv">'+onHold+'</div></div>'
     + '</div>';
-  var statusColors = {'IN STORE':'sR','FITTED':'sPNR','RETREADING':'sOH','SCRAPPED':'sNR','SOLD':'sSLD'};
+  var statusColors = {'IN STORE':'sR','FITTED':'sPNR','RETREADING':'sOH','SCRAPPED':'sNR','SOLD':'sSLD','ON HOLD':'sHLD'};
   html += '<div class="tyre-scroll-wrap"><table id="tyreInventoryTable"><thead><tr>'
     + '<th style="width:36px;text-align:center"><input type="checkbox" id="tinv_chk_all" onclick="toggleAllTyreInv(this)" style="cursor:pointer;width:14px;height:14px;accent-color:var(--ac)"></th>'
     + '<th>Serial No</th><th>Brand</th><th>Size</th><th>Type</th><th>Supplier</th><th>Req No</th><th>LPO No</th>'
@@ -6531,7 +6586,12 @@ function _applyTyreFilter(rows, prefix, fieldMap) {
     filters[i-1].f=(document.getElementById(prefix+'F'+i)||{}).value||'';
     filters[i-1].v=((document.getElementById(prefix+'V'+i)||{}).value||'').trim().toLowerCase();
   }
-  var st=((document.getElementById(prefix+'STATUS')||{}).value||'').toUpperCase();
+  var st='';
+  if(prefix==='TIF'){
+    if(typeof _tifStatusFilters!=='undefined'&&_tifStatusFilters.size>0) st='__MULTI__';
+  } else {
+    st=((document.getElementById(prefix+'STATUS')||{}).value||'').toUpperCase();
+  }
   var df=((document.getElementById(prefix+'_DATE_FROM')||{}).value||'');
   var dt=((document.getElementById(prefix+'_DATE_TO')||{}).value||'');
   var dateField=filters.map(function(fi){return fi.f;}).find(function(f){return f&&_isDateField(f);})||null;
@@ -6549,7 +6609,10 @@ function _applyTyreFilter(rows, prefix, fieldMap) {
       }
       if(String(rm[fi.f]||'').toLowerCase().indexOf(fi.v)<0) return false;
     }
-    if(st){
+    if(st==='__MULTI__'){
+      var _rs=String(rm.status||'').toUpperCase();
+      if(!_tifStatusFilters.has(_rs)) return false;
+    } else if(st){
       var _rs=String(rm.status||'').toUpperCase();
       if(st==='APPROVED'){if(_rs!=='ACTIVE'&&_rs!=='CLOSED'&&_rs!=='APPROVED') return false;}
       else if(_rs!==st) return false;
@@ -6563,7 +6626,7 @@ function _applyTyreFilter(rows, prefix, fieldMap) {
   });
 }
 function applyTyreInvFilter()  { renderTyreInventory(); }
-function clearTyreInvFilter()  { ['TIFF1','TIFV1','TIFF2','TIFV2','TIFF3','TIFV3','TIFSTATUS'].forEach(function(id){var e=document.getElementById(id);if(e)e.value='';}); renderTyreInventory();
+function clearTyreInvFilter()  { ['TIFF1','TIFV1','TIFF2','TIFV2','TIFF3','TIFV3'].forEach(function(id){var e=document.getElementById(id);if(e)e.value='';}); _tifStatusClear(false); renderTyreInventory();
   var _df=document.getElementById('TIF_DATE_FROM');var _dt=document.getElementById('TIF_DATE_TO');
   if(_df)_df.value='';if(_dt)_dt.value='';
   var _dr=document.getElementById('TIF_daterow');if(_dr)_dr.style.display='none';
