@@ -10565,7 +10565,8 @@ async function saveBatGRN() {
     var maxQty = matchPO ? Number(matchPO.qtyOutstanding||0) : 0;
     if (maxQty>0 && qty>maxQty) { toast('Line '+(i+1)+': Qty '+qty+' exceeds outstanding '+maxQty+' for this LPO','er'); return; }
     var finalSize=size||(matchPO.capacity||matchPO.size||'');
-    grnLines.push({brand:brand,size:finalSize,capacity:finalSize,qtyReceived:qty,qty:qty,notes:note});
+    var lineSupplier = matchPO ? (matchPO.supplier||'') : '';
+    grnLines.push({brand:brand,size:finalSize,capacity:finalSize,qtyReceived:qty,qty:qty,notes:note,supplier:lineSupplier,unitPrice:matchPO?matchPO.unitPrice||0:0,lpoNo:lpo});
   }
   if (!grnLines.length) { toast('Add at least one battery line','er'); return; }
   var _totalRcv2 = grnLines.reduce(function(s,l){return s+(l.qtyReceived||l.qty||0);},0);
